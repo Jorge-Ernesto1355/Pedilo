@@ -1,29 +1,89 @@
-@import "tailwindcss";
+@import 'tailwindcss';
+@import 'tw-animate-css';
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+
+@custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-space-grotesk);
-  --font-display: var(--font-fraunces);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --font-sans: var(--font-inter-tight);
+  --font-display: var(--font-sora);
   --font-mono: var(--font-ibm-plex-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+:root {
+  color-scheme: light;
+  --background: oklch(0.985 0.008 250);
+  --foreground: oklch(0.16 0.025 255);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.18 0.02 250);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.18 0.02 250);
+  --primary: oklch(0.43 0.18 258);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.955 0.018 248);
+  --secondary-foreground: oklch(0.22 0.02 250);
+  --muted: oklch(0.955 0.014 248);
+  --muted-foreground: oklch(0.51 0.03 250);
+  --accent: oklch(0.91 0.055 242);
+  --accent-foreground: oklch(0.28 0.08 250);
+  --border: oklch(0.89 0.018 248);
+  --input: oklch(0.89 0.018 248);
+  --ring: oklch(0.5 0.22 260);
+  --radius: 0.75rem;
+
+  /* Shared Pedilo palette. Keep create-menu and dashboard on the same source of truth. */
+  --pedilo-ink: #12234A;
+  --pedilo-ink-strong: #10224A;
+  --pedilo-blue-deep: #1E40AF;
+  --pedilo-blue: #2451C5;
+  --pedilo-blue-mid: #315FE8;
+  --pedilo-blue-soft: #EAF0FF;
+  --pedilo-blue-pale: #F5F8FC;
+  --pedilo-blue-wash: #F8FAFE;
+  --pedilo-line: #DCE5F3;
+  --pedilo-muted: #65738A;
+  --pedilo-subtle: #8996A9;
+  --pedilo-success: #23814C;
+}
+
+* {
+  border-color: var(--border);
+}
+
+html {
+  scroll-behavior: smooth;
+  background: var(--background);
 }
 
 body {
+  margin: 0;
+  min-height: 100%;
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-space-grotesk), Arial, Helvetica, sans-serif;
+  font-family: var(--font-inter-tight), Arial, Helvetica, sans-serif;
 }
 
 h1,
@@ -32,5 +92,84 @@ h3,
 h4,
 h5,
 h6 {
-  font-family: var(--font-fraunces), Georgia, "Times New Roman", serif;
+  font-family: var(--font-sora), Arial, Helvetica, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+
+.font-display {
+  font-family: var(--font-sora), Arial, Helvetica, sans-serif;
+  font-weight: 600;
+}
+
+.dashboard-shell {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  color: var(--pedilo-ink);
+  background-color: var(--pedilo-blue-pale);
+  background-image:
+    radial-gradient(circle at 0% 0%, rgb(112 158 255 / 0.12), transparent 27rem),
+    radial-gradient(circle at 100% 28%, rgb(177 207 255 / 0.18), transparent 25rem),
+    linear-gradient(rgb(36 81 197 / 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(36 81 197 / 0.035) 1px, transparent 1px);
+  background-size: auto, auto, 40px 40px, 40px 40px;
+}
+
+.dashboard-shell::before,
+.dashboard-shell::after {
+  position: absolute;
+  pointer-events: none;
+  content: '';
+  z-index: 0;
+  border: 1px solid rgb(36 81 197 / 0.08);
+  border-radius: 38%;
+  transform: rotate(18deg);
+}
+
+.dashboard-shell > * {
+  position: relative;
+  z-index: 1;
+}
+
+.dashboard-shell::before {
+  top: 8rem;
+  right: -14rem;
+  width: 38rem;
+  height: 38rem;
+  box-shadow: 0 0 0 5rem rgb(36 81 197 / 0.018), 0 0 0 10rem rgb(36 81 197 / 0.012);
+}
+
+.dashboard-shell::after {
+  bottom: -24rem;
+  left: -12rem;
+  width: 32rem;
+  height: 32rem;
+  transform: rotate(-24deg);
+  border-color: rgb(36 81 197 / 0.05);
+}
+
+code,
+kbd,
+pre {
+  font-family: var(--font-ibm-plex-mono), SFMono-Regular, Consolas, monospace;
+}
+
+a {
+  transition: color .2s ease;
+}
+
+::selection {
+  background: color-mix(in oklch, var(--primary) 20%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    transition-duration: .01ms !important;
+  }
 }
