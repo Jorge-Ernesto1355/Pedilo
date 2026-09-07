@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, FormEvent } from "react";
-import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
+import { registerSchema } from "@/app/auth/lib/validation";
+import { networkAuthError, safeAuthError } from "@/app/auth/lib/client/error-message";
 
 type FieldErrors = {
     fullname?: boolean;
@@ -20,10 +21,14 @@ const STRENGTH_PCT = [0, 25, 55, 80, 100];
 
 function getStrength(v: string) {
     let s = 0;
+    const isAlphaNumeric = (character: string) =>
+        (character >= "A" && character <= "Z") ||
+        (character >= "a" && character <= "z") ||
+        (character >= "0" && character <= "9");
     if (v.length >= 8) s++;
-    if (/[A-Z]/.test(v)) s++;
-    if (/[0-9]/.test(v)) s++;
-    if (/[^A-Za-z0-9]/.test(v)) s++;
+    if ([...v].some((character) => character >= "A" && character <= "Z")) s++;
+    if ([...v].some((character) => character >= "0" && character <= "9")) s++;
+    if ([...v].some((character) => !isAlphaNumeric(character))) s++;
     return s;
 }
 
@@ -36,13 +41,13 @@ const railContainer = {
 
 const railItem = {
     hidden: { opacity: 0, y: 16 },
-    show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } },
+    show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" as const } },
 };
 
 const errorVariants = {
     hidden: { opacity: 0, height: 0, marginTop: 0 },
-    show: { opacity: 1, height: "auto", marginTop: 6, transition: { duration: 0.25, ease: "easeOut" } },
-    exit: { opacity: 0, height: 0, marginTop: 0, transition: { duration: 0.2, ease: "easeIn" } },
+    show: { opacity: 1, height: "auto", marginTop: 6, transition: { duration: 0.25, ease: "easeOut" as const } },
+    exit: { opacity: 0, height: 0, marginTop: 0, transition: { duration: 0.2, ease: "easeIn" as const } },
 };
 
 export default function RegisterPage() {
@@ -53,6 +58,7 @@ export default function RegisterPage() {
     const [confirm, setConfirm] = useState("");
     const [terms, setTerms] = useState(false);
     const [errors, setErrors] = useState<FieldErrors>({});
+    const [authError, setAuthError] = useState("");
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
 
@@ -62,28 +68,54 @@ export default function RegisterPage() {
         document.getElementById("email")?.focus();
     }
 
-    function handleSubmit(e: FormEvent) {
+    async function handleSubmit(e: FormEvent) {
         e.preventDefault();
+        if (loading) return;
 
-        const emOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
-        const newErrors: FieldErrors = {
-            fullname: !fullname.trim(),
-            business: !business.trim(),
-            email: !emOk,
-            password: password.length < 8,
-            confirm: password !== confirm || !confirm,
-            terms: !terms,
-        };
-        setErrors(newErrors);
+        const parsed = registerSchema.safeParse({ fullname, business, email, password, confirm, terms });
+        if (!parsed.success) {
+            const newErrors: FieldErrors = {};
+            for (const issue of parsed.error.issues) {
+                const field = issue.path[0];
+                if (typeof field === "string" && field in {
+                    fullname: true,
+                    business: true,
+                    email: true,
+                    password: true,
+                    confirm: true,
+                    terms: true,
+                }) {
+                    newErrors[field as keyof FieldErrors] = true;
+                }
+            }
+            setErrors(newErrors);
+            setAuthError("");
+            return;
+        }
 
-        const ok = !Object.values(newErrors).some(Boolean);
-        if (!ok) return;
-
+        setErrors({});
         setLoading(true);
-        setTimeout(() => {
-            setLoading(false);
+        setSuccess(false);
+        setAuthError("");
+
+        try {
+            const { confirm, ...payload } = parsed.data;
+            void confirm;
+            const response = await fetch("/api/auth/register", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            });
+            if (!response.ok) {
+                setAuthError(safeAuthError(response.status, "register"));
+                return;
+            }
             setSuccess(true);
-        }, 1600);
+        } catch {
+            setAuthError(networkAuthError);
+        } finally {
+            setLoading(false);
+        }
     }
 
     const inputClass = (invalid?: boolean) =>
@@ -375,9 +407,24 @@ export default function RegisterPage() {
                                     )}
                                 </AnimatePresence>
 
+                                <AnimatePresence initial={false}>
+                                    {authError && (
+                                        <motion.p
+                                            role="alert"
+                                            initial={{ opacity: 0, y: -8 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            exit={{ opacity: 0, y: -8 }}
+                                            className="mb-4 text-center text-[12.5px] font-medium text-red-600"
+                                        >
+                                            {authError}
+                                        </motion.p>
+                                    )}
+                                </AnimatePresence>
+
                                 <motion.button
                                     type="submit"
                                     disabled={loading}
+                                    aria-busy={loading}
                                     whileHover={!loading ? { y: -2, boxShadow: "0 10px 24px rgba(30,64,175,0.35)" } : {}}
                                     whileTap={!loading ? { scale: 0.98, y: 0 } : {}}
                                     animate={{ backgroundColor: success ? "#16A34A" : "#1E40AF" }}

@@ -4,6 +4,8 @@ import { useState, FormEvent } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import { Inter, Source_Serif_4 } from "next/font/google";
+import { loginSchema } from "@/app/auth/lib/validation";
+import { networkAuthError, safeAuthError } from "@/app/auth/lib/client/error-message";
 
 // ---------------------------------------------------------------------------
 // Fuentes (equivalente a los <link> de Google Fonts del HTML original)
@@ -38,10 +40,6 @@ function GoogleIcon(props: React.SVGProps<SVGSVGElement>) {
 // ---------------------------------------------------------------------------
 type FieldState = "idle" | "valid" | "invalid";
 
-function validEmail(value: string) {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
-}
-
 const reveal = {
     hidden: { opacity: 0, y: 20 },
     visible: { opacity: 1, y: 0 },
@@ -53,28 +51,47 @@ export default function LoginPage() {
     const [showPassword, setShowPassword] = useState(false);
     const [emailState, setEmailState] = useState<FieldState>("idle");
     const [passState, setPassState] = useState<FieldState>("idle");
+    const [validationErrors, setValidationErrors] = useState<{ email?: string; password?: string }>({});
+    const [authError, setAuthError] = useState("");
+    const [remember, setRemember] = useState(false);
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
 
-    function handleSubmit(e: FormEvent<HTMLFormElement>) {
+    async function handleSubmit(e: FormEvent<HTMLFormElement>) {
         e.preventDefault();
+        if (loading) return;
 
-        const emailOk = validEmail(email);
-        const passOk = password.trim().length > 0;
+        const parsed = loginSchema.safeParse({ email, password, remember });
+        if (!parsed.success) {
+            const fieldErrors = parsed.error.flatten().fieldErrors;
+            setValidationErrors({ email: fieldErrors.email?.[0], password: fieldErrors.password?.[0] });
+            setEmailState(fieldErrors.email ? "invalid" : "valid");
+            setPassState(fieldErrors.password ? "invalid" : "valid");
+            setAuthError("");
+            return;
+        }
 
-        setEmailState(emailOk ? "valid" : "invalid");
-        setPassState(passOk ? "valid" : "invalid");
-
-        if (!emailOk || !passOk) return;
-
+        setValidationErrors({});
         setLoading(true);
         setSuccess(false);
+        setAuthError("");
 
-        // Simulación de llamada al backend — reemplazar por la lógica real de auth
-        setTimeout(() => {
-            setLoading(false);
+        try {
+            const response = await fetch("/api/auth/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(parsed.data),
+            });
+            if (!response.ok) {
+                setAuthError(safeAuthError(response.status, "login"));
+                return;
+            }
             setSuccess(true);
-        }, 1600);
+        } catch {
+            setAuthError(networkAuthError);
+        } finally {
+            setLoading(false);
+        }
     }
 
     return (
@@ -205,6 +222,8 @@ export default function LoginPage() {
                                         onChange={(e) => {
                                             setEmail(e.target.value);
                                             setEmailState("idle");
+                                            setValidationErrors((current) => ({ ...current, email: undefined }));
+                                            setAuthError("");
                                         }}
                                         className={`w-full rounded-[11px] border-[1.5px] bg-[#FBFCFE] px-4 py-3.5 font-[var(--font-source-serif)] text-base text-[#1A202C] transition-colors placeholder:text-[#A6ADBC] focus:border-[#1E40AF] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#1E40AF]/[.14] ${emailState === "invalid"
                                             ? "border-[#D92D20] bg-[#FFFBFA]"
@@ -223,7 +242,7 @@ export default function LoginPage() {
                                             exit={{ opacity: 0, height: 0, y: -4 }}
                                             className="mt-[7px] font-[var(--font-inter)] text-[12.5px] text-[#B42318]"
                                         >
-                                            Ingresa un correo electr&oacute;nico v&aacute;lido.
+                                            {validationErrors.email ?? "Ingresa un correo electrónico válido."}
                                         </motion.p>
                                     )}
                                 </AnimatePresence>
@@ -254,6 +273,8 @@ export default function LoginPage() {
                                         onChange={(e) => {
                                             setPassword(e.target.value);
                                             setPassState("idle");
+                                            setValidationErrors((current) => ({ ...current, password: undefined }));
+                                            setAuthError("");
                                         }}
                                         className={`w-full rounded-[11px] border-[1.5px] bg-[#FBFCFE] px-4 py-3.5 pr-16 font-[var(--font-source-serif)] text-base text-[#1A202C] transition-colors placeholder:text-[#A6ADBC] focus:border-[#1E40AF] focus:bg-white focus:outline-none focus:ring-4 focus:ring-[#1E40AF]/[.14] ${passState === "invalid"
                                             ? "border-[#D92D20] bg-[#FFFBFA]"
@@ -265,7 +286,7 @@ export default function LoginPage() {
                                     <button
                                         type="button"
                                         aria-pressed={showPassword}
-                                        aria-label={showPassword ? "Ocultar contrase&ntilde;a" : "Mostrar contrase&ntilde;a"}
+                                        aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
                                         onClick={() => setShowPassword((s) => !s)}
                                         className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg px-2.5 py-2 font-[var(--font-inter)] text-xs font-bold uppercase tracking-[.06em] text-[#1E40AF] transition-colors hover:bg-[#1E40AF]/[.08]"
                                     >
@@ -281,7 +302,7 @@ export default function LoginPage() {
                                             exit={{ opacity: 0, height: 0, y: -4 }}
                                             className="mt-[7px] font-[var(--font-inter)] text-[12.5px] text-[#B42318]"
                                         >
-                                            Ingresa tu contrase&ntilde;a.
+                                            {validationErrors.password ?? "Ingresa tu contraseña."}
                                         </motion.p>
                                     )}
                                 </AnimatePresence>
@@ -293,22 +314,39 @@ export default function LoginPage() {
                                     <input
                                         type="checkbox"
                                         name="remember"
+                                        checked={remember}
+                                        onChange={(e) => setRemember(e.target.checked)}
                                         className="h-[17px] w-[17px] cursor-pointer accent-[#1E40AF]"
                                     />
                                     Recu&eacute;rdame
                                 </label>
                                 <a
-                                    href="#"
+                                    href="/forgot-password"
                                     className="font-[var(--font-inter)] text-[13.5px] font-bold text-[#1E40AF] hover:underline"
                                 >
                                     &iquest;Olvidaste tu contrase&ntilde;a?
                                 </a>
                             </div>
 
+                            <AnimatePresence initial={false}>
+                                {authError && (
+                                    <motion.p
+                                        role="alert"
+                                        initial={{ opacity: 0, y: -8 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: -8 }}
+                                        className="mb-4 text-center font-[var(--font-inter)] text-sm font-semibold text-[#B42318]"
+                                    >
+                                        {authError}
+                                    </motion.p>
+                                )}
+                            </AnimatePresence>
+
                             {/* botón enviar */}
                             <motion.button
                                 type="submit"
                                 disabled={loading}
+                                aria-busy={loading}
                                 whileHover={loading ? undefined : { y: -2, boxShadow: "0 14px 26px -8px rgba(30,64,175,.55)" }}
                                 whileTap={loading ? undefined : { scale: 0.98 }}
                                 className="flex w-full items-center justify-center gap-2.5 rounded-[11px] bg-[#1E40AF] py-4 font-[var(--font-inter)] text-base font-bold tracking-[.01em] text-white shadow-[0_10px_22px_-8px_rgba(30,64,175,.5)] transition-transform hover:bg-[#1B3796] active:scale-[.982] disabled:cursor-progress disabled:opacity-85"
