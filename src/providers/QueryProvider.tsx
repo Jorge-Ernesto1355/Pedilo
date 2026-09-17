@@ -1,6 +1,7 @@
 "use client";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Toaster } from "sileo";
 import { useState } from "react";
 
 export default function QueryProvider({
@@ -21,6 +22,7 @@ export default function QueryProvider({
 
     return (
         <QueryClientProvider client={queryClient}>
+            <Toaster position="top-right" />
             {children}
         </QueryClientProvider>
     );

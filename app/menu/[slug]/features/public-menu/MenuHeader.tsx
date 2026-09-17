@@ -3,7 +3,7 @@
 'use client'
 
 import { Clock3, MapPin, Utensils } from 'lucide-react'
-import { ViewOnMapsButton } from '@/app/create-menu/features/business-location/ViewOnMapsButton'
+import { ViewOnMapsButton } from '@/app/(protected)/create-menu/features/business-location/ViewOnMapsButton'
 import type { PublicMenuBusiness } from './types'
 
 export function MenuHeader({ business }: { business: PublicMenuBusiness }) {

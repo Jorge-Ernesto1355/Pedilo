@@ -6,6 +6,8 @@ import Image from "next/image";
 import { Inter, Source_Serif_4 } from "next/font/google";
 import { loginSchema } from "@/app/auth/lib/validation";
 import { networkAuthError, safeAuthError } from "@/app/auth/lib/client/error-message";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 // ---------------------------------------------------------------------------
 // Fuentes (equivalente a los <link> de Google Fonts del HTML original)
@@ -46,6 +48,7 @@ const reveal = {
 };
 
 export default function LoginPage() {
+    const router = useRouter();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
@@ -56,6 +59,8 @@ export default function LoginPage() {
     const [remember, setRemember] = useState(false);
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
+
+
 
     async function handleSubmit(e: FormEvent<HTMLFormElement>) {
         e.preventDefault();
@@ -81,12 +86,22 @@ export default function LoginPage() {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(parsed.data),
+                credentials: "same-origin",
             });
             if (!response.ok) {
-                setAuthError(safeAuthError(response.status, "login"));
+                if (response.status === 429) {
+                    setAuthError("Demasiados intentos. Intenta de nuevo más tarde.");
+                } else if (response.status === 502 || response.status === 503) {
+                    setAuthError("No se pudo conectar con el servidor. Intenta de nuevo.");
+                } else if (response.status === 504) {
+                    setAuthError("El servidor tardó demasiado. Intenta de nuevo.");
+                } else {
+                    setAuthError(safeAuthError(response.status, "login"));
+                }
                 return;
             }
             setSuccess(true);
+            router.push("/dashboard");
         } catch {
             setAuthError(networkAuthError);
         } finally {
@@ -406,15 +421,15 @@ export default function LoginPage() {
                     >
                         <p className="mb-4 font-[var(--font-source-serif)] text-[15px] text-[#3C4557]">
                             &iquest;A&uacute;n no tienes una cuenta?{" "}
-                            <a
-                                href="#"
+                            <Link
+                                href={RedirectedUrls.register}
                                 className="group inline-flex items-center gap-1.5 font-[var(--font-inter)] font-bold text-[#1E40AF]"
                             >
                                 Crea una cuenta
                                 <span className="transition-all duration-300 group-hover:translate-x-1">
                                     →
                                 </span>
-                            </a>
+                            </Link>
                         </p>
 
 
@@ -423,4 +438,10 @@ export default function LoginPage() {
             </div>
         </main>
     );
+}
+
+export const RedirectedUrls = {
+    login: "/auth/login",
+    createMenu: "/create-menu",
+    register: "/auth/register"
 }

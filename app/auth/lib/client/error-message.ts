@@ -1,3 +1,5 @@
+import { ApiError } from "./api-error";
+
 export function safeAuthError(status: number, context: "login" | "register") {
   if (status === 400) return "Revisa los datos ingresados.";
   if (status === 401 && context === "login") return "Correo o contraseña inválidos.";
@@ -8,6 +10,21 @@ export function safeAuthError(status: number, context: "login" | "register") {
 }
 
 export const networkAuthError = "No se pudo conectar. Revisa tu conexión e inténtalo de nuevo.";
+
+export function getRegisterError(error: unknown) {
+  if (!(error instanceof ApiError)) return networkAuthError;
+  if (error.status === undefined) return networkAuthError;
+
+  if (error.code === "EMAIL_ALREADY_IN_USE") {
+    return error.message || "Este correo electrónico ya está en uso.";
+  }
+  const firstFieldError = Object.values(error.fieldErrors)[0]?.[0];
+  if (firstFieldError) return firstFieldError;
+  if (error.status === 400) return "Revisa los datos ingresados.";
+  if (error.status === 429) return "Demasiados intentos. Intenta de nuevo más tarde.";
+  if (error.status === 409) return "No se pudo crear la cuenta con estos datos.";
+  return "No se pudo crear la cuenta. Intenta de nuevo.";
+}
 
 export type RecoveryPhase = "request" | "verify" | "resend" | "reset";
 

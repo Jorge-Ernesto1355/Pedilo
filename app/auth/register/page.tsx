@@ -1,14 +1,17 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { registerSchema } from "@/app/auth/lib/validation";
-import { networkAuthError, safeAuthError } from "@/app/auth/lib/client/error-message";
+import { getRegisterError } from "@/app/auth/lib/client/error-message";
+import { registerUser } from "@/app/auth/lib/client/register";
+import { useMutation } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
+import { RedirectedUrls } from "@/src/lib/RedirectUrls";
 
 type FieldErrors = {
-    fullname?: boolean;
-    business?: boolean;
+    name?: boolean;
     email?: boolean;
     password?: boolean;
     confirm?: boolean;
@@ -51,16 +54,26 @@ const errorVariants = {
 };
 
 export default function RegisterPage() {
-    const [fullname, setFullname] = useState("");
-    const [business, setBusiness] = useState("");
+    const [name, setname] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [confirm, setConfirm] = useState("");
     const [terms, setTerms] = useState(false);
     const [errors, setErrors] = useState<FieldErrors>({});
     const [authError, setAuthError] = useState("");
-    const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
+
+    const router = useRouter()
+
+    const registerMutation = useMutation({
+        mutationFn: registerUser,
+        onSuccess: () => {
+            setSuccess(true)
+            router.push(RedirectedUrls.createMenu)
+
+        },
+    });
+    const loading = registerMutation.isPending;
 
     const strength = getStrength(password);
 
@@ -68,18 +81,17 @@ export default function RegisterPage() {
         document.getElementById("email")?.focus();
     }
 
-    async function handleSubmit(e: FormEvent) {
+    function handleSubmit(e: FormEvent) {
         e.preventDefault();
         if (loading) return;
 
-        const parsed = registerSchema.safeParse({ fullname, business, email, password, confirm, terms });
+        const parsed = registerSchema.safeParse({ name, email, password, confirm, terms });
         if (!parsed.success) {
             const newErrors: FieldErrors = {};
             for (const issue of parsed.error.issues) {
                 const field = issue.path[0];
                 if (typeof field === "string" && field in {
-                    fullname: true,
-                    business: true,
+                    name: true,
                     email: true,
                     password: true,
                     confirm: true,
@@ -94,28 +106,14 @@ export default function RegisterPage() {
         }
 
         setErrors({});
-        setLoading(true);
         setSuccess(false);
         setAuthError("");
 
-        try {
-            const { confirm, ...payload } = parsed.data;
-            void confirm;
-            const response = await fetch("/api/auth/register", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload),
-            });
-            if (!response.ok) {
-                setAuthError(safeAuthError(response.status, "register"));
-                return;
-            }
-            setSuccess(true);
-        } catch {
-            setAuthError(networkAuthError);
-        } finally {
-            setLoading(false);
-        }
+        const { confirm: _confirm, ...payload } = parsed.data;
+        void _confirm;
+        registerMutation.mutate(payload, {
+            onError: (error) => setAuthError(getRegisterError(error)),
+        });
     }
 
     const inputClass = (invalid?: boolean) =>
@@ -201,22 +199,22 @@ export default function RegisterPage() {
 
                             <form onSubmit={handleSubmit} noValidate className="space-y-4">
                                 <div>
-                                    <label htmlFor="fullname" className="mb-[6px] block text-[13px] font-semibold">
+                                    <label htmlFor="name" className="mb-[6px] block text-[13px] font-semibold">
                                         Nombre completo
                                     </label>
                                     <motion.input
-                                        id="fullname"
+                                        id="name"
                                         type="text"
                                         placeholder="Juan Pérez"
                                         autoComplete="name"
-                                        value={fullname}
-                                        onChange={(e) => setFullname(e.target.value)}
-                                        className={inputClass(errors.fullname)}
-                                        animate={errors.fullname ? { x: [0, -6, 6, -4, 4, 0] } : { x: 0 }}
+                                        value={name}
+                                        onChange={(e) => setname(e.target.value)}
+                                        className={inputClass(errors.name)}
+                                        animate={errors.name ? { x: [0, -6, 6, -4, 4, 0] } : { x: 0 }}
                                         transition={{ duration: 0.4 }}
                                     />
                                     <AnimatePresence initial={false}>
-                                        {errors.fullname && (
+                                        {errors.name && (
                                             <motion.p
                                                 variants={errorVariants}
                                                 initial="hidden"
@@ -225,36 +223,6 @@ export default function RegisterPage() {
                                                 className="overflow-hidden text-[12.5px] font-medium text-red-600"
                                             >
                                                 Por favor ingresa tu nombre completo.
-                                            </motion.p>
-                                        )}
-                                    </AnimatePresence>
-                                </div>
-
-                                <div>
-                                    <label htmlFor="business" className="mb-[6px] block text-[13px] font-semibold">
-                                        Nombre del negocio
-                                    </label>
-                                    <motion.input
-                                        id="business"
-                                        type="text"
-                                        placeholder="Pérez y Cía."
-                                        autoComplete="organization"
-                                        value={business}
-                                        onChange={(e) => setBusiness(e.target.value)}
-                                        className={inputClass(errors.business)}
-                                        animate={errors.business ? { x: [0, -6, 6, -4, 4, 0] } : { x: 0 }}
-                                        transition={{ duration: 0.4 }}
-                                    />
-                                    <AnimatePresence initial={false}>
-                                        {errors.business && (
-                                            <motion.p
-                                                variants={errorVariants}
-                                                initial="hidden"
-                                                animate="show"
-                                                exit="exit"
-                                                className="overflow-hidden text-[12.5px] font-medium text-red-600"
-                                            >
-                                                Por favor ingresa el nombre de tu negocio.
                                             </motion.p>
                                         )}
                                     </AnimatePresence>

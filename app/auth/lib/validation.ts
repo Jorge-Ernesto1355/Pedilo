@@ -40,8 +40,7 @@ export const loginSchema = z.object({
 }).strict();
 
 export const registerSchema = z.object({
-  fullname: z.string().trim().min(2, "Ingresa tu nombre completo.").max(100, "El nombre es demasiado largo."),
-  business: z.string().trim().min(2, "Ingresa el nombre de tu negocio.").max(120, "El nombre del negocio es demasiado largo."),
+  name: z.string().trim().min(2, "Ingresa tu nombre completo.").max(100, "El nombre es demasiado largo."),
   email: normalizedEmail,
   password,
   confirm: z.string().min(1, "Confirma tu contraseña.").max(128, "La contraseña es demasiado larga."),

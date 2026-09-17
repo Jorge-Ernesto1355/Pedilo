@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { networkAuthError, safeAuthError } from "@/app/auth/lib/client/error-message";
+import { getRegisterError, networkAuthError, safeAuthError } from "@/app/auth/lib/client/error-message";
+import { ApiError } from "@/app/auth/lib/client/api-error";
 
 describe("safeAuthError", () => {
   it("uses a generic message for invalid login credentials", () => {
@@ -21,5 +22,13 @@ describe("safeAuthError", () => {
 
   it("provides a safe network error", () => {
     expect(networkAuthError).not.toMatch(/error|stack|database|token/i);
+  });
+
+  it("preserves the backend duplicate-email message", () => {
+    expect(getRegisterError(new ApiError({
+      status: 409,
+      code: "EMAIL_ALREADY_IN_USE",
+      message: "The email jorge@gmail.com is already in use",
+    }))).toBe("The email jorge@gmail.com is already in use");
   });
 });

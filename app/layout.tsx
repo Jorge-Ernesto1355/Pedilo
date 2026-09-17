@@ -4,6 +4,7 @@ import "./globals.css";
 import "leaflet/dist/leaflet.css";
 import "leaflet-defaulticon-compatibility/dist/leaflet-defaulticon-compatibility.css";
 import QueryProvider from "@/src/providers/QueryProvider";
+import { sileo, Toaster } from "sileo";
 
 const interTight = Inter_Tight({
   variable: "--font-inter-tight",
@@ -38,8 +39,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="es"
       className={`${interTight.variable} ${sora.variable} ${ibmPlexMono.variable} h-full antialiased`}
     >
+
       <body className="flex min-h-full flex-col bg-background text-foreground">
-        <QueryProvider>{children}</QueryProvider>
+        <QueryProvider>
+          <Toaster position="top-right" />
+          {children}</QueryProvider>
       </body>
     </html>
   );

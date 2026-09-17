@@ -32,8 +32,7 @@ describe("loginSchema", () => {
 
 describe("registerSchema", () => {
   const valid = {
-    fullname: "Ana López",
-    business: "La Esquina",
+    name: "Ana López",
     email: "OWNER@example.com ",
     password: "correct-horse-7",
     confirm: "correct-horse-7",
@@ -47,10 +46,8 @@ describe("registerSchema", () => {
   });
 
   it.each([
-    ["missing name", { ...valid, fullname: undefined }],
-    ["empty name", { ...valid, fullname: "   " }],
-    ["missing business", { ...valid, business: undefined }],
-    ["empty business", { ...valid, business: "" }],
+    ["missing name", { ...valid, name: undefined }],
+    ["empty name", { ...valid, name: "   " }],
     ["missing email", { ...valid, email: undefined }],
     ["invalid email", { ...valid, email: "not-an-email" }],
     ["missing password", { ...valid, password: undefined }],
@@ -59,22 +56,22 @@ describe("registerSchema", () => {
     ["missing confirmation", { ...valid, confirm: undefined }],
     ["password mismatch", { ...valid, confirm: "different-password" }],
     ["terms not accepted", { ...valid, terms: false }],
+    ["business field removed", { ...valid, business: "La Esquina" }],
     ["null input", null],
-    ["incorrect name type", { ...valid, fullname: 42 }],
+    ["incorrect name type", { ...valid, name: 42 }],
     ["incorrect terms type", { ...valid, terms: "yes" }],
     ["unexpected fields", { ...valid, isAdmin: true }],
-    ["extremely long business name", { ...valid, business: "x".repeat(121) }],
     ["unicode-only invalid email", { ...valid, email: "éxample" }],
   ])("rejects %s", (_label, input) => {
     expect(registerSchema.safeParse(input).success).toBe(false);
   });
 
   it("reports multiple invalid fields at once", () => {
-    const result = registerSchema.safeParse({ fullname: "", business: "", email: "bad", password: "x", confirm: "y", terms: false });
+    const result = registerSchema.safeParse({ name: "", email: "bad", password: "x", confirm: "y", terms: false });
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(new Set(result.error.issues.map((issue) => issue.path[0]))).toEqual(
-        new Set(["fullname", "business", "email", "password", "terms"]),
+        new Set(["name", "email", "password", "terms"]),
       );
     }
   });
