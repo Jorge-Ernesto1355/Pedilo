@@ -16,7 +16,7 @@ type BusinessResponse = {
     }
 }
 
-function toBusinessPayload(values: BusinessProfileValues) {
+function toBusinessFormData(values: BusinessProfileValues, logoFile?: File | null, coverFile?: File | null) {
     const dayKeys = {
         mon: 'monday',
         tue: 'tuesday',
@@ -27,13 +27,13 @@ function toBusinessPayload(values: BusinessProfileValues) {
         sun: 'sunday',
     } as const
 
-    return {
-        name: values.businessName,
-        slug: values.slug,
-        description: values.description,
-        ubication: values.location,
-        ubicationMaps: values.coordinates,
-        businessSchedule: {
+    const formData = new FormData()
+    formData.append('name', values.businessName)
+    formData.append('slug', values.slug)
+    formData.append('description', values.description)
+    formData.append('ubication', values.location)
+    if (values.coordinates) formData.append('ubicationMaps', JSON.stringify(values.coordinates))
+    formData.append('businessSchedule', JSON.stringify({
             days: values.businessHours.days.map((day) => ({
                 key: dayKeys[day.key],
                 label: day.label,
@@ -41,20 +41,22 @@ function toBusinessPayload(values: BusinessProfileValues) {
             })),
             openTime: values.businessHours.openTime,
             closeTime: values.businessHours.closeTime,
-        },
-    }
+        }))
+    if (logoFile) formData.append('logo', logoFile)
+    if (coverFile) formData.append('cover', coverFile)
+    return formData
 }
 
 export function useSaveBusinessProfile() {
     return useMutation({
-        mutationFn: async (values: BusinessProfileValues): Promise<BusinessResponse> => {
+        mutationFn: async ({ values, logoFile, coverFile }: { values: BusinessProfileValues; logoFile?: File | null; coverFile?: File | null }): Promise<BusinessResponse> => {
             const businessId = useAuthStore.getState().user?.businessId
-            const payload = toBusinessPayload(values)
+            const formData = toBusinessFormData(values, logoFile, coverFile)
 
             try {
                 const response = businessId
-                    ? await apiClient.patch<BusinessResponse>(`/businesses/${businessId}`, payload, { withCredentials: true })
-                    : await apiClient.post<BusinessResponse>('/businesses', payload, { withCredentials: true })
+                    ? await apiClient.patch<BusinessResponse>(`/businesses/${businessId}`, formData, { withCredentials: true })
+                    : await apiClient.post<BusinessResponse>('/businesses', formData, { withCredentials: true })
 
                 let business = response.data.business
                 if (!businessId) {
@@ -86,11 +88,23 @@ export function useSaveBusinessProfile() {
                         },
 
                     })
+                } else {
+                    sileo.success({
+                        title: '¡Tu negocio fue actualizado!',
+                        description: 'Los cambios se guardaron correctamente.',
+                        duration: 5000,
+                    })
                 }
 
                 return { ...response.data, business }
             } catch (error) {
-                throw normalizeApiError(error)
+                const normalizedError = normalizeApiError(error)
+                sileo.error({
+                    title: businessId ? 'No pudimos actualizar tu negocio' : 'No pudimos crear tu negocio',
+                    description: normalizedError.message || 'Revisa la información e inténtalo de nuevo.',
+                    duration: 5000,
+                })
+                throw normalizedError
             }
         },
     })

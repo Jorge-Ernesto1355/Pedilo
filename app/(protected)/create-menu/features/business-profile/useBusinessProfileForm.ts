@@ -5,7 +5,6 @@ import { useForm } from 'react-hook-form'
 import { businessProfileSchema, type BusinessProfileValues } from './businessProfile.schema'
 
 export const defaultBusinessProfileValues: BusinessProfileValues = {
-
     businessName: 'La Esquina',
     slug: "la-esquina",
     location: 'Culiacán, Sinaloa',

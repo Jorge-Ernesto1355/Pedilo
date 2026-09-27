@@ -3,13 +3,24 @@
 import { useMemo, useState } from 'react'
 
 function slugify(value: string) {
-    return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'mi-negocio'
+    return (
+        value
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase()
+            .trim()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-+|-+$/g, '') || 'mi-negocio'
+    )
 }
 
-export function useBusinessShareLink(businessName: string) {
+export function useBusinessShareLink(BusinesSlug: string) {
     const [copied, setCopied] = useState(false)
-    const slug = useMemo(() => slugify(businessName), [businessName])
-    const shareUrl = typeof window === 'undefined' ? `/menu/${slug}` : new URL(`/menu/${slug}`, window.location.origin).toString()
+    const slug = useMemo(() => slugify(BusinesSlug), [BusinesSlug])
+    const shareUrl =
+        typeof window === 'undefined'
+            ? `/menu/${slug}`
+            : new URL(`/menu/${slug}`, window.location.origin).toString()
 
     async function copyLink() {
         if (navigator.clipboard?.writeText) {

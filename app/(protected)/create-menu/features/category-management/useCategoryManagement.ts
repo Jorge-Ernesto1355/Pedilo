@@ -23,11 +23,13 @@ export function useCategoryManagement() {
         queryKey: menuQueryKeys.list(businessId ?? 'none'),
         queryFn: getMenus,
         enabled: Boolean(businessId),
+        staleTime: 5 * 60 * 1000,
     })
     const menuQuery = useQuery({
         queryKey: selectedMenuId ? menuQueryKeys.detail(selectedMenuId) : ['menus', 'detail', 'none'],
         queryFn: () => getMenu(selectedMenuId as string),
         enabled: Boolean(selectedMenuId),
+        staleTime: 5 * 60 * 1000,
     })
 
     function invalidateMenus() {
