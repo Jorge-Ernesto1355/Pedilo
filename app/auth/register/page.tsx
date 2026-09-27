@@ -1,38 +1,38 @@
-"use client";
+'use client'
 
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import Link from "next/link";
-import { registerSchema } from "@/app/auth/lib/validation";
-import { getRegisterError } from "@/app/auth/lib/client/error-message";
-import { registerUser } from "@/app/auth/lib/client/register";
-import { useMutation } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
-import { RedirectedUrls } from "@/src/lib/RedirectUrls";
+import { useState, type FormEvent } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import Link from 'next/link'
+import { registerSchema } from '@/app/auth/lib/validation'
+import { getRegisterError } from '@/app/auth/lib/client/error-message'
+import { registerUser } from '@/app/auth/lib/client/register'
+import { useMutation } from '@tanstack/react-query'
+import { useRouter } from 'next/navigation'
+import { RedirectedUrls } from '@/src/lib/RedirectUrls'
 
 type FieldErrors = {
-    name?: boolean;
-    email?: boolean;
-    password?: boolean;
-    confirm?: boolean;
-    terms?: boolean;
-};
+    name?: boolean
+    email?: boolean
+    password?: boolean
+    confirm?: boolean
+    terms?: boolean
+}
 
-const STRENGTH_COLORS = ["#DC2626", "#DC2626", "#F59E0B", "#3B82F6", "#16A34A"];
-const STRENGTH_WORDS = ["Muy corta", "Débil", "Aceptable", "Buena", "Fuerte"];
-const STRENGTH_PCT = [0, 25, 55, 80, 100];
+const STRENGTH_COLORS = ['#DC2626', '#DC2626', '#F59E0B', '#3B82F6', '#16A34A']
+const STRENGTH_WORDS = ['Muy corta', 'Débil', 'Aceptable', 'Buena', 'Fuerte']
+const STRENGTH_PCT = [0, 25, 55, 80, 100]
 
 function getStrength(v: string) {
-    let s = 0;
+    let s = 0
     const isAlphaNumeric = (character: string) =>
-        (character >= "A" && character <= "Z") ||
-        (character >= "a" && character <= "z") ||
-        (character >= "0" && character <= "9");
-    if (v.length >= 8) s++;
-    if ([...v].some((character) => character >= "A" && character <= "Z")) s++;
-    if ([...v].some((character) => character >= "0" && character <= "9")) s++;
-    if ([...v].some((character) => !isAlphaNumeric(character))) s++;
-    return s;
+        (character >= 'A' && character <= 'Z') ||
+        (character >= 'a' && character <= 'z') ||
+        (character >= '0' && character <= '9')
+    if (v.length >= 8) s++
+    if ([...v].some((character) => character >= 'A' && character <= 'Z')) s++
+    if ([...v].some((character) => character >= '0' && character <= '9')) s++
+    if ([...v].some((character) => !isAlphaNumeric(character))) s++
+    return s
 }
 
 const railContainer = {
@@ -40,28 +40,38 @@ const railContainer = {
     show: {
         transition: { staggerChildren: 0.12, delayChildren: 0.15 },
     },
-};
+}
 
 const railItem = {
     hidden: { opacity: 0, y: 16 },
-    show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" as const } },
-};
+    show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: 'easeOut' as const } },
+}
 
 const errorVariants = {
     hidden: { opacity: 0, height: 0, marginTop: 0 },
-    show: { opacity: 1, height: "auto", marginTop: 6, transition: { duration: 0.25, ease: "easeOut" as const } },
-    exit: { opacity: 0, height: 0, marginTop: 0, transition: { duration: 0.2, ease: "easeIn" as const } },
-};
+    show: {
+        opacity: 1,
+        height: 'auto',
+        marginTop: 6,
+        transition: { duration: 0.25, ease: 'easeOut' as const },
+    },
+    exit: {
+        opacity: 0,
+        height: 0,
+        marginTop: 0,
+        transition: { duration: 0.2, ease: 'easeIn' as const },
+    },
+}
 
 export default function RegisterPage() {
-    const [name, setname] = useState("");
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-    const [confirm, setConfirm] = useState("");
-    const [terms, setTerms] = useState(false);
-    const [errors, setErrors] = useState<FieldErrors>({});
-    const [authError, setAuthError] = useState("");
-    const [success, setSuccess] = useState(false);
+    const [name, setname] = useState('')
+    const [email, setEmail] = useState('')
+    const [password, setPassword] = useState('')
+    const [confirm, setConfirm] = useState('')
+    const [terms, setTerms] = useState(false)
+    const [errors, setErrors] = useState<FieldErrors>({})
+    const [authError, setAuthError] = useState('')
+    const [success, setSuccess] = useState(false)
 
     const router = useRouter()
 
@@ -70,55 +80,59 @@ export default function RegisterPage() {
         onSuccess: () => {
             setSuccess(true)
             router.push(RedirectedUrls.createMenu)
-
         },
-    });
-    const loading = registerMutation.isPending;
+    })
+    const loading = registerMutation.isPending
 
-    const strength = getStrength(password);
+    const strength = getStrength(password)
 
     function handleGoogleClick() {
-        document.getElementById("email")?.focus();
+        document.getElementById('email')?.focus()
     }
 
     function handleSubmit(e: FormEvent) {
-        e.preventDefault();
-        if (loading) return;
+        e.preventDefault()
+        if (loading) return
 
-        const parsed = registerSchema.safeParse({ name, email, password, confirm, terms });
+        const parsed = registerSchema.safeParse({ name, email, password, confirm, terms })
         if (!parsed.success) {
-            const newErrors: FieldErrors = {};
+            const newErrors: FieldErrors = {}
             for (const issue of parsed.error.issues) {
-                const field = issue.path[0];
-                if (typeof field === "string" && field in {
-                    name: true,
-                    email: true,
-                    password: true,
-                    confirm: true,
-                    terms: true,
-                }) {
-                    newErrors[field as keyof FieldErrors] = true;
+                const field = issue.path[0]
+                if (
+                    typeof field === 'string' &&
+                    field in
+                        {
+                            name: true,
+                            email: true,
+                            password: true,
+                            confirm: true,
+                            terms: true,
+                        }
+                ) {
+                    newErrors[field as keyof FieldErrors] = true
                 }
             }
-            setErrors(newErrors);
-            setAuthError("");
-            return;
+            setErrors(newErrors)
+            setAuthError('')
+            return
         }
 
-        setErrors({});
-        setSuccess(false);
-        setAuthError("");
+        setErrors({})
+        setSuccess(false)
+        setAuthError('')
 
-        const { confirm: _confirm, ...payload } = parsed.data;
-        void _confirm;
+        const { confirm: _confirm, ...payload } = parsed.data
+        void _confirm
         registerMutation.mutate(payload, {
             onError: (error) => setAuthError(getRegisterError(error)),
-        });
+        })
     }
 
     const inputClass = (invalid?: boolean) =>
-        `w-full rounded-[10px] border px-[14px] py-3 font-outfit text-[15px] text-slate-900 bg-white transition-[border-color,box-shadow] duration-200 focus:outline-none focus:border-blue-800 focus:ring-4 focus:ring-blue-100 ${invalid ? "border-red-600 ring-4 ring-red-100" : "border-slate-200"
-        }`;
+        `w-full rounded-[10px] border px-[14px] py-3 font-outfit text-[15px] text-slate-900 bg-white transition-[border-color,box-shadow] duration-200 focus:outline-none focus:border-blue-800 focus:ring-4 focus:ring-blue-100 ${
+            invalid ? 'border-red-600 ring-4 ring-red-100' : 'border-slate-200'
+        }`
 
     return (
         <div className="font-outfit text-[17px] leading-[1.6] text-slate-900 bg-white">
@@ -133,8 +147,11 @@ export default function RegisterPage() {
                         Pedilo
                     </a>
                     <div className="text-[15px] text-slate-500">
-                        ¿Ya tienes una cuenta?{" "}
-                        <Link href="/auth/login" className="font-semibold text-blue-800 hover:underline">
+                        ¿Ya tienes una cuenta?{' '}
+                        <Link
+                            href="/auth/login"
+                            className="font-semibold text-blue-800 hover:underline"
+                        >
                             Iniciar sesión
                         </Link>
                     </div>
@@ -166,7 +183,7 @@ export default function RegisterPage() {
                             <motion.button
                                 type="button"
                                 onClick={handleGoogleClick}
-                                whileHover={{ y: -2, boxShadow: "0 8px 20px rgba(15,23,42,0.1)" }}
+                                whileHover={{ y: -2, boxShadow: '0 8px 20px rgba(15,23,42,0.1)' }}
                                 whileTap={{ scale: 0.98, y: 0 }}
                                 transition={{ duration: 0.15 }}
                                 className="flex w-full items-center justify-center gap-[11px] rounded-[11px] border border-slate-200 bg-white p-[13px] font-outfit text-[15px] font-semibold"
@@ -199,10 +216,14 @@ export default function RegisterPage() {
 
                             <form onSubmit={handleSubmit} noValidate className="space-y-4">
                                 <div>
-                                    <label htmlFor="name" className="mb-[6px] block text-[13px] font-semibold">
+                                    <label
+                                        htmlFor="name"
+                                        className="mb-[6px] block text-[13px] font-semibold"
+                                    >
                                         Nombre completo
                                     </label>
                                     <motion.input
+                                        data-testid="register-name"
                                         id="name"
                                         type="text"
                                         placeholder="Juan Pérez"
@@ -210,7 +231,9 @@ export default function RegisterPage() {
                                         value={name}
                                         onChange={(e) => setname(e.target.value)}
                                         className={inputClass(errors.name)}
-                                        animate={errors.name ? { x: [0, -6, 6, -4, 4, 0] } : { x: 0 }}
+                                        animate={
+                                            errors.name ? { x: [0, -6, 6, -4, 4, 0] } : { x: 0 }
+                                        }
                                         transition={{ duration: 0.4 }}
                                     />
                                     <AnimatePresence initial={false}>
@@ -229,10 +252,14 @@ export default function RegisterPage() {
                                 </div>
 
                                 <div>
-                                    <label htmlFor="email" className="mb-[6px] block text-[13px] font-semibold">
+                                    <label
+                                        htmlFor="email"
+                                        className="mb-[6px] block text-[13px] font-semibold"
+                                    >
                                         Correo electrónico
                                     </label>
                                     <motion.input
+                                        data-testid="register-email"
                                         id="email"
                                         type="email"
                                         placeholder="tu@negocio.com"
@@ -240,7 +267,9 @@ export default function RegisterPage() {
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
                                         className={inputClass(errors.email)}
-                                        animate={errors.email ? { x: [0, -6, 6, -4, 4, 0] } : { x: 0 }}
+                                        animate={
+                                            errors.email ? { x: [0, -6, 6, -4, 4, 0] } : { x: 0 }
+                                        }
                                         transition={{ duration: 0.4 }}
                                     />
                                     <AnimatePresence initial={false}>
@@ -259,10 +288,14 @@ export default function RegisterPage() {
                                 </div>
 
                                 <div>
-                                    <label htmlFor="password" className="mb-[6px] block text-[13px] font-semibold">
+                                    <label
+                                        htmlFor="password"
+                                        className="mb-[6px] block text-[13px] font-semibold"
+                                    >
                                         Contraseña
                                     </label>
                                     <motion.input
+                                        data-testid="register-password"
                                         id="password"
                                         type="password"
                                         placeholder="Al menos 8 caracteres"
@@ -270,7 +303,9 @@ export default function RegisterPage() {
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
                                         className={inputClass(errors.password)}
-                                        animate={errors.password ? { x: [0, -6, 6, -4, 4, 0] } : { x: 0 }}
+                                        animate={
+                                            errors.password ? { x: [0, -6, 6, -4, 4, 0] } : { x: 0 }
+                                        }
                                         transition={{ duration: 0.4 }}
                                     />
                                     <div className="mt-2">
@@ -281,20 +316,24 @@ export default function RegisterPage() {
                                                     width: `${STRENGTH_PCT[strength]}%`,
                                                     backgroundColor: STRENGTH_COLORS[strength],
                                                 }}
-                                                transition={{ duration: 0.35, ease: "easeOut" }}
+                                                transition={{ duration: 0.35, ease: 'easeOut' }}
                                             />
                                         </div>
                                         <motion.div
-                                            key={password ? STRENGTH_WORDS[strength] : "hint"}
+                                            key={password ? STRENGTH_WORDS[strength] : 'hint'}
                                             initial={{ opacity: 0 }}
                                             animate={{ opacity: 1 }}
                                             transition={{ duration: 0.2 }}
                                             className="mt-[5px] text-[12px]"
-                                            style={{ color: password ? STRENGTH_COLORS[strength] : "#64748B" }}
+                                            style={{
+                                                color: password
+                                                    ? STRENGTH_COLORS[strength]
+                                                    : '#64748B',
+                                            }}
                                         >
                                             {password
                                                 ? `Seguridad de la contraseña: ${STRENGTH_WORDS[strength]}`
-                                                : "Usa 8+ caracteres combinando letras y números"}
+                                                : 'Usa 8+ caracteres combinando letras y números'}
                                         </motion.div>
                                     </div>
                                     <AnimatePresence initial={false}>
@@ -313,10 +352,14 @@ export default function RegisterPage() {
                                 </div>
 
                                 <div>
-                                    <label htmlFor="confirm" className="mb-[6px] block text-[13px] font-semibold">
+                                    <label
+                                        htmlFor="confirm"
+                                        className="mb-[6px] block text-[13px] font-semibold"
+                                    >
                                         Confirmar contraseña
                                     </label>
                                     <motion.input
+                                        data-testid="register-confirm-password"
                                         id="confirm"
                                         type="password"
                                         placeholder="Vuelve a escribir la contraseña"
@@ -324,7 +367,9 @@ export default function RegisterPage() {
                                         value={confirm}
                                         onChange={(e) => setConfirm(e.target.value)}
                                         className={inputClass(errors.confirm)}
-                                        animate={errors.confirm ? { x: [0, -6, 6, -4, 4, 0] } : { x: 0 }}
+                                        animate={
+                                            errors.confirm ? { x: [0, -6, 6, -4, 4, 0] } : { x: 0 }
+                                        }
                                         transition={{ duration: 0.4 }}
                                     />
                                     <AnimatePresence initial={false}>
@@ -344,18 +389,25 @@ export default function RegisterPage() {
 
                                 <label className="mt-[18px] flex items-start gap-[10px] text-[13.5px] text-slate-500">
                                     <input
+                                        data-testid="register-terms"
                                         type="checkbox"
                                         checked={terms}
                                         onChange={(e) => setTerms(e.target.checked)}
                                         className="mt-[3px] h-4 w-4 flex-shrink-0 accent-blue-800"
                                     />
                                     <span>
-                                        Acepto los{" "}
-                                        <a href="#" className="font-semibold text-blue-800 hover:underline">
+                                        Acepto los{' '}
+                                        <a
+                                            href="#"
+                                            className="font-semibold text-blue-800 hover:underline"
+                                        >
                                             Términos y Condiciones
-                                        </a>{" "}
-                                        y la{" "}
-                                        <a href="#" className="font-semibold text-blue-800 hover:underline">
+                                        </a>{' '}
+                                        y la{' '}
+                                        <a
+                                            href="#"
+                                            className="font-semibold text-blue-800 hover:underline"
+                                        >
                                             Política de Privacidad
                                         </a>
                                         .
@@ -390,12 +442,20 @@ export default function RegisterPage() {
                                 </AnimatePresence>
 
                                 <motion.button
+                                    data-testid="register-submit"
                                     type="submit"
                                     disabled={loading}
                                     aria-busy={loading}
-                                    whileHover={!loading ? { y: -2, boxShadow: "0 10px 24px rgba(30,64,175,0.35)" } : {}}
+                                    whileHover={
+                                        !loading
+                                            ? {
+                                                  y: -2,
+                                                  boxShadow: '0 10px 24px rgba(30,64,175,0.35)',
+                                              }
+                                            : {}
+                                    }
                                     whileTap={!loading ? { scale: 0.98, y: 0 } : {}}
-                                    animate={{ backgroundColor: success ? "#16A34A" : "#1E40AF" }}
+                                    animate={{ backgroundColor: success ? '#16A34A' : '#1E40AF' }}
                                     transition={{ duration: 0.2 }}
                                     className="relative mt-[18px] flex w-full items-center justify-center rounded-[11px] border-none p-[15px] font-poppins text-[16px] font-bold text-white"
                                 >
@@ -432,8 +492,11 @@ export default function RegisterPage() {
                             </form>
 
                             <p className="mt-5 text-center text-[14px] text-slate-500">
-                                ¿Ya tienes una cuenta?{" "}
-                                <a href="#register" className="font-semibold text-blue-800 hover:underline">
+                                ¿Ya tienes una cuenta?{' '}
+                                <a
+                                    href="#register"
+                                    className="font-semibold text-blue-800 hover:underline"
+                                >
                                     Iniciar sesión
                                 </a>
                             </p>
@@ -490,7 +553,8 @@ export default function RegisterPage() {
                                         Tu menú, siempre disponible
                                     </div>
                                     <div className="mt-[2px] text-[14.5px] text-slate-500">
-                                        Muestra tus productos, precios y opciones desde cualquier dispositivo.
+                                        Muestra tus productos, precios y opciones desde cualquier
+                                        dispositivo.
                                     </div>
                                 </div>
                             </motion.div>
@@ -520,7 +584,8 @@ export default function RegisterPage() {
                                         Recibe pedidos sin complicaciones
                                     </div>
                                     <div className="mt-[2px] text-[14.5px] text-slate-500">
-                                        Tus clientes hacen su pedido y tú recibes toda la información lista para atenderlo.
+                                        Tus clientes hacen su pedido y tú recibes toda la
+                                        información lista para atenderlo.
                                     </div>
                                 </div>
                             </motion.div>
@@ -549,7 +614,8 @@ export default function RegisterPage() {
                                         Más pedidos, menos trabajo
                                     </div>
                                     <div className="mt-[2px] text-[14.5px] text-slate-500">
-                                        Automatiza parte de tu proceso y dedica más tiempo a tus clientes.
+                                        Automatiza parte de tu proceso y dedica más tiempo a tus
+                                        clientes.
                                     </div>
                                 </div>
                             </motion.div>
@@ -558,13 +624,14 @@ export default function RegisterPage() {
                                 variants={railItem}
                                 whileHover={{
                                     y: -4,
-                                    boxShadow: "0 18px 48px rgba(15,23,42,0.1)"
+                                    boxShadow: '0 18px 48px rgba(15,23,42,0.1)',
                                 }}
                                 transition={{ duration: 0.25 }}
                                 className="mt-[14px] rounded-2xl border border-slate-200 bg-white p-[26px] shadow-[0_12px_40px_rgba(15,23,42,0.06)]"
                             >
                                 <blockquote className="mb-[18px] font-poppins text-[17.5px] font-light leading-[1.5] tracking-[-0.01em]">
-                                    &ldquo;Ahora mis clientes pueden ver el menú y hacer su pedido sin tener que preguntarme qué hay disponible.&rdquo;
+                                    &ldquo;Ahora mis clientes pueden ver el menú y hacer su pedido
+                                    sin tener que preguntarme qué hay disponible.&rdquo;
                                 </blockquote>
 
                                 <div className="flex items-center gap-[13px]">
@@ -584,8 +651,6 @@ export default function RegisterPage() {
                             </motion.div>
                         </motion.div>
                     </div>
-
-
                 </div>
             </section>
 
@@ -600,7 +665,7 @@ export default function RegisterPage() {
                     className="absolute inset-0 -z-10 bg-cover bg-center"
                     style={{
                         backgroundImage:
-                            "linear-gradient(115deg, rgba(15,23,42,0.94) 0%, rgba(15,23,42,0.78) 46%, rgba(15,23,42,0.4) 100%), url(/reassurance-bg.jpg)",
+                            'linear-gradient(115deg, rgba(15,23,42,0.94) 0%, rgba(15,23,42,0.78) 46%, rgba(15,23,42,0.4) 100%), url(/reassurance-bg.jpg)',
                     }}
                 />
                 <div className="mx-auto max-w-[680px] px-5 py-[clamp(72px,11vw,140px)] md:px-16" />
@@ -609,5 +674,5 @@ export default function RegisterPage() {
             {/* FOOTER */}
             <footer className="border-t border-slate-200 bg-[#F3F7FB]" />
         </div>
-    );
+    )
 }

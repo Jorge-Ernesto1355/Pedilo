@@ -3,6 +3,9 @@ import { isAxiosError } from "@/src/lib/api/client";
 export type ApiFieldErrors = Record<string, string[]>;
 
 export type BackendErrorBody = {
+  success?: unknown;
+  code?: unknown;
+  message?: unknown;
   error?:
     | {
         code?: unknown;
@@ -12,8 +15,12 @@ export type BackendErrorBody = {
         details?: unknown;
         fields?: unknown;
       }
-    | string
-    | Array<{ path?: unknown; message?: unknown }>;
+      | string
+      | Array<{ path?: unknown; message?: unknown }>;
+  response?: {
+    statusCode?: unknown;
+    result?: unknown;
+  };
 };
 
 export class ApiError extends Error {
@@ -72,7 +79,22 @@ function getBody(error: unknown): BackendErrorBody | undefined {
   if (!isAxiosError(error) || !error.response?.data || typeof error.response.data !== "object") {
     return undefined;
   }
-  return error.response.data as BackendErrorBody;
+
+  const rawBody = error.response.data as BackendErrorBody;
+  const nestedResult = rawBody.response?.result;
+
+  if (typeof nestedResult === "string") {
+    try {
+      const parsedResult: unknown = JSON.parse(nestedResult);
+      if (parsedResult && typeof parsedResult === "object") {
+        return parsedResult as BackendErrorBody;
+      }
+    } catch {
+      // Keep the original response when the backend result is not JSON.
+    }
+  }
+
+  return rawBody;
 }
 
 export function normalizeApiError(error: unknown): ApiError {
@@ -81,21 +103,26 @@ export function normalizeApiError(error: unknown): ApiError {
   }
 
   const body = getBody(error);
-  const payload = body?.error;
+  const payload = body?.error ?? (body?.success === false ? body : undefined);
   const objectPayload = payload && typeof payload === "object" && !Array.isArray(payload) ? payload : undefined;
-  const code = objectPayload ? asString(objectPayload.code) : undefined;
-  const fieldErrors = objectPayload
-    ? readFieldErrors(objectPayload.fieldErrors ?? objectPayload.fields ?? objectPayload.details)
+  const objectValues = objectPayload as Record<string, unknown> | undefined;
+  const code = objectValues
+    ? asString(objectValues.code)
+    : asString(body?.code);
+  const fieldErrors = objectValues
+    ? readFieldErrors(objectValues.fieldErrors ?? objectValues.fields ?? objectValues.details)
     : Array.isArray(payload)
       ? readFieldErrors(payload)
       : {};
 
   return new ApiError({
-    status: error.response?.status,
+    status: error.response?.status ?? (
+      typeof body?.response?.statusCode === "number" ? body.response.statusCode : undefined
+    ),
     code,
-    message: objectPayload
-      ? asString(objectPayload.message) ?? "No se pudo completar la solicitud."
-      : asString(payload) ?? "No se pudo completar la solicitud.",
+    message: objectValues
+      ? asString(objectValues.message) ?? "No se pudo completar la solicitud."
+      : asString(payload) ?? asString(body?.message) ?? "No se pudo completar la solicitud.",
     fieldErrors,
   });
 }

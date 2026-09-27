@@ -4,7 +4,7 @@ import "./globals.css";
 import "leaflet/dist/leaflet.css";
 import "leaflet-defaulticon-compatibility/dist/leaflet-defaulticon-compatibility.css";
 import QueryProvider from "@/src/providers/QueryProvider";
-import { sileo, Toaster } from "sileo";
+import { Toaster } from "sileo";
 
 const interTight = Inter_Tight({
   variable: "--font-inter-tight",

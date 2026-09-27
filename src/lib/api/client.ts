@@ -8,7 +8,6 @@ const apiBaseUrl = configuredBackendUrl.endsWith("/api/v1")
 export const apiClient = axios.create({
   baseURL: apiBaseUrl,
   headers: {
-    "Content-Type": "application/json",
     Accept: "application/json",
   },
   timeout: 15_000,
