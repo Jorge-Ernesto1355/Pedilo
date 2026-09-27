@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { describe, expect, it } from 'vitest'
-import BusinessSetupScreen from '@/app/dashboard/BusinessSetupScreen'
+import BusinessSetupScreen from '@/app/(protected)/create-menu/BusinessSetupScreen'
 
 function renderSetup() {
     const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false } } })
