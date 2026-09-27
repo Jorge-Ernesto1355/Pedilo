@@ -1,16 +1,21 @@
-export type DateRange = 'today' | 'seven-days' | 'thirty-days' | 'month'
+export type SalesPeriod = 'today' | '7d' | '30d' | 'thisMonth'
+export type DateRange = SalesPeriod
 
 export type SalesPoint = {
     label: string
     sales: number
+    orderCount: number
 }
 
-export type SalesData = {
+export type SalesDashboardResponse = {
     total: number
+    ordersCount: number
     trend: number
     averageTicket: number
     points: SalesPoint[]
 }
+
+export type SalesData = SalesDashboardResponse
 
 export type OrderStatus = 'completed' | 'pending' | 'preparing'
 

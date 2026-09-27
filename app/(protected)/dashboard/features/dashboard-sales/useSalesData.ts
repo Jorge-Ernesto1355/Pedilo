@@ -1,9 +1,14 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
-import { getDashboardData } from '../dashboard-data/dashboardData'
-import type { DateRange } from '../dashboard-data/dashboardData.types'
+import { getDashboardSales } from './dashboardSales'
+import type { SalesPeriod } from '../dashboard-data/dashboardData.types'
 
-export function useSalesData(range: DateRange) {
-    return useQuery({ queryKey: ['dashboard', 'sales', range], queryFn: async () => getDashboardData(range).sales })
+export function useSalesData(period: SalesPeriod) {
+    return useQuery({
+        queryKey: ['dashboard', 'sales', period],
+        queryFn: () => getDashboardSales(period),
+        placeholderData: (previousData) => previousData,
+        staleTime: 2 * 60 * 1000,
+    })
 }
