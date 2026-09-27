@@ -1,65 +1,12 @@
-export type PublicMenuOption = {
-    id: string
-    name: string
-    price?: number
-}
+import type { PublicProduct } from './publicCatalog.types'
 
-export type PublicMenuExtra = {
-    id: string
-    name: string
-    price: number
-}
+export type { PublicProduct as PublicMenuProduct } from './publicCatalog.types'
 
-export type PublicMenuProduct = {
-    id: string
-    categoryId: string
-    name: string
-    description: string
-    price: number
-    image: string | null
-    options: PublicMenuOption[]
-    extras: PublicMenuExtra[]
-}
-
-export type PublicMenuCategory = {
-    id: string
-    name: string
-    products: PublicMenuProduct[]
-}
-
-export type PublicMenuBusiness = {
-    name: string
-    location: string
-    description: string
-    coverImage: string | null
-    profileImage: string | null
-    whatsappNumber: string
-    isOpen: boolean
-    coordinates: { latitude: number; longitude: number } | null
-    hours: {
-        days: string
-        openTime: string
-        closeTime: string
-    }
-}
-
-export type PublicMenuData = {
-    slug: string
-    business: PublicMenuBusiness
-    categories: PublicMenuCategory[]
-}
-
-export type CartSelection = {
-    id: string
-    name: string
-    price: number
-}
-
+export type CartSelection = { id: string; name: string; price: number; quantity: number }
 export type CartLine = {
     key: string
-    product: PublicMenuProduct
+    product: PublicProduct
     quantity: number
-    option: CartSelection | null
-    extras: CartSelection[]
+    selections: CartSelection[]
     unitPrice: number
 }
