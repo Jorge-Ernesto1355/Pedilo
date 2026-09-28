@@ -9,13 +9,21 @@ interface RateLimitBody {
 }
 
 function adaptSetCookieForApp(setCookie: string): string {
-    const withoutBackendDomain = setCookie.replace(/;\s*Domain=[^;]*/gi, '')
-    const withAppPath = /;\s*Path=/i.test(withoutBackendDomain)
-        ? withoutBackendDomain.replace(/;\s*Path=[^;]*/i, '; Path=/')
-        : `${withoutBackendDomain}; Path=/`
+    let cookie = setCookie.replace(/;\s*Domain=[^;]*/gi, '')
 
-    // El backend no debe fijar el dominio ni un path que impida enviar la sesión al dashboard.
-    return withAppPath
+    cookie = /;\s*Path=/i.test(cookie)
+        ? cookie.replace(/;\s*Path=[^;]*/i, '; Path=/')
+        : `${cookie}; Path=/`
+
+    if (!/;\s*Domain=/i.test(cookie)) {
+        cookie += '; Domain=pedilo.mx'
+    }
+
+    if (!/;\s*Secure/i.test(cookie)) {
+        cookie += '; Secure'
+    }
+
+    return cookie
 }
 
 function getRateLimitMessage(body: unknown): string {
