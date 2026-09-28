@@ -127,7 +127,7 @@ export default function LoginPage() {
     const handleGoogleLogin = async () => {
         await authClient.signIn.social({
             provider: 'google',
-            callbackURL: 'http://localhost:3000/create-menu',
+            callbackURL: 'https://pedilo.mx/create-menu',
         })
     }
 
