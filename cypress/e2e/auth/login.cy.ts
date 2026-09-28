@@ -4,7 +4,9 @@ describe('Auth · Login', () => {
     it('renderiza el formulario y sus links de autenticación', () => {
         cy.location('pathname').should('eq', '/auth/login')
         cy.get('[data-testid="login-email"]').should('be.visible').and('have.attr', 'type', 'email')
-        cy.get('[data-testid="login-password"]').should('be.visible').and('have.attr', 'type', 'password')
+        cy.get('[data-testid="login-password"]')
+            .should('be.visible')
+            .and('have.attr', 'type', 'password')
         cy.get('[data-testid="login-submit"]').should('be.visible').and('contain', 'Iniciar sesión')
         cy.get('a[href="/auth/forgot-password"]').should('be.visible')
         cy.get('a[href="/auth/register"]').should('be.visible')
@@ -56,24 +58,29 @@ describe('Auth · Login', () => {
         let loginCalls = 0
         cy.intercept('POST', '/api/auth/login', (request) => {
             loginCalls += 1
-            request.reply({ delay: 1000, statusCode: 401, body: { error: 'Correo o contraseña inválidos.' } })
+            request.reply({
+                delay: 1000,
+                statusCode: 401,
+                body: { error: 'Correo o contraseña inválidos.' },
+            })
         }).as('login')
 
         cy.get('[data-testid="login-email"]').type('owner@example.com')
         cy.get('[data-testid="login-password"]').type('wrong-password')
         cy.get('[data-testid="login-submit"]').click()
-        cy.get('[data-testid="login-submit"]').should('be.disabled').and('have.attr', 'aria-busy', 'true')
+        cy.get('[data-testid="login-submit"]')
+            .should('be.disabled')
+            .and('have.attr', 'aria-busy', 'true')
         cy.get('[data-testid="login-submit"]').click({ force: true })
         cy.then(() => expect(loginCalls).to.eq(1))
         cy.wait('@login')
     })
 
     it('permite login real, conserva la sesión al recargar y protege rutas', function () {
-        cy.env(['testUserEmail', 'testUserPassword']).then(function ({ testUserEmail, testUserPassword }) {
-            if (!testUserEmail || !testUserPassword) {
-                this.skip()
-                return
-            }
+        cy.env(['testUserEmail', 'testUserPassword']).then(function ({
+            testUserEmail,
+            testUserPassword,
+        }) {
             cy.login()
             cy.location('pathname').should('eq', '/dashboard')
             cy.reload()
