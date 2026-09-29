@@ -31,6 +31,11 @@ const ibmPlexMono = IBM_Plex_Mono({
 export const metadata: Metadata = {
   title: "Pedilo",
   description: "Recibe pedidos claros, directo en WhatsApp.",
+  icons: {
+    icon: "/logoPediloSinfondo.png",
+    shortcut: "/logoPediloSinfondo.png",
+    apple: "/logoPediloSinfondo.png",
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -41,6 +46,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
 
       <body className="flex min-h-full flex-col bg-background text-foreground">
+        <a
+          href="#main-content"
+          className="sr-only z-[100] rounded-md bg-white px-4 py-3 text-sm font-bold text-[#12234A] focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#1E40AF]/20"
+        >
+          Saltar al contenido principal
+        </a>
         <QueryProvider>
           <Toaster position="top-right" />
           {children}</QueryProvider>
