@@ -131,5 +131,7 @@ describe("Register frontend", () => {
     renderRegisterPage();
     expect(screen.getByRole("checkbox")).not.toBeChecked();
     expect(screen.getAllByRole("link", { name: /iniciar sesión/i }).length).toBeGreaterThan(0);
+    expect(screen.getByRole("link", { name: /términos para clientes/i })).toHaveAttribute("href", "/terminos");
+    expect(screen.getByRole("link", { name: /aviso de privacidad/i })).toHaveAttribute("href", "/privacidad");
   });
 });

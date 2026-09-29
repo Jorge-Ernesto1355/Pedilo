@@ -137,6 +137,7 @@ export default function ResetPasswordForm() {
 
     return (
         <main
+            id="main-content"
             className={`${inter.variable} ${sourceSerif.variable} flex min-h-screen items-center justify-center bg-[#F5F7FB] px-5 py-10 font-[var(--font-inter)] sm:px-8`}
         >
             <div className="pointer-events-none fixed inset-0 -z-0 bg-[radial-gradient(circle_at_50%_0%,rgba(30,64,175,.08),transparent_40%)]" />

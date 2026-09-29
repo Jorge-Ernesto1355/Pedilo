@@ -76,6 +76,27 @@ describe('login API proxy', () => {
         expect(response.headers.get('set-cookie')).toContain('better-auth.session_token=secret')
         expect(response.headers.get('set-cookie')).toContain('Path=/')
         expect(response.headers.get('set-cookie')).not.toContain('Domain=backend.local')
+        expect(response.headers.get('set-cookie')).not.toContain('Domain=pedilo.mx')
+        expect(response.headers.get('set-cookie')).not.toContain('Secure')
+    })
+
+    it('keeps the production domain and secure cookie on pedilo.mx', async () => {
+        backendFetch.mockResolvedValue(
+            backendResponse(201, undefined, {
+                'set-cookie': 'better-auth.session_token=secret; Path=/; HttpOnly',
+            }),
+        )
+
+        const response = await POST(
+            new Request('https://pedilo.mx/api/auth/login', {
+                method: 'POST',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({ email: 'owner@example.com', password: 'correct-horse' }),
+            }),
+        )
+
+        expect(response.headers.get('set-cookie')).toContain('Domain=pedilo.mx')
+        expect(response.headers.get('set-cookie')).toContain('Secure')
     })
 
     it('uses one generic message for invalid credentials', async () => {

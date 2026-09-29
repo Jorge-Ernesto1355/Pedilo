@@ -1,6 +1,9 @@
 import axios from 'axios'
 
-const configuredBackendUrl = process.env.BACKEND_URL ?? 'https://api.pedilo.mx'
+const configuredBackendUrl =
+    process.env.BACKEND_URL ??
+    (process.env.NODE_ENV === 'production' ? 'https://api.pedilo.mx' : 'http://localhost:3001')
+
 const apiBaseUrl = configuredBackendUrl.endsWith('/api/v1')
     ? configuredBackendUrl
     : `${configuredBackendUrl.replace(/\/$/, '')}/api/v1`

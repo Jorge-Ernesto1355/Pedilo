@@ -1,26 +1,34 @@
 import { NextResponse } from 'next/server'
 import { loginSchema } from '@/app/auth/lib/validation'
 
-const AUTH_API_URL = process.env.BACKEND_URL ?? 'https:api.pedilo.mx'
+const AUTH_API_URL =
+    process.env.BACKEND_URL ??
+    (process.env.NODE_ENV === 'production' ? 'https://api.pedilo.mx' : 'http://localhost:3001')
 const LOGIN_TIMEOUT_MS = 8_000
 
 interface RateLimitBody {
     message?: unknown
 }
 
-function adaptSetCookieForApp(setCookie: string): string {
+function adaptSetCookieForApp(setCookie: string, requestUrl: string): string {
     let cookie = setCookie.replace(/;\s*Domain=[^;]*/gi, '')
 
     cookie = /;\s*Path=/i.test(cookie)
         ? cookie.replace(/;\s*Path=[^;]*/i, '; Path=/')
         : `${cookie}; Path=/`
 
-    if (!/;\s*Domain=/i.test(cookie)) {
+    const url = new URL(requestUrl)
+    const isPediloProductionHost =
+        url.hostname === 'pedilo.mx' || url.hostname.endsWith('.pedilo.mx')
+
+    if (isPediloProductionHost && !/;\s*Domain=/i.test(cookie)) {
         cookie += '; Domain=pedilo.mx'
     }
 
-    if (!/;\s*Secure/i.test(cookie)) {
-        cookie += '; Secure'
+    if (url.protocol === 'https:') {
+        if (!/;\s*Secure/i.test(cookie)) cookie += '; Secure'
+    } else {
+        cookie = cookie.replace(/;\s*Secure/gi, '')
     }
 
     return cookie
@@ -79,7 +87,7 @@ export async function POST(request: Request) {
             const response = NextResponse.json({ success: true }, { status: 200 })
 
             for (const setCookie of backendResponse.headers.getSetCookie()) {
-                response.headers.append('set-cookie', adaptSetCookieForApp(setCookie))
+                response.headers.append('set-cookie', adaptSetCookieForApp(setCookie, request.url))
             }
 
             return response
