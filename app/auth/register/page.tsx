@@ -9,6 +9,8 @@ import { registerUser } from '@/app/auth/lib/client/register'
 import { useMutation } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 import { RedirectedUrls } from '@/src/lib/RedirectUrls'
+import { authClient } from '@/authClient'
+import { SiteFooter } from '@/app/components/SiteFooter'
 
 type FieldErrors = {
     name?: boolean
@@ -72,6 +74,7 @@ export default function RegisterPage() {
     const [errors, setErrors] = useState<FieldErrors>({})
     const [authError, setAuthError] = useState('')
     const [success, setSuccess] = useState(false)
+    const [googleLoading, setGoogleLoading] = useState(false)
 
     const router = useRouter()
 
@@ -82,12 +85,23 @@ export default function RegisterPage() {
             router.push(RedirectedUrls.createMenu)
         },
     })
-    const loading = registerMutation.isPending
+    const loading = registerMutation.isPending || googleLoading
 
     const strength = getStrength(password)
 
-    function handleGoogleClick() {
-        document.getElementById('email')?.focus()
+    async function handleGoogleClick() {
+        if (loading) return
+        setGoogleLoading(true)
+        setAuthError('')
+        try {
+            await authClient.signIn.social({
+                provider: 'google',
+                callbackURL: `${window.location.origin}${RedirectedUrls.createMenu}`,
+            })
+        } catch {
+            setAuthError('No pudimos iniciar sesión con Google. Intenta con tu correo.')
+            setGoogleLoading(false)
+        }
     }
 
     function handleSubmit(e: FormEvent) {
@@ -139,13 +153,13 @@ export default function RegisterPage() {
             {/* NAV */}
             <header className="sticky top-0 z-50 border-b border-slate-200 bg-white">
                 <div className="mx-auto flex max-w-[1240px] items-center justify-between px-5 py-4 md:px-16">
-                    <a
-                        href="#"
+                    <Link
+                        href="/"
                         className="inline-flex items-center gap-[9px] font-poppins text-[23px] font-black tracking-[-0.02em] text-slate-900 no-underline"
                     >
                         <span className="inline-block h-3 w-3 rounded-full bg-blue-800" />
                         Pedilo
-                    </a>
+                    </Link>
                     <div className="text-[15px] text-slate-500">
                         ¿Ya tienes una cuenta?{' '}
                         <Link
@@ -159,7 +173,7 @@ export default function RegisterPage() {
             </header>
 
             {/* REGISTER SECTION */}
-            <section id="register" className="bg-[#F3F7FB]">
+            <section id="main-content" className="bg-[#F3F7FB]">
                 <div className="grid min-h-[calc(100vh-58px)] grid-cols-1 items-stretch md:grid-cols-[1.05fr_0.95fr]">
                     {/* FORM PANEL */}
                     <div className="order-1 flex items-center justify-center bg-white px-6 py-10 sm:px-10 sm:py-16">
@@ -177,16 +191,17 @@ export default function RegisterPage() {
                                 Crea tu cuenta
                             </h1>
                             <p className="mb-[26px] mt-[10px] text-[16px] text-slate-500">
-                                Comienza tu prueba de 30 días. No se requiere tarjeta.
+                                Crea tu cuenta para comenzar a configurar tu menú y recibir pedidos.
                             </p>
 
                             <motion.button
                                 type="button"
-                                onClick={handleGoogleClick}
+                                onClick={() => void handleGoogleClick()}
+                                disabled={loading}
                                 whileHover={{ y: -2, boxShadow: '0 8px 20px rgba(15,23,42,0.1)' }}
                                 whileTap={{ scale: 0.98, y: 0 }}
                                 transition={{ duration: 0.15 }}
-                                className="flex w-full items-center justify-center gap-[11px] rounded-[11px] border border-slate-200 bg-white p-[13px] font-outfit text-[15px] font-semibold"
+                                className="flex w-full items-center justify-center gap-[11px] rounded-[11px] border border-slate-200 bg-white p-[13px] font-outfit text-[15px] font-semibold disabled:cursor-wait disabled:opacity-60"
                             >
                                 <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
                                     <path
@@ -206,7 +221,7 @@ export default function RegisterPage() {
                                         d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.1-4.1 5.6l6.2 5.2C41 35.4 44 30.2 44 24c0-1.3-.1-2.3-.4-3.5z"
                                     />
                                 </svg>
-                                Continuar con Google
+                                {googleLoading ? 'Conectando con Google…' : 'Continuar con Google'}
                             </motion.button>
 
                             <div className="my-[22px] flex items-center gap-[14px] text-[13px] uppercase tracking-[0.1em] text-slate-500">
@@ -225,6 +240,7 @@ export default function RegisterPage() {
                                     <motion.input
                                         data-testid="register-name"
                                         id="name"
+                                        name="name"
                                         type="text"
                                         placeholder="Juan Pérez"
                                         autoComplete="name"
@@ -261,6 +277,7 @@ export default function RegisterPage() {
                                     <motion.input
                                         data-testid="register-email"
                                         id="email"
+                                        name="email"
                                         type="email"
                                         placeholder="tu@negocio.com"
                                         autoComplete="email"
@@ -297,6 +314,7 @@ export default function RegisterPage() {
                                     <motion.input
                                         data-testid="register-password"
                                         id="password"
+                                        name="password"
                                         type="password"
                                         placeholder="Al menos 8 caracteres"
                                         autoComplete="new-password"
@@ -361,6 +379,7 @@ export default function RegisterPage() {
                                     <motion.input
                                         data-testid="register-confirm-password"
                                         id="confirm"
+                                        name="confirm"
                                         type="password"
                                         placeholder="Vuelve a escribir la contraseña"
                                         autoComplete="new-password"
@@ -391,24 +410,27 @@ export default function RegisterPage() {
                                     <input
                                         data-testid="register-terms"
                                         type="checkbox"
+                                        name="terms"
                                         checked={terms}
                                         onChange={(e) => setTerms(e.target.checked)}
+                                        aria-invalid={Boolean(errors.terms)}
+                                        aria-describedby={errors.terms ? 'register-terms-error' : undefined}
                                         className="mt-[3px] h-4 w-4 flex-shrink-0 accent-blue-800"
                                     />
                                     <span>
-                                        Acepto los{' '}
+                                        Al crear una cuenta, aceptas los{' '}
                                         <a
-                                            href="#"
+                                            href="/terminos"
                                             className="font-semibold text-blue-800 hover:underline"
                                         >
-                                            Términos y Condiciones
+                                        Términos para Clientes
                                         </a>{' '}
                                         y la{' '}
                                         <a
-                                            href="#"
+                                            href="/privacidad"
                                             className="font-semibold text-blue-800 hover:underline"
                                         >
-                                            Política de Privacidad
+                                            Aviso de Privacidad
                                         </a>
                                         .
                                     </span>
@@ -416,6 +438,7 @@ export default function RegisterPage() {
                                 <AnimatePresence initial={false}>
                                     {errors.terms && (
                                         <motion.p
+                                            id="register-terms-error"
                                             variants={errorVariants}
                                             initial="hidden"
                                             animate="show"
@@ -671,8 +694,7 @@ export default function RegisterPage() {
                 <div className="mx-auto max-w-[680px] px-5 py-[clamp(72px,11vw,140px)] md:px-16" />
             </section>
 
-            {/* FOOTER */}
-            <footer className="border-t border-slate-200 bg-[#F3F7FB]" />
+            <SiteFooter />
         </div>
     )
 }

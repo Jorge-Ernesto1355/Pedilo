@@ -14,6 +14,7 @@ import { useProduct } from './useProductManagement'
 import { ApiError } from '@/app/auth/lib/client/api-error'
 import { sileo } from 'sileo'
 import { ImagePlus } from 'lucide-react'
+import Link from 'next/link'
 
 type AddProductModalProps = {
     open: boolean
@@ -123,6 +124,17 @@ export function AddProductModal({
                         El nombre, descripción y precio ayudan a tus clientes a decidir rápidamente
                         qué pedir.
                     </p>
+                    <p className="mt-2 text-xs leading-5 text-[#65738A]">
+                        Publica únicamente alimentos y bebidas permitidos por la{' '}
+                        <Link href="/productos-y-contenido" className="font-semibold text-[#2451C5] underline underline-offset-2">
+                            Política de Productos y Contenido
+                        </Link>
+                        . Para imágenes, revisa la{' '}
+                        <Link href="/propiedad-intelectual" className="font-semibold text-[#2451C5] underline underline-offset-2">
+                            Política de Propiedad Intelectual
+                        </Link>
+                        .
+                    </p>
                 </div>
                 <div>
                     <label
@@ -215,6 +227,8 @@ export function AddProductModal({
                             <span className="grid size-12 shrink-0 place-items-center overflow-hidden rounded-lg bg-[#EAF0FF] text-[#2451C5]">
                                 {imagePreview ? (
                                     <img
+                                        width={48}
+                                        height={48}
                                         src={imagePreview}
                                         alt="Vista previa del producto"
                                         className="h-full w-full object-cover"
@@ -229,6 +243,9 @@ export function AddProductModal({
                                 </span>
                                 <span className="block text-xs text-[#8996A9]">
                                     Una imagen · JPG, PNG o WebP · máximo 5 MB
+                                </span>
+                                <span className="mt-1 block text-[11px] leading-4 text-[#65738A]">
+                                    Publica solo imágenes que tengas autorización para usar.
                                 </span>
                             </span>
                             <input

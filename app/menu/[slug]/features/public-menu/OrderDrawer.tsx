@@ -1,7 +1,9 @@
 'use client'
 
 import { Minus, Plus, ShoppingBag, X } from 'lucide-react'
+import { motion, useReducedMotion } from 'framer-motion'
 import { useState } from 'react'
+import Link from 'next/link'
 import type { CartLine } from './types'
 import { isValidPhone, sanitizePhoneInput } from '@/src/lib/validation/phone'
 
@@ -17,6 +19,9 @@ type OrderDrawerProps = {
     onCheckout: (customerName: string, customerPhone: string, notes: string) => void
     isSubmitting?: boolean
     phoneError?: string | null
+    orderError?: string | null
+    cartTargetRef?: React.Ref<HTMLButtonElement>
+    cartPulse?: number
 }
 
 export function OrderDrawer({
@@ -31,25 +36,46 @@ export function OrderDrawer({
     onCheckout,
     isSubmitting = false,
     phoneError,
+    orderError,
+    cartTargetRef,
+    cartPulse = 0,
 }: OrderDrawerProps) {
     const [customerName, setCustomerName] = useState('')
     const [customerPhone, setCustomerPhone] = useState('')
     const [notes, setNotes] = useState('')
+    const reducedMotion = useReducedMotion()
     const phoneIsValid = isValidPhone(customerPhone)
 
     return (
         <>
             {totalItems > 0 && !open && (
                 <div className="fixed inset-x-0 bottom-0 z-30 px-4 pb-4 sm:px-6">
-                    <button
+                    <motion.button
+                        ref={cartTargetRef}
                         type="button"
                         onClick={onOpen}
+                        initial={reducedMotion ? false : { opacity: 0, y: 14, scale: 0.96 }}
+                        animate={reducedMotion ? undefined : { opacity: 1, y: 0, scale: 1 }}
+                        transition={{
+                            duration: reducedMotion ? 0 : 0.34,
+                            ease: [0.22, 1, 0.36, 1],
+                        }}
                         className="mx-auto flex w-full max-w-2xl items-center justify-between gap-4 rounded-2xl bg-[#1E40AF] px-4 py-3.5 text-left text-white shadow-[0_16px_36px_rgb(30_64_175_/_0.28)] transition hover:bg-[#183991] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#1E40AF]/25"
                     >
                         <span className="flex items-center gap-3">
-                            <span className="grid size-9 place-items-center rounded-xl bg-white/15">
+                            <motion.span
+                                key={cartPulse}
+                                initial={!reducedMotion && cartPulse > 0 ? { scale: 0.92 } : false}
+                                animate={
+                                    !reducedMotion && cartPulse > 0
+                                        ? { scale: [0.92, 1.08, 1] }
+                                        : undefined
+                                }
+                                transition={{ duration: reducedMotion ? 0 : 0.26, ease: 'easeOut' }}
+                                className="grid size-9 place-items-center rounded-xl bg-white/15"
+                            >
                                 <ShoppingBag className="size-4" />
-                            </span>
+                            </motion.span>
                             <span>
                                 <span className="block text-sm font-bold">Ver mi pedido</span>
                                 <span className="block text-xs text-white/70">
@@ -58,7 +84,7 @@ export function OrderDrawer({
                             </span>
                         </span>
                         <span className="text-sm font-bold">${total.toLocaleString('es-MX')}</span>
-                    </button>
+                    </motion.button>
                 </div>
             )}
             {open && (
@@ -157,6 +183,8 @@ export function OrderDrawer({
                                 </label>
                                 <input
                                     id="customer-name"
+                                    name="customerName"
+                                    autoComplete="name"
                                     value={customerName}
                                     onChange={(event) => setCustomerName(event.target.value)}
                                     placeholder="Ej. Jorge"
@@ -170,6 +198,8 @@ export function OrderDrawer({
                                 </label>
                                 <input
                                     id="customer-phone"
+                                    name="customerPhone"
+                                    autoComplete="tel"
                                     value={customerPhone}
                                     onChange={(event) =>
                                         setCustomerPhone(sanitizePhoneInput(event.target.value))
@@ -188,6 +218,11 @@ export function OrderDrawer({
                                         {phoneError}
                                     </p>
                                 )}
+                                {orderError && (
+                                    <p role="alert" className="mt-2 text-xs text-[#B42318]">
+                                        {orderError}
+                                    </p>
+                                )}
                                 <label
                                     htmlFor="order-notes"
                                     className="mb-2 mt-3 block text-sm font-bold text-[#243556]"
@@ -197,12 +232,22 @@ export function OrderDrawer({
                                 </label>
                                 <textarea
                                     id="order-notes"
+                                    name="notes"
                                     value={notes}
                                     onChange={(event) => setNotes(event.target.value)}
                                     placeholder="Ej. Sin cebolla"
                                     rows={2}
                                     className="w-full resize-none rounded-xl border border-[#D7E1EF] px-3.5 py-3 text-sm text-[#12234A] outline-none transition placeholder:text-[#A0ACBD] focus:border-[#2451C5] focus:ring-4 focus:ring-[#2451C5]/10"
                                 />
+                                <p className="mt-3 rounded-xl bg-[#F5F8FC] px-3 py-2.5 text-xs leading-5 text-[#65738A]">
+                                    Al confirmar, estos datos y el detalle de tu pedido se compartirán con{' '}
+                                    <strong className="font-semibold text-[#243556]">{businessName}</strong>{' '}
+                                    para que pueda revisarlo y responderte por WhatsApp. Pedilo es la plataforma tecnológica y no realiza el reparto. Consulta el{' '}
+                                    <Link href="/privacidad" className="font-semibold text-[#2451C5] underline underline-offset-2">
+                                        Aviso de Privacidad
+                                    </Link>
+                                    .
+                                </p>
                                 <button
                                     type="button"
                                     disabled={
@@ -212,13 +257,13 @@ export function OrderDrawer({
                                         lines.length === 0 ||
                                         isSubmitting
                                     }
-                                    onClick={() =>
+                                    onClick={() => {
                                         onCheckout(
                                             customerName.trim(),
                                             customerPhone.trim(),
                                             notes.trim(),
                                         )
-                                    }
+                                    }}
                                     className="mt-3 flex w-full items-center justify-between rounded-xl bg-[#1E40AF] px-4 py-3.5 text-sm font-bold text-white transition hover:bg-[#183991] disabled:cursor-not-allowed disabled:opacity-45"
                                 >
                                     {isSubmitting ? 'Enviando pedido…' : 'Confirmar pedido'}{' '}

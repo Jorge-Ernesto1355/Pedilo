@@ -11,6 +11,7 @@ import type {
     ProductInput,
 } from '@/app/(protected)/create-menu/features/product-management/product.types'
 import { OptionGroupsEditor } from '@/app/(protected)/create-menu/features/option-management/OptionGroupsEditor'
+import Link from 'next/link'
 
 export type ProductCategoryOption = { id: string; name: string; label: string }
 
@@ -151,7 +152,7 @@ export function ProductAdminModal({
                             className="w-full rounded-xl border border-[#D7E1EF] bg-white px-3 py-2.5 text-sm text-[#243556] outline-none transition focus:border-[#2451C5] focus:ring-4 focus:ring-[#2451C5]/10"
                         />
                     </Field>
-                    <Field label="Imagen" hint="Opcional · máximo 5 MB">
+                    <Field label="Imagen" hint="Opcional · máximo 5 MB. Usa solo imágenes que tengas autorización para publicar.">
                         <input
                             type="file"
                             accept="image/*"
@@ -160,6 +161,16 @@ export function ProductAdminModal({
                         />
                     </Field>
                 </div>
+                <p className="text-xs leading-5 text-[#65738A]">
+                    Consulta las políticas de{' '}
+                    <Link href="/productos-y-contenido" className="font-semibold text-[#2451C5] underline underline-offset-2">
+                        productos y contenido
+                    </Link>{' '}
+                    y{' '}
+                    <Link href="/propiedad-intelectual" className="font-semibold text-[#2451C5] underline underline-offset-2">
+                        propiedad intelectual
+                    </Link>{' '}antes de publicar.
+                </p>
                 <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-[#DCE5F3] px-3 py-3 text-sm text-[#243556]">
                     <input
                         type="checkbox"
@@ -178,6 +189,7 @@ export function ProductAdminModal({
                     <button
                         type="button"
                         onClick={onClose}
+                        disabled={isSaving}
                         className="rounded-xl px-4 py-2.5 text-sm font-semibold text-[#65738A] hover:bg-[#F4F7FB]"
                     >
                         Cancelar

@@ -9,6 +9,7 @@ import { networkAuthError, safeAuthError } from '@/app/auth/lib/client/error-mes
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { authClient } from '@/authClient'
+import { SiteFooter } from '@/app/components/SiteFooter'
 
 // ---------------------------------------------------------------------------
 // Fuentes (equivalente a los <link> de Google Fonts del HTML original)
@@ -127,12 +128,13 @@ export default function LoginPage() {
     const handleGoogleLogin = async () => {
         await authClient.signIn.social({
             provider: 'google',
-            callbackURL: 'https://pedilo.mx/create-menu',
+            callbackURL: `${window.location.origin}/create-menu`,
         })
     }
 
     return (
         <main
+            id="main-content"
             className={`${inter.variable} ${sourceSerif.variable} grid min-h-screen grid-cols-1 bg-[#F5F7FB] font-[var(--font-space-grotesk)] md:grid-cols-[1fr_1.15fr]`}
         >
             {/* ============ IZQUIERDA: panel de historia ============ */}
@@ -158,8 +160,8 @@ export default function LoginPage() {
 
                 {/* logo */}
                 <motion.a
-                    href="#"
-                    aria-label="Inicio de Ledgerline"
+                    href="/"
+                    aria-label="Inicio de Pedilo"
                     className="flex items-center gap-2.5 font-[var(--font-inter)] text-xl font-black tracking-tight"
                     initial={{ opacity: 0, y: -12 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -211,12 +213,10 @@ export default function LoginPage() {
                     className="mt-8 max-w-none md:mt-0 md:max-w-[40ch]"
                 >
                     <p className="mb-4 border-t border-white/20 pt-5 font-[var(--font-inter)] text-[13px] tracking-[.02em] text-white/75">
-                        La confianza de m&aacute;s de <b className="font-bold text-white">10</b>{' '}
-                        propietarios · <b className="font-bold text-white">99.98%</b> de
-                        disponibilidad ·{' '}
+                        Organiza tu menú y recibe pedidos con más claridad.
                     </p>
                     <a
-                        href="#"
+                        href="/auth/register"
                         className="group inline-flex items-center gap-[7px] font-[var(--font-inter)] text-[15px] font-bold text-white"
                     >
                         &iquest;Eres nuevo en Pedilo? Crea una cuenta
@@ -496,6 +496,7 @@ export default function LoginPage() {
                     </motion.section>
                 </motion.div>
             </div>
+            <SiteFooter />
         </main>
     )
 }

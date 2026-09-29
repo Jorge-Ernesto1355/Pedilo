@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import {
     CheckCircle2,
     Eye,
@@ -17,6 +19,8 @@ import { ApiError } from '@/app/auth/lib/client/api-error'
 import { DashboardErrorState } from '../components/DashboardErrorState'
 import { useAccount, useAccountMutations } from './useAccount'
 import { AccountSkeleton } from './AccountSkeleton'
+import { DeleteAccountDialog } from './DeleteAccountDialog'
+import { useAuthStore } from '@/store/authStore'
 
 function formatDate(value: string) {
     if (!value) return '—'
@@ -120,6 +124,8 @@ function PasswordInput({
 }
 
 export default function AccountPage() {
+    const router = useRouter()
+    const clearUser = useAuthStore((state) => state.clearUser)
     const account = useAccount()
     const mutations = useAccountMutations()
     const [name, setName] = useState<string | null>(null)
@@ -129,6 +135,7 @@ export default function AccountPage() {
     const [currentPassword, setCurrentPassword] = useState('')
     const [newPassword, setNewPassword] = useState('')
     const [confirmPassword, setConfirmPassword] = useState('')
+    const [deleteAccountOpen, setDeleteAccountOpen] = useState(false)
     const [passwordErrors, setPasswordErrors] = useState<{
         currentPassword?: string
         newPassword?: string
@@ -207,12 +214,17 @@ export default function AccountPage() {
             ? 'La contraseña actual es incorrecta.'
             : undefined
 
+    const deleteAccountError =
+        mutations.removeAccount.error instanceof ApiError && mutations.removeAccount.error.message
+            ? mutations.removeAccount.error.message
+            : 'No pudimos borrar tu cuenta. Inténtalo nuevamente.'
+
     return (
         <main className="mx-auto max-w-[1100px] space-y-6 px-5 py-8 sm:px-8 lg:py-10">
             <header>
                 <p className="text-sm font-semibold text-[#65738A]">Preferencias personales</p>
                 <h1 className="mt-2 font-display text-3xl tracking-[-.06em] text-[#12234A]">
-                    Account
+                    Cuenta
                 </h1>
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-[#65738A]">
                     Administra tu información personal, seguridad y verificación de correo.
@@ -258,6 +270,8 @@ export default function AccountPage() {
                         <div className="flex flex-col gap-2 sm:flex-row">
                             <input
                                 id="account-name"
+                                name="name"
+                                autoComplete="name"
                                 value={currentName}
                                 onChange={(event) => {
                                     setName(event.target.value)
@@ -394,7 +408,7 @@ export default function AccountPage() {
                     </span>
                     <div>
                         <p className="text-xs font-bold uppercase tracking-[.16em] text-[#8996A9]">
-                            Security
+                            Seguridad
                         </p>
                         <h2 className="mt-1 font-display text-xl text-[#12234A]">
                             Cambiar contraseña
@@ -448,6 +462,58 @@ export default function AccountPage() {
                     </div>
                 </form>
             </section>
+
+            <section className="rounded-2xl border border-[#DCE5F3] bg-white p-5 shadow-[0_8px_22px_rgb(20_48_105_/_0.035)] sm:p-6">
+                <p className="text-xs font-bold uppercase tracking-[.16em] text-[#8996A9]">Información y derechos</p>
+                <h2 className="mt-2 font-display text-xl text-[#12234A]">Documentos legales</h2>
+                <p className="mt-2 text-sm leading-6 text-[#65738A]">
+                    Consulta cómo tratamos la información de tu cuenta y cómo presentar una solicitud ARCO.
+                </p>
+                <nav aria-label="Documentos legales de la cuenta" className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm font-semibold text-[#2451C5]">
+                    <Link href="/privacidad" className="underline underline-offset-2">Aviso de Privacidad</Link>
+                    <Link href="/arco" className="underline underline-offset-2">Procedimiento ARCO</Link>
+                    <a href="mailto:soporte@pedilo.mx" className="underline underline-offset-2">soporte@pedilo.mx</a>
+                </nav>
+            </section>
+
+            <section className="rounded-2xl border border-[#F3C5C2] bg-[#FFFDFC] p-5 shadow-[0_8px_22px_rgb(20_48_105_/_0.035)] sm:p-6">
+                <p className="text-xs font-bold uppercase tracking-[.16em] text-[#B42318]">
+                    Zona de peligro
+                </p>
+                <h2 className="mt-2 font-display text-xl text-[#12234A]">Eliminar cuenta</h2>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-[#65738A]">
+                    Borra tu cuenta y toda la información asociada, incluyendo clientes, menús y productos.
+                    Esta acción no se puede deshacer.
+                </p>
+                <button
+                    type="button"
+                    onClick={() => {
+                        mutations.removeAccount.reset()
+                        setDeleteAccountOpen(true)
+                    }}
+                    className="mt-5 rounded-xl border border-[#E2A19C] px-4 py-2.5 text-sm font-bold text-[#B42318] transition hover:bg-[#FFF1F0] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#B42318]/15"
+                >
+                    Borrar cuenta
+                </button>
+            </section>
+
+            <DeleteAccountDialog
+                open={deleteAccountOpen}
+                isDeleting={mutations.removeAccount.isPending}
+                error={mutations.removeAccount.isError ? deleteAccountError : undefined}
+                onClose={() => {
+                    if (!mutations.removeAccount.isPending) setDeleteAccountOpen(false)
+                }}
+                onConfirm={() => {
+                    if (mutations.removeAccount.isPending) return
+                    mutations.removeAccount.mutate(undefined, {
+                        onSuccess: () => {
+                            clearUser()
+                            router.replace('/auth/login')
+                        },
+                    })
+                }}
+            />
         </main>
     )
 }

@@ -10,6 +10,7 @@ import { MapPinned } from 'lucide-react'
 import type { FormEventHandler } from 'react'
 import { ProgressiveImage } from './ProgressiveImage'
 import { BusinessProfileSkeleton } from '../../components/CreateMenuStates'
+import Link from 'next/link'
 type BusinessProfileFormProps = {
     logoPreview: string | null
     logoBlurPreview: string | null
@@ -92,11 +93,8 @@ export function BusinessProfileForm({
                     )}
                 </div>
                 <div>
-                    <label
-                        htmlFor="businessName"
-                        className="block text-sm font-semibold text-[#243556]"
-                    >
-                        url del negocio
+                    <label htmlFor="slug" className="block text-sm font-semibold text-[#243556]">
+                        URL del negocio
                     </label>
                     <span className="mt-4 max-w-md text-sm leading-7 text-[#65738A]">
                         Crea una URL sencilla y fácil de recordar para que tus clientes accedan a tu
@@ -105,7 +103,7 @@ export function BusinessProfileForm({
                     <input
                         id="slug"
                         autoComplete="organization"
-                        placeholder="for example: la-esquina"
+                        placeholder="Ej. la-esquina"
                         className={inputClass}
                         {...register('slug')}
                     />
@@ -175,7 +173,8 @@ export function BusinessProfileForm({
                 <div className="mb-3">
                     <p className="text-sm font-semibold text-[#243556]">Logo del negocio</p>
                     <p className="mt-1 text-xs text-[#7A879A]">
-                        Opcional · se verá solo en esta vista previa.
+                        Opcional · se verá en tu menú público. Solo usa imágenes que tengas derecho
+                        a publicar.
                     </p>
                 </div>
                 <label
@@ -216,7 +215,8 @@ export function BusinessProfileForm({
                 <div className="mb-3">
                     <p className="text-sm font-semibold text-[#243556]">Foto de portada</p>
                     <p className="mt-1 text-xs text-[#7A879A]">
-                        Opcional · una imagen amplia para encabezar tu menú.
+                        Opcional · una imagen amplia para encabezar tu menú. Debes contar con
+                        autorización para usarla.
                     </p>
                 </div>
                 <label
