@@ -1,6 +1,6 @@
 'use client'
 
-import { ChevronLeft, ChevronRight, Eye, Pencil, Trash2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Eye, LoaderCircle, Pencil, Trash2 } from 'lucide-react'
 import type { Product } from '@/app/(protected)/create-menu/features/product-management/product.types'
 
 const money = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' })
@@ -13,6 +13,7 @@ export function ProductTable({
     onEdit,
     onToggle,
     onDelete,
+    actionsPending = false,
 }: {
     products: Product[]
     categoryNames: Map<string, string>
@@ -20,6 +21,7 @@ export function ProductTable({
     onEdit: (product: Product) => void
     onToggle: (product: Product) => void
     onDelete: (product: Product) => void
+    actionsPending?: boolean
 }) {
     return (
         <div className="mt-5 overflow-x-auto">
@@ -46,6 +48,7 @@ export function ProductTable({
                             onEdit={onEdit}
                             onToggle={onToggle}
                             onDelete={onDelete}
+                            actionsPending={actionsPending}
                         />
                     ))}
                 </tbody>
@@ -61,6 +64,7 @@ function ProductRow({
     onEdit,
     onToggle,
     onDelete,
+    actionsPending,
 }: {
     product: Product
     categoryName?: string
@@ -68,6 +72,7 @@ function ProductRow({
     onEdit: (product: Product) => void
     onToggle: (product: Product) => void
     onDelete: (product: Product) => void
+    actionsPending?: boolean
 }) {
     const enabled = product.active ?? product.isAvailable
     return (
@@ -77,6 +82,8 @@ function ProductRow({
                     <div className="size-10 overflow-hidden rounded-xl bg-[#EEF3FF]">
                         {product.imageUrl ? (
                             <img
+                                width={40}
+                                height={40}
                                 src={product.imageUrl}
                                 alt=""
                                 loading="lazy"
@@ -103,9 +110,16 @@ function ProductRow({
                 <button
                     type="button"
                     onClick={() => onToggle(product)}
-                    className={`rounded-full px-2.5 py-1 text-xs font-bold ${enabled ? 'bg-[#EAF7EF] text-[#23794A]' : 'bg-[#F0F3F8] text-[#65738A]'}`}
+                    disabled={actionsPending}
+                    className={`rounded-full px-2.5 py-1 text-xs font-bold disabled:cursor-wait disabled:opacity-50 ${enabled ? 'bg-[#EAF7EF] text-[#23794A]' : 'bg-[#F0F3F8] text-[#65738A]'}`}
                 >
-                    {enabled ? 'Activo' : 'Inactivo'}
+                    {actionsPending ? (
+                        <LoaderCircle className="mx-auto size-3.5 animate-spin" />
+                    ) : enabled ? (
+                        'Activo'
+                    ) : (
+                        'Inactivo'
+                    )}
                 </button>
             </td>
             <td className="px-3 py-4 text-xs text-[#65738A]">
@@ -113,15 +127,24 @@ function ProductRow({
             </td>
             <td className="px-3 py-4">
                 <div className="flex justify-end gap-1">
-                    <ActionButton label={`Ver ${product.name}`} onClick={() => onView(product)}>
+                    <ActionButton
+                        disabled={actionsPending}
+                        label={`Ver ${product.name}`}
+                        onClick={() => onView(product)}
+                    >
                         <Eye className="size-4" />
                     </ActionButton>
-                    <ActionButton label={`Editar ${product.name}`} onClick={() => onEdit(product)}>
+                    <ActionButton
+                        disabled={actionsPending}
+                        label={`Editar ${product.name}`}
+                        onClick={() => onEdit(product)}
+                    >
                         <Pencil className="size-4" />
                     </ActionButton>
                     <ActionButton
                         label={`Eliminar ${product.name}`}
                         onClick={() => onDelete(product)}
+                        disabled={actionsPending}
                         danger
                     >
                         <Trash2 className="size-4" />
@@ -137,11 +160,13 @@ function ActionButton({
     onClick,
     children,
     danger = false,
+    disabled = false,
 }: {
     label: string
     onClick: () => void
     children: React.ReactNode
     danger?: boolean
+    disabled?: boolean
 }) {
     return (
         <button
@@ -149,9 +174,10 @@ function ActionButton({
             aria-label={label}
             title={label}
             onClick={onClick}
-            className={`grid size-8 place-items-center rounded-lg transition ${danger ? 'text-[#B42318] hover:bg-[#FFF1F0]' : 'text-[#65738A] hover:bg-[#EEF3FF] hover:text-[#2451C5]'}`}
+            disabled={disabled}
+            className={`grid size-8 place-items-center rounded-lg transition disabled:cursor-wait disabled:opacity-50 ${danger ? 'text-[#B42318] hover:bg-[#FFF1F0]' : 'text-[#65738A] hover:bg-[#EEF3FF] hover:text-[#2451C5]'}`}
         >
-            {children}
+            {disabled ? <LoaderCircle className="size-4 animate-spin" /> : children}
         </button>
     )
 }

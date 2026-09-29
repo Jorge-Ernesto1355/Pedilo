@@ -127,6 +127,7 @@ export default function ProductsPage() {
         return apiError?.message ?? 'No pudimos completar la operación. Inténtalo de nuevo.'
     }
     const saveProduct = (input: ProductInput) => {
+        if (management.createProduct.isPending || management.updateProduct.isPending) return
         clearFormErrors()
         if (!input.categoryId) return
         const onError = (error: unknown) => {
@@ -166,6 +167,7 @@ export default function ProductsPage() {
             )
     }
     const deleteProduct = (product: Product) => {
+        if (management.deleteProduct.isPending) return
         if (!window.confirm(`¿Eliminar “${product.name}”? Esta acción no se puede deshacer.`))
             return
         management.deleteProduct.mutate(product.id, {
@@ -176,11 +178,13 @@ export default function ProductsPage() {
             onError: (error) => sileo.error({ title: mutationError(error) }),
         })
     }
-    const toggleProduct = (product: Product) =>
+    const toggleProduct = (product: Product) => {
+        if (management.updateProductStatus.isPending) return
         management.updateProductStatus.mutate(
             { productId: product.id, active: !(product.active ?? product.isAvailable) },
             { onError: (error) => sileo.error({ title: mutationError(error) }) },
         )
+    }
     const openCreate = () => {
         clearFormErrors()
         setSelectedProduct(null)
@@ -255,6 +259,10 @@ export default function ProductsPage() {
                         }}
                         onToggle={toggleProduct}
                         onDelete={deleteProduct}
+                        actionsPending={
+                            management.updateProductStatus.isPending ||
+                            management.deleteProduct.isPending
+                        }
                     />
                 ) : (
                     <DashboardEmptyState

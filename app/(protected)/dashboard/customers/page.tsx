@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Pencil, Plus, RefreshCw, Trash2, Users, X } from 'lucide-react'
+import { LoaderCircle, Pencil, Plus, RefreshCw, Trash2, Users, X } from 'lucide-react'
 import { ApiError } from '@/app/auth/lib/client/api-error'
 import type { Customer } from '@/src/lib/api/order-types'
 import { isValidPhone, sanitizePhoneInput } from '@/src/lib/validation/phone'
@@ -65,6 +65,7 @@ export default function CustomersPage() {
     }
     function submit(event: React.FormEvent) {
         event.preventDefault()
+        if (mutations.create.isPending || mutations.update.isPending) return
         if (!form.name.trim()) {
             setFormError('El nombre es obligatorio para identificar al customer.')
             return
@@ -84,6 +85,7 @@ export default function CustomersPage() {
         else mutations.create.mutate(payload, { onSuccess: closeForm })
     }
     function remove(customer: Customer) {
+        if (mutations.remove.isPending) return
         if (!window.confirm(`¿Eliminar a ${customer.name}?`)) return
         mutations.remove.mutate(customer.id)
     }
@@ -180,10 +182,15 @@ export default function CustomersPage() {
                                     <button
                                         type="button"
                                         onClick={() => remove(customer)}
+                                        disabled={mutations.remove.isPending}
                                         aria-label={`Eliminar ${customer.name}`}
-                                        className="grid size-9 place-items-center rounded-lg text-[#65738A] hover:bg-[#FFF0EF] hover:text-[#B42318]"
+                                        className="grid size-9 place-items-center rounded-lg text-[#65738A] hover:bg-[#FFF0EF] hover:text-[#B42318] disabled:cursor-wait disabled:opacity-50"
                                     >
-                                        <Trash2 className="size-4" />
+                                        {mutations.remove.isPending ? (
+                                            <LoaderCircle className="size-4 animate-spin" />
+                                        ) : (
+                                            <Trash2 className="size-4" />
+                                        )}
                                     </button>
                                 </div>
                             </div>
@@ -223,7 +230,12 @@ export default function CustomersPage() {
                             <h2 className="font-display text-xl text-[#12234A]">
                                 {editing ? 'Editar customer' : 'Nuevo customer'}
                             </h2>
-                            <button type="button" onClick={closeForm} aria-label="Cerrar">
+                            <button
+                                type="button"
+                                onClick={closeForm}
+                                disabled={mutations.create.isPending || mutations.update.isPending}
+                                aria-label="Cerrar"
+                            >
                                 <X />
                             </button>
                         </div>
@@ -271,9 +283,15 @@ export default function CustomersPage() {
                             <button
                                 type="submit"
                                 disabled={mutations.create.isPending || mutations.update.isPending}
-                                className="w-full rounded-xl bg-[#1E40AF] px-4 py-3 text-sm font-bold text-white disabled:opacity-50"
+                                aria-busy={mutations.create.isPending || mutations.update.isPending}
+                                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#1E40AF] px-4 py-3 text-sm font-bold text-white disabled:cursor-wait disabled:opacity-50"
                             >
-                                Guardar
+                                {(mutations.create.isPending || mutations.update.isPending) && (
+                                    <LoaderCircle className="size-4 animate-spin" />
+                                )}
+                                {mutations.create.isPending || mutations.update.isPending
+                                    ? 'Guardando…'
+                                    : 'Guardar'}
                             </button>
                         </form>
                     </section>

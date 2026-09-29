@@ -35,6 +35,8 @@ export function ProductDetails({
                         <div className="aspect-square overflow-hidden rounded-2xl bg-[#EEF3FF]">
                             {product.imageUrl && (
                                 <img
+                                    width={160}
+                                    height={160}
                                     src={product.imageUrl}
                                     alt={product.name}
                                     className="h-full w-full object-cover"
