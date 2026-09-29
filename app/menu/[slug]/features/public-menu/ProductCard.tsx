@@ -3,6 +3,7 @@
 'use client'
 
 import { Plus, SlidersHorizontal, Utensils } from 'lucide-react'
+import { useRef } from 'react'
 import type { PublicProduct } from './publicCatalog.types'
 import { hasRequiredOptionGroups } from './optionGroupValidation'
 
@@ -13,14 +14,21 @@ export function ProductCard({
 }: {
     product: PublicProduct
     onSelect: () => void
-    onAdd: () => void
+    onAdd: (source: HTMLElement | null) => void
 }) {
     const requiresCustomization = hasRequiredOptionGroups(product)
+    const imageRef = useRef<HTMLDivElement>(null)
     return (
         <article className="flex w-full gap-4 border-b border-[#E8EEF6] py-5 text-left last:border-b-0 last:pb-0 first:pt-0 sm:gap-5">
-            <div className="grid size-24 shrink-0 place-items-center overflow-hidden rounded-xl bg-[#EEF3FF] text-[#2451C5] sm:size-28">
+            <div
+                ref={imageRef}
+                data-product-image={product.id}
+                className="grid size-24 shrink-0 place-items-center overflow-hidden rounded-xl bg-[#EEF3FF] text-[#2451C5] sm:size-28"
+            >
                 {product.imageUrl ? (
                     <img
+                        width={112}
+                        height={112}
                         src={product.imageUrl}
                         alt=""
                         loading="lazy"
@@ -48,7 +56,7 @@ export function ProductCard({
                 </div>
                 <button
                     type="button"
-                    onClick={requiresCustomization ? onSelect : onAdd}
+                    onClick={requiresCustomization ? onSelect : () => onAdd(imageRef.current)}
                     className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-[#EEF3FF] px-2.5 py-1.5 text-xs font-bold text-[#2451C5] hover:bg-[#E2EBFF]"
                 >
                     {requiresCustomization ? (
