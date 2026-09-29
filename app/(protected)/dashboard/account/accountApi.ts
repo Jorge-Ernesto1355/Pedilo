@@ -95,3 +95,7 @@ export async function changeAccountPassword(input: { currentPassword: string; ne
         apiClient.post<AccountResponse>('/account/change-password', input, { withCredentials: true }),
     )
 }
+
+export async function deleteAccount() {
+    return request(() => apiClient.delete('/auth/account', { withCredentials: true }))
+}

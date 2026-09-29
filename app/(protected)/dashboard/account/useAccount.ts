@@ -5,6 +5,7 @@ import { sileo } from 'sileo'
 import { normalizeApiError, type ApiError } from '@/app/auth/lib/client/api-error'
 import {
     changeAccountPassword,
+    deleteAccount,
     getAccount,
     requestEmailVerification,
     resendEmailVerification,
@@ -64,5 +65,9 @@ export function useAccountMutations() {
         onError: (error) => sileo.error({ title: readableError(error, 'No pudimos cambiar tu contraseña.') }),
     })
 
-    return { updateName, sendVerification, resendVerification, changePassword }
+    const removeAccount = useMutation({
+        mutationFn: deleteAccount,
+    })
+
+    return { updateName, sendVerification, resendVerification, changePassword, removeAccount }
 }
