@@ -1,7 +1,9 @@
 import { cookies } from 'next/headers'
 import { cache } from 'react'
 
-const AUTH_API_URL = process.env.BACKEND_URL ?? 'http://localhost:3001'
+const AUTH_API_URL =
+    process.env.BACKEND_URL ??
+    (process.env.NODE_ENV === 'production' ? 'https://api.pedilo.mx' : 'http://localhost:3001')
 
 export interface User {
     id: string
@@ -16,6 +18,11 @@ interface AuthMeResponse {
     data?: {
         user?: unknown
     }
+}
+
+interface BetterAuthSessionResponse {
+    user?: unknown
+    session?: unknown
 }
 
 export interface SessionResult {
@@ -42,29 +49,44 @@ function isUser(value: unknown): value is User {
 export const getSession = cache(async function getSession(): Promise<SessionResult> {
     try {
         const cookieHeader = (await cookies()).toString()
-        const response = await fetch(`${AUTH_API_URL}/api/v1/auth/me`, {
+        const headers = cookieHeader ? { cookie: cookieHeader } : undefined
+
+        const legacyResponse = await fetch(`${AUTH_API_URL}/api/v1/auth/me`, {
             method: 'POST',
-            headers: cookieHeader ? { cookie: cookieHeader } : undefined,
+            headers,
             cache: 'no-store',
         })
 
-        if (!response.ok) {
-            console.error('La validación de sesión respondió con error', {
-                status: response.status,
-            })
-            return { user: null }
+        if (legacyResponse.ok) {
+            const body: unknown = await legacyResponse.json()
+
+            if (typeof body === 'object' && body !== null) {
+                const responseData = body as AuthMeResponse
+                const user = responseData.user ?? responseData.data?.user
+
+                if (isUser(user)) return { user }
+            }
         }
 
-        const body: unknown = await response.json()
+        // Google sign-in is handled by Better Auth, while password login uses
+        // the legacy endpoint above. Support both session formats here so the
+        // protected layout does not send a valid Google session back to login.
+        const betterAuthResponse = await fetch(`${AUTH_API_URL}/api/auth/get-session`, {
+            method: 'GET',
+            headers,
+            cache: 'no-store',
+        })
 
-        if (typeof body !== 'object' || body === null) {
-            return { user: null }
+        if (betterAuthResponse.ok) {
+            const body: unknown = await betterAuthResponse.json()
+
+            if (typeof body === 'object' && body !== null) {
+                const sessionData = body as BetterAuthSessionResponse
+                if (isUser(sessionData.user)) return { user: sessionData.user }
+            }
         }
 
-        const responseData = body as AuthMeResponse
-        const user = responseData.user ?? responseData.data?.user
-
-        return isUser(user) ? { user } : { user: null }
+        return { user: null }
     } catch (error: unknown) {
         console.error('No se pudo validar la sesión con el backend', error)
         return { user: null }
