@@ -1,7 +1,7 @@
 'use client'
 
 import { zodResolver } from '@hookform/resolvers/zod'
-import { GripVertical, Pencil, Plus, Trash2, X } from 'lucide-react'
+import { GripVertical, LoaderCircle, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
@@ -80,11 +80,13 @@ export function OptionModal({
     option,
     onClose,
     onDone,
+    isSaving = false,
 }: {
     open: boolean
     option?: ProductOption | null
     onClose: () => void
     onDone: (values: OptionValues) => void
+    isSaving?: boolean
 }) {
     const {
         register,
@@ -101,7 +103,7 @@ export function OptionModal({
     return (
         <Modal
             open={open}
-            onClose={onClose}
+            onClose={isSaving ? () => undefined : onClose}
             title={option ? 'Editar opción' : 'Agregar opción'}
             description="El precio se suma al precio base del producto."
         >
@@ -151,12 +153,19 @@ export function OptionModal({
                         <button
                             type="button"
                             onClick={onClose}
+                            disabled={isSaving}
                             className="rounded-xl border border-[#D7E1EF] px-4 py-2 text-sm font-semibold text-[#65738A]"
                         >
                             Cancelar
                         </button>
-                        <button className="inline-flex items-center rounded-xl bg-[#1E40AF] px-4 py-2 text-sm font-bold text-white shadow-[0_8px_18px_-10px_rgba(30,64,175,.75)]">
-                            {option ? 'Guardar opción' : 'Agregar opción'}
+                        <button
+                            type="submit"
+                            disabled={isSaving}
+                            aria-busy={isSaving}
+                            className="inline-flex items-center gap-2 rounded-xl bg-[#1E40AF] px-4 py-2 text-sm font-bold text-white shadow-[0_8px_18px_-10px_rgba(30,64,175,.75)] disabled:cursor-wait disabled:opacity-60"
+                        >
+                            {isSaving && <LoaderCircle className="size-4 animate-spin" />}
+                            {isSaving ? 'Guardando…' : option ? 'Guardar opción' : 'Agregar opción'}
                         </button>
                     </div>
                 </form>
@@ -171,12 +180,14 @@ export function GroupModal({
     group,
     onClose,
     onDone,
+    isSaving = false,
 }: {
     open: boolean
     productId: string
     group?: OptionGroup | null
     onClose: () => void
     onDone: (group: OptionGroup, productId: string, isEdit: boolean) => void
+    isSaving?: boolean
 }) {
     const existingOptionsQuery = useOptions(group?.id ?? null)
     const {
@@ -279,7 +290,7 @@ export function GroupModal({
     return (
         <Modal
             open={open}
-            onClose={onClose}
+            onClose={isSaving ? () => undefined : onClose}
             title={group ? 'Editar grupo de opciones' : 'Crear grupo de opciones'}
             description="Define los extras o variantes que puede elegir el cliente."
             size="lg"
@@ -391,6 +402,7 @@ export function GroupModal({
                                 <button
                                     type="button"
                                     onClick={addDraft}
+                                    disabled={isSaving}
                                     className="grid size-11 place-items-center rounded-xl bg-[#E5EDFF] text-[#1E40AF]"
                                     aria-label="Agregar opción"
                                 >
@@ -441,12 +453,19 @@ export function GroupModal({
                         <button
                             type="button"
                             onClick={onClose}
+                            disabled={isSaving}
                             className="rounded-xl px-4 py-2 text-sm font-semibold text-[#65738A]"
                         >
                             Cancelar
                         </button>
-                        <button className="rounded-xl bg-[#1E40AF] px-4 py-2 text-sm font-bold text-white">
-                            {group ? 'Guardar cambios' : 'Crear grupo'}
+                        <button
+                            type="submit"
+                            disabled={isSaving}
+                            aria-busy={isSaving}
+                            className="inline-flex items-center gap-2 rounded-xl bg-[#1E40AF] px-4 py-2 text-sm font-bold text-white disabled:cursor-wait disabled:opacity-60"
+                        >
+                            {isSaving && <LoaderCircle className="size-4 animate-spin" />}
+                            {isSaving ? 'Guardando…' : group ? 'Guardar cambios' : 'Crear grupo'}
                         </button>
                     </div>
                 </form>
@@ -468,9 +487,16 @@ export function OptionGroupCard({
     const mutations = useOptionManagement()
     const [option, setOption] = useState<ProductOption | null | undefined>(undefined)
     const [draggedOptionId, setDraggedOptionId] = useState<string | null>(null)
+    const optionMutationPending =
+        mutations.createOpt.isPending ||
+        mutations.updateOpt.isPending ||
+        mutations.removeOpt.isPending ||
+        mutations.statusOpt.isPending ||
+        mutations.reorderOpts.isPending
     const options = optionsQuery.data?.length ? optionsQuery.data : (group.options ?? [])
     const reorderOption = (targetId: string) => {
-        if (!draggedOptionId || draggedOptionId === targetId) return
+        if (!draggedOptionId || draggedOptionId === targetId || mutations.reorderOpts.isPending)
+            return
         const next = [...options]
         const from = next.findIndex((item) => item.id === draggedOptionId)
         const to = next.findIndex((item) => item.id === targetId)
@@ -484,6 +510,7 @@ export function OptionGroupCard({
         )
     }
     const saveOption = (values: OptionValues) => {
+        if (mutations.createOpt.isPending || mutations.updateOpt.isPending) return
         const input = { name: values.name.trim(), price: Number(values.price) }
         if (option)
             mutations.updateOpt.mutate(
@@ -514,7 +541,12 @@ export function OptionGroupCard({
                         Selecciona {group.minSelections}–{group.maxSelections}
                     </p>
                 </div>
-                <button type="button" onClick={() => onEditGroup(group)} aria-label="Editar grupo">
+                <button
+                    type="button"
+                    onClick={() => onEditGroup(group)}
+                    disabled={optionMutationPending}
+                    aria-label="Editar grupo"
+                >
                     <Pencil className="size-4 text-[#65738A]" />
                 </button>
                 <button
@@ -525,8 +557,9 @@ export function OptionGroupCard({
                             { onError: mutationError },
                         )
                     }
+                    disabled={mutations.statusGroup.isPending}
                     aria-label="Cambiar estado"
-                    className="text-xs text-[#1E40AF]"
+                    className="text-xs text-[#1E40AF] disabled:cursor-wait disabled:opacity-50"
                 >
                     {group.isActive ? 'Desactivar' : 'Activar'}
                 </button>
@@ -539,6 +572,7 @@ export function OptionGroupCard({
                                 { onError: mutationError },
                             )
                     }}
+                    disabled={mutations.removeGroup.isPending}
                     aria-label="Eliminar grupo"
                 >
                     <Trash2 className="size-4 text-[#B42318]" />
@@ -590,13 +624,15 @@ export function OptionGroupCard({
                                             { onError: mutationError },
                                         )
                                     }
-                                    className="text-xs text-[#1E40AF]"
+                                    disabled={mutations.statusOpt.isPending}
+                                    className="text-xs text-[#1E40AF] disabled:cursor-wait disabled:opacity-50"
                                 >
                                     {item.isAvailable ? 'Ocultar' : 'Mostrar'}
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => setOption(item)}
+                                    disabled={optionMutationPending}
                                     aria-label="Editar opción"
                                 >
                                     <Pencil className="size-3.5 text-[#65738A]" />
@@ -614,6 +650,7 @@ export function OptionGroupCard({
                                                 { onError: mutationError },
                                             )
                                     }}
+                                    disabled={mutations.removeOpt.isPending}
                                     aria-label="Eliminar opción"
                                 >
                                     <Trash2 className="size-3.5 text-[#B42318]" />
@@ -625,7 +662,8 @@ export function OptionGroupCard({
                 <button
                     type="button"
                     onClick={() => setOption(null)}
-                    className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold text-[#1E40AF]"
+                    disabled={optionMutationPending}
+                    className="mt-3 inline-flex items-center gap-1.5 text-xs font-bold text-[#1E40AF] disabled:cursor-wait disabled:opacity-50"
                 >
                     <Plus className="size-3.5" />
                     Agregar opción
@@ -636,6 +674,7 @@ export function OptionGroupCard({
                 option={option}
                 onClose={() => setOption(undefined)}
                 onDone={saveOption}
+                isSaving={mutations.createOpt.isPending || mutations.updateOpt.isPending}
             />
         </div>
     )
@@ -654,6 +693,7 @@ export function OptionGroupsEditor({
     const [draggedId, setDraggedId] = useState<string | null>(null)
     const groups = query.data?.length ? query.data : (initialGroups ?? [])
     const saveGroup = (group: OptionGroup, id: string, isEdit: boolean) => {
+        if (mutations.createGroup.isPending || mutations.updateGroup.isPending) return
         if (isEdit)
             mutations.updateGroup.mutate(
                 {
@@ -711,7 +751,8 @@ export function OptionGroupsEditor({
                 <button
                     type="button"
                     onClick={() => setGroupModal(null)}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-[#E5EDFF] px-3 py-2 text-xs font-bold text-[#1E40AF]"
+                    disabled={mutations.createGroup.isPending || mutations.updateGroup.isPending}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-[#E5EDFF] px-3 py-2 text-xs font-bold text-[#1E40AF] disabled:cursor-wait disabled:opacity-50"
                 >
                     <Plus className="size-3.5" />
                     Crear grupo
@@ -754,6 +795,7 @@ export function OptionGroupsEditor({
                 group={groupModal}
                 onClose={() => setGroupModal(undefined)}
                 onDone={saveGroup}
+                isSaving={mutations.createGroup.isPending || mutations.updateGroup.isPending}
             />
         </section>
     )

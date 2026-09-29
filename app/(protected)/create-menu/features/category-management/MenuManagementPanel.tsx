@@ -4,7 +4,8 @@
 
 import { useState } from 'react'
 import type { UseFormSetError } from 'react-hook-form'
-import { Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react'
+import { motion, useReducedMotion } from 'framer-motion'
+import { GripVertical, LoaderCircle, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react'
 import { sileo } from 'sileo'
 import { Modal } from '@/app/components/ui/Modal'
 import { ApiError } from '@/app/auth/lib/client/api-error'
@@ -44,6 +45,29 @@ function errorMessage(error: unknown, fallback: string) {
     return (error.code && messages[error.code]) ?? error.message ?? fallback
 }
 
+function ReorderStatus({ children }: { children: string }) {
+    const reducedMotion = useReducedMotion()
+
+    return (
+        <motion.div
+            initial={reducedMotion ? false : { opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            role="status"
+            aria-live="polite"
+            className="mb-2 flex items-center gap-2 rounded-lg border border-[#C9D8FF] bg-[#F4F7FF] px-3 py-2 text-xs font-semibold text-[#2451C5]"
+        >
+            <LoaderCircle
+                className={`size-3.5 shrink-0 ${reducedMotion ? '' : 'animate-spin'}`}
+                aria-hidden="true"
+            />
+            <span>{children}</span>
+            <span className="ml-auto hidden text-[10px] font-medium text-[#6B7FAF] sm:inline">
+                Actualizando la lista
+            </span>
+        </motion.div>
+    )
+}
+
 function CategoryProducts({
     category,
     categories,
@@ -57,9 +81,13 @@ function CategoryProducts({
     const [productModalOpen, setProductModalOpen] = useState(false)
     const [editingProduct, setEditingProduct] = useState<Product | null>(null)
     const [draggedProductId, setDraggedProductId] = useState<string | null>(null)
+    const [reorderingProductId, setReorderingProductId] = useState<string | null>(null)
+    const reducedMotion = useReducedMotion()
     const products = productsQuery.data ?? []
 
     function saveProduct(values: ProductFormValues, setError: UseFormSetError<ProductFormValues>) {
+        if (productManagement.createProduct.isPending || productManagement.updateProduct.isPending)
+            return
         const onError = (error: unknown) => {
             if (error instanceof ApiError) {
                 Object.entries(error.fieldErrors).forEach(([field, messages]) => {
@@ -94,13 +122,19 @@ function CategoryProducts({
     }
 
     function dropProduct(targetId: string) {
-        if (!draggedProductId || draggedProductId === targetId) return
+        if (
+            productManagement.reorderProducts.isPending ||
+            !draggedProductId ||
+            draggedProductId === targetId
+        )
+            return
         const next = [...products]
         const from = next.findIndex((product) => product.id === draggedProductId)
         const to = next.findIndex((product) => product.id === targetId)
         if (from < 0 || to < 0) return
         const [moved] = next.splice(from, 1)
         next.splice(to, 0, moved)
+        setReorderingProductId(draggedProductId)
         setDraggedProductId(null)
         productManagement.reorderProducts.mutate(
             { categoryId: category.id, productIds: next.map((product) => product.id) },
@@ -109,6 +143,7 @@ function CategoryProducts({
                     sileo.error({
                         title: errorMessage(error, 'No pudimos reordenar los productos.'),
                     }),
+                onSettled: () => setReorderingProductId(null),
             },
         )
     }
@@ -124,18 +159,28 @@ function CategoryProducts({
     return (
         <div className="mt-3 border-t border-[#E8EEF6] pt-3">
             <div className="mb-2 flex items-center justify-between gap-3">
-                <p className="text-xs font-semibold text-[#8996A9]">
-                    {productsQuery.isLoading
-                        ? 'Cargando productos…'
-                        : `${products.length} ${products.length === 1 ? 'producto' : 'productos'}`}
-                </p>
+                <div className="flex items-center gap-2">
+                    <span
+                        className="grid size-6 place-items-center rounded-md border border-[#D7E1EF] bg-[#F8FAFF] text-[#5572B8]"
+                        title="Mover para cambiar el orden"
+                        aria-hidden="true"
+                    >
+                        <GripVertical className="size-3.5" />
+                    </span>
+                    <p className="text-xs font-semibold text-[#8996A9]">
+                        {productsQuery.isLoading
+                            ? 'Cargando productos…'
+                            : `${products.length} ${products.length === 1 ? 'producto' : 'productos'}`}
+                    </p>
+                </div>
                 <button
                     type="button"
                     onClick={() => {
                         setEditingProduct(null)
                         setProductModalOpen(true)
                     }}
-                    className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-bold text-[#2451C5] hover:bg-[#EEF3FF]"
+                    disabled={productManagement.reorderProducts.isPending}
+                    className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-bold text-[#2451C5] hover:bg-[#EEF3FF] disabled:cursor-wait disabled:opacity-50"
                 >
                     <Plus className="size-3.5" />
                     Agregar producto
@@ -146,6 +191,9 @@ function CategoryProducts({
                     {errorMessage(productsQuery.error, 'No pudimos cargar los productos.')}
                 </p>
             )}
+            {reorderingProductId && productManagement.reorderProducts.isPending && (
+                <ReorderStatus>Guardando el nuevo orden de productos…</ReorderStatus>
+            )}
             {!productsQuery.isLoading && !productsQuery.isError && products.length === 0 && (
                 <p className="rounded-lg border border-dashed border-[#DCE5F3] px-3 py-3 text-xs text-[#8996A9]">
                     Esta categoría todavía no tiene productos.
@@ -153,19 +201,41 @@ function CategoryProducts({
             )}
             <div className="space-y-2">
                 {products.map((product) => (
-                    <div
+                    <motion.div
                         key={product.id}
-                        draggable
-                        onDragStart={() => setDraggedProductId(product.id)}
-                        onDragOver={(event) => event.preventDefault()}
+                        layout={!reducedMotion}
+                        animate={
+                            reorderingProductId === product.id
+                                ? { scale: [1, 1.015, 1] }
+                                : { scale: 1 }
+                        }
+                        transition={{ duration: reducedMotion ? 0 : 0.22 }}
+                        draggable={!productManagement.reorderProducts.isPending}
+                        aria-busy={reorderingProductId === product.id}
+                        aria-label={`Reordenar producto ${product.name}`}
+                        onDragStart={() => {
+                            if (!productManagement.reorderProducts.isPending)
+                                setDraggedProductId(product.id)
+                        }}
+                        onDragEnd={() => setDraggedProductId(null)}
+                        onDragOver={(event) => {
+                            if (!productManagement.reorderProducts.isPending)
+                                event.preventDefault()
+                        }}
                         onDrop={() => dropProduct(product.id)}
-                        className="rounded-lg border border-[#E8EEF6] bg-white px-3 py-2"
+                        className={`group rounded-lg border bg-white px-3 py-2 transition-colors ${reorderingProductId === product.id ? 'border-[#8EA9F5] bg-[#F8FAFF] ring-2 ring-[#2451C5]/10' : 'border-[#E8EEF6] hover:border-[#B8C8E5]'} ${productManagement.reorderProducts.isPending ? 'cursor-wait' : 'cursor-grab active:cursor-grabbing'}`}
                     >
                         <div className="flex items-start justify-between gap-2">
-                            <div className="flex min-w-0 gap-2.5">
+                            <div className="flex min-w-0 items-center gap-2.5">
+                                <GripVertical
+                                    className="size-4 shrink-0 text-[#B7C3D5] transition-colors group-hover:text-[#5572B8]"
+                                    aria-hidden="true"
+                                />
                                 <div className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-lg bg-[#EEF3FF] text-[#2451C5]">
                                     {product.imageUrl ? (
                                         <img
+                                            width={36}
+                                            height={36}
                                             src={product.imageUrl}
                                             alt=""
                                             className="h-full w-full object-cover"
@@ -197,7 +267,8 @@ function CategoryProducts({
                                             active: !(product.active ?? product.isAvailable),
                                         })
                                     }
-                                    className={`rounded px-1.5 py-1 text-[11px] font-semibold ${(product.active ?? product.isAvailable) ? 'text-[#23794A]' : 'text-[#8996A9]'}`}
+                                    disabled={productManagement.reorderProducts.isPending}
+                                    className={`rounded px-1.5 py-1 text-[11px] font-semibold disabled:cursor-wait disabled:opacity-50 ${(product.active ?? product.isAvailable) ? 'text-[#23794A]' : 'text-[#8996A9]'}`}
                                 >
                                     {(product.active ?? product.isAvailable)
                                         ? 'Disponible'
@@ -210,7 +281,8 @@ function CategoryProducts({
                                         setEditingProduct(product)
                                         setProductModalOpen(true)
                                     }}
-                                    className="grid size-7 place-items-center rounded text-[#65738A] hover:bg-[#EEF3FF] hover:text-[#1E40AF]"
+                                    disabled={productManagement.reorderProducts.isPending}
+                                    className="grid size-7 place-items-center rounded text-[#65738A] hover:bg-[#EEF3FF] hover:text-[#1E40AF] disabled:cursor-wait disabled:opacity-50"
                                 >
                                     <Pencil className="size-3.5" />
                                 </button>
@@ -218,7 +290,8 @@ function CategoryProducts({
                                     type="button"
                                     aria-label={`Eliminar ${product.name}`}
                                     onClick={() => removeProduct(product)}
-                                    className="grid size-7 place-items-center rounded text-[#65738A] hover:bg-[#FDECEC] hover:text-[#B42318]"
+                                    disabled={productManagement.reorderProducts.isPending}
+                                    className="grid size-7 place-items-center rounded text-[#65738A] hover:bg-[#FDECEC] hover:text-[#B42318] disabled:cursor-wait disabled:opacity-50"
                                 >
                                     <Trash2 className="size-3.5" />
                                 </button>
@@ -237,7 +310,8 @@ function CategoryProducts({
                                             targetCategoryId: event.target.value,
                                         })
                                 }}
-                                className="min-w-0 flex-1 rounded border border-[#D7E1EF] bg-white px-1.5 py-1 text-[11px]"
+                                disabled={productManagement.reorderProducts.isPending}
+                                className="min-w-0 flex-1 rounded border border-[#D7E1EF] bg-white px-1.5 py-1 text-[11px] disabled:cursor-wait disabled:opacity-50"
                             >
                                 <option value={category.id}>{category.name}</option>
                                 {categories
@@ -249,7 +323,7 @@ function CategoryProducts({
                                     ))}
                             </select>
                         </div>
-                    </div>
+                    </motion.div>
                 ))}
             </div>
             <AddProductModal
@@ -282,6 +356,8 @@ export function MenuManagementPanel({ management }: { management: MenuManagement
     const [movingCategory, setMovingCategory] = useState<MenuCategory | null>(null)
     const [targetCategoryId, setTargetCategoryId] = useState('')
     const [draggedCategoryId, setDraggedCategoryId] = useState<string | null>(null)
+    const [reorderingCategoryId, setReorderingCategoryId] = useState<string | null>(null)
+    const reducedMotion = useReducedMotion()
     const productManagement = useProductManagement()
 
     if (menusQuery.isLoading) return <MenuManagementSkeleton />
@@ -294,6 +370,7 @@ export function MenuManagementPanel({ management }: { management: MenuManagement
     }
 
     function saveMenu() {
+        if (management.updateMenu.isPending) return
         if (!selectedMenu || !menuName.trim()) {
             sileo.error({ title: 'Escribe un nombre para el menú.' })
             return
@@ -308,6 +385,7 @@ export function MenuManagementPanel({ management }: { management: MenuManagement
     }
 
     function saveCategory() {
+        if (management.createCategory.isPending) return
         if (!selectedMenu || !categoryName.trim()) {
             sileo.error({ title: 'Escribe un nombre para la categoría.' })
             return
@@ -328,6 +406,7 @@ export function MenuManagementPanel({ management }: { management: MenuManagement
     }
 
     function saveEditedCategory() {
+        if (management.updateCategory.isPending) return
         if (!editingCategory || !editingCategory.name.trim()) return
         management.updateCategory.mutate(
             {
@@ -342,6 +421,7 @@ export function MenuManagementPanel({ management }: { management: MenuManagement
     }
 
     function deleteCategory(category: MenuCategory) {
+        if (management.deleteCategory.isPending) return
         management.deleteCategory.mutate(category.id, {
             onSuccess: () => sileo.success({ title: 'Categoría eliminada' }),
             onError: (error) => {
@@ -356,6 +436,7 @@ export function MenuManagementPanel({ management }: { management: MenuManagement
     }
 
     function confirmDeleteMenu() {
+        if (management.deleteMenu.isPending) return
         if (!selectedMenu || !window.confirm(`¿Eliminar el menú “${selectedMenu.name}”?`)) return
         management.deleteMenu.mutate(selectedMenu.id, {
             onError: (error) =>
@@ -364,7 +445,7 @@ export function MenuManagementPanel({ management }: { management: MenuManagement
     }
 
     function reorderCategories(categoryIds: string[]) {
-        if (!selectedMenu) return
+        if (!selectedMenu || management.reorderCategories.isPending) return
         management.reorderCategories.mutate(
             { menuId: selectedMenu.id, categoryIds },
             {
@@ -372,18 +453,26 @@ export function MenuManagementPanel({ management }: { management: MenuManagement
                     sileo.error({
                         title: errorMessage(error, 'No pudimos reordenar las categorías.'),
                     }),
+                onSettled: () => setReorderingCategoryId(null),
             },
         )
     }
 
     function dropCategory(targetId: string) {
-        if (!selectedMenu || !draggedCategoryId || draggedCategoryId === targetId) return
+        if (
+            management.reorderCategories.isPending ||
+            !selectedMenu ||
+            !draggedCategoryId ||
+            draggedCategoryId === targetId
+        )
+            return
         const next = [...(selectedMenu.categories ?? [])].sort((a, b) => a.sortOrder - b.sortOrder)
         const from = next.findIndex((category) => category.id === draggedCategoryId)
         const to = next.findIndex((category) => category.id === targetId)
         if (from < 0 || to < 0) return
         const [moved] = next.splice(from, 1)
         next.splice(to, 0, moved)
+        setReorderingCategoryId(draggedCategoryId)
         setDraggedCategoryId(null)
         reorderCategories(next.map((category) => category.id))
     }
@@ -508,7 +597,8 @@ export function MenuManagementPanel({ management }: { management: MenuManagement
                                                     isActive: !selectedMenu.isActive,
                                                 })
                                             }
-                                            className="rounded-lg px-2 py-1.5 text-xs font-semibold text-[#2451C5] hover:bg-[#EEF3FF]"
+                                            disabled={management.updateMenuStatus.isPending}
+                                            className="rounded-lg px-2 py-1.5 text-xs font-semibold text-[#2451C5] hover:bg-[#EEF3FF] disabled:cursor-wait disabled:opacity-50"
                                         >
                                             {selectedMenu.isActive ? 'Desactivar' : 'Activar'}
                                         </button>
@@ -516,14 +606,16 @@ export function MenuManagementPanel({ management }: { management: MenuManagement
                                             type="button"
                                             aria-label="Eliminar menú"
                                             onClick={confirmDeleteMenu}
-                                            className="grid size-8 place-items-center rounded-lg text-[#65738A] hover:bg-[#FDECEC] hover:text-[#B42318]"
+                                            disabled={management.deleteMenu.isPending}
+                                            className="grid size-8 place-items-center rounded-lg text-[#65738A] hover:bg-[#FDECEC] hover:text-[#B42318] disabled:cursor-wait disabled:opacity-50"
                                         >
                                             <Trash2 className="size-3.5" />
                                         </button>
                                     </div>
                                 </div>
                                 <div className="mt-5 flex items-center justify-between gap-3">
-                                    <p className="text-xs font-bold uppercase tracking-[.13em] text-[#8996A9]">
+                                    <p className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-[.13em] text-[#8996A9]">
+                                        <GripVertical className="size-3.5 text-[#5572B8]" aria-hidden="true" />
                                         Categorías
                                     </p>
                                     <button
@@ -577,35 +669,64 @@ export function MenuManagementPanel({ management }: { management: MenuManagement
                                     </div>
                                 ) : (
                                     <div className="mt-3 space-y-2">
+                                        {reorderingCategoryId &&
+                                            management.reorderCategories.isPending && (
+                                                <ReorderStatus>
+                                                    Guardando el nuevo orden de categorías…
+                                                </ReorderStatus>
+                                            )}
                                         {[...(selectedMenu.categories ?? [])]
                                             .sort((a, b) => a.sortOrder - b.sortOrder)
                                             .map((category) => (
-                                                <div
+                                                <motion.div
                                                     key={category.id}
-                                                    draggable
-                                                    onDragStart={() =>
-                                                        setDraggedCategoryId(category.id)
+                                                    layout={!reducedMotion}
+                                                    animate={
+                                                        reorderingCategoryId === category.id
+                                                            ? { scale: [1, 1.01, 1] }
+                                                            : { scale: 1 }
                                                     }
-                                                    onDragOver={(event) => event.preventDefault()}
+                                                    transition={{
+                                                        duration: reducedMotion ? 0 : 0.22,
+                                                    }}
+                                                    draggable={!management.reorderCategories.isPending}
+                                                    aria-busy={
+                                                        reorderingCategoryId === category.id
+                                                    }
+                                                    aria-label={`Reordenar categoría ${category.name}`}
+                                                    onDragStart={() => {
+                                                        if (!management.reorderCategories.isPending)
+                                                            setDraggedCategoryId(category.id)
+                                                    }}
+                                                    onDragEnd={() => setDraggedCategoryId(null)}
+                                                    onDragOver={(event) => {
+                                                        if (!management.reorderCategories.isPending)
+                                                            event.preventDefault()
+                                                    }}
                                                     onDrop={() => dropCategory(category.id)}
-                                                    className="rounded-xl border border-[#E8EEF6] bg-[#FBFCFE] px-3 py-2.5"
+                                                    className={`group rounded-xl border bg-[#FBFCFE] px-3 py-2.5 transition-colors ${reorderingCategoryId === category.id ? 'border-[#8EA9F5] bg-[#F8FAFF] ring-2 ring-[#2451C5]/10' : 'border-[#E8EEF6] hover:border-[#B8C8E5]'} ${management.reorderCategories.isPending ? 'cursor-wait' : 'cursor-grab active:cursor-grabbing'}`}
                                                 >
                                                     <div className="flex items-start justify-between gap-3">
-                                                        <div className="min-w-0">
-                                                            <p className="text-sm font-semibold text-[#243556]">
-                                                                {category.name}
-                                                            </p>
-                                                            {category.description && (
-                                                                <p className="mt-0.5 text-xs text-[#8996A9]">
-                                                                    {category.description}
+                                                        <div className="flex min-w-0 items-start gap-2.5">
+                                                            <GripVertical
+                                                                className="mt-0.5 size-4 shrink-0 text-[#B7C3D5] transition-colors group-hover:text-[#5572B8]"
+                                                                aria-hidden="true"
+                                                            />
+                                                            <div className="min-w-0">
+                                                                <p className="text-sm font-semibold text-[#243556]">
+                                                                    {category.name}
                                                                 </p>
-                                                            )}
-                                                            <p className="mt-1 text-[11px] text-[#8996A9]">
-                                                                {category.isActive
-                                                                    ? 'Activa'
-                                                                    : 'Inactiva'}{' '}
-                                                                · Arrastra para ordenar
-                                                            </p>
+                                                                {category.description && (
+                                                                    <p className="mt-0.5 text-xs text-[#8996A9]">
+                                                                        {category.description}
+                                                                    </p>
+                                                                )}
+                                                                <p className="mt-1 text-[11px] text-[#8996A9]">
+                                                                    {category.isActive ? 'Activa' : 'Inactiva'}{' '}
+                                                                    <span className="mx-1 text-[#C2CCDA]">·</span>
+                                                                    <span className="text-[#5572B8]">Orden</span>
+                                                                </p>
+                                                            </div>
                                                         </div>
                                                         <div className="flex shrink-0 gap-1">
                                                             <button
@@ -615,6 +736,10 @@ export function MenuManagementPanel({ management }: { management: MenuManagement
                                                                     setEditingCategory({
                                                                         ...category,
                                                                     })
+                                                                }
+                                                                disabled={
+                                                                    management.reorderCategories
+                                                                        .isPending
                                                                 }
                                                                 className="grid size-7 place-items-center rounded text-[#65738A] hover:bg-[#EEF3FF] hover:text-[#1E40AF]"
                                                             >
@@ -631,7 +756,13 @@ export function MenuManagementPanel({ management }: { management: MenuManagement
                                                                         },
                                                                     )
                                                                 }
-                                                                className="rounded px-1.5 py-1 text-[11px] font-semibold text-[#2451C5]"
+                                                                disabled={
+                                                                    management.updateCategoryStatus
+                                                                        .isPending ||
+                                                                    management.reorderCategories
+                                                                        .isPending
+                                                                }
+                                                                className="rounded px-1.5 py-1 text-[11px] font-semibold text-[#2451C5] disabled:cursor-wait disabled:opacity-50"
                                                             >
                                                                 {category.isActive ? 'Off' : 'On'}
                                                             </button>
@@ -646,7 +777,13 @@ export function MenuManagementPanel({ management }: { management: MenuManagement
                                                                     )
                                                                         deleteCategory(category)
                                                                 }}
-                                                                className="grid size-7 place-items-center rounded text-[#65738A] hover:bg-[#FDECEC] hover:text-[#B42318]"
+                                                                disabled={
+                                                                    management.deleteCategory
+                                                                        .isPending ||
+                                                                    management.reorderCategories
+                                                                        .isPending
+                                                                }
+                                                                className="grid size-7 place-items-center rounded text-[#65738A] hover:bg-[#FDECEC] hover:text-[#B42318] disabled:cursor-wait disabled:opacity-50"
                                                             >
                                                                 <Trash2 className="size-3.5" />
                                                             </button>
@@ -657,7 +794,7 @@ export function MenuManagementPanel({ management }: { management: MenuManagement
                                                         categories={selectedMenu.categories ?? []}
                                                         productManagement={productManagement}
                                                     />
-                                                </div>
+                                                </motion.div>
                                             ))}
                                     </div>
                                 )}
@@ -691,6 +828,7 @@ export function MenuManagementPanel({ management }: { management: MenuManagement
                         <button
                             type="button"
                             onClick={() => setEditingMenu(false)}
+                            disabled={management.updateMenu.isPending}
                             className="rounded-xl px-4 py-2.5 text-sm font-semibold text-[#65738A]"
                         >
                             Cancelar
@@ -701,7 +839,7 @@ export function MenuManagementPanel({ management }: { management: MenuManagement
                             disabled={management.updateMenu.isPending}
                             className="rounded-xl bg-[#1E40AF] px-4 py-2.5 text-sm font-bold text-white"
                         >
-                            Guardar
+                            {management.updateMenu.isPending ? 'Guardando…' : 'Guardar'}
                         </button>
                     </div>
                 </div>
@@ -742,6 +880,7 @@ export function MenuManagementPanel({ management }: { management: MenuManagement
                                 <button
                                     type="button"
                                     onClick={() => setEditingCategory(null)}
+                                    disabled={management.updateCategory.isPending}
                                     className="rounded-xl px-4 py-2.5 text-sm font-semibold text-[#65738A]"
                                 >
                                     Cancelar
@@ -749,9 +888,10 @@ export function MenuManagementPanel({ management }: { management: MenuManagement
                                 <button
                                     type="button"
                                     onClick={saveEditedCategory}
+                                    disabled={management.updateCategory.isPending}
                                     className="rounded-xl bg-[#1E40AF] px-4 py-2.5 text-sm font-bold text-white"
                                 >
-                                    Guardar
+                                    {management.updateCategory.isPending ? 'Guardando…' : 'Guardar'}
                                 </button>
                             </div>
                         </>

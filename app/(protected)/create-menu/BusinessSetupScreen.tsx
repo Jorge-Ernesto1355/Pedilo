@@ -25,6 +25,7 @@ import { locationCoordinatesSchema } from './features/business-location/location
 import { useAuthStore } from '@/store/authStore'
 import { BusinessSettingsModal } from './features/business-settings/BusinessSettingsModal'
 import { BusinessPreviewSkeleton } from './components/CreateMenuStates'
+import Link from 'next/link'
 
 type BusinessScheduleDay = {
     key?: unknown
@@ -325,6 +326,45 @@ export default function BusinessSetupScreen({
                                 }
                                 errorMessage={saveProfile.error?.message}
                             />
+                            <p className="mt-3 max-w-md text-xs leading-5 text-[#65738A]">
+                                Al configurar tu negocio aplican los{' '}
+                                <Link
+                                    href="/terminos-restaurantes"
+                                    className="font-semibold text-[#2451C5] underline underline-offset-2"
+                                >
+                                    Términos para Restaurantes
+                                </Link>{' '}
+                                y el{' '}
+                                <Link
+                                    href="/privacidad"
+                                    className="font-semibold text-[#2451C5] underline underline-offset-2"
+                                >
+                                    Aviso de Privacidad
+                                </Link>
+                                . Consulta también las políticas de{' '}
+                                <Link
+                                    href="/productos-y-contenido"
+                                    className="font-semibold text-[#2451C5] underline underline-offset-2"
+                                >
+                                    productos y contenido
+                                </Link>{' '}
+                                y{' '}
+                                <Link
+                                    href="/propiedad-intelectual"
+                                    className="font-semibold text-[#2451C5] underline underline-offset-2"
+                                >
+                                    propiedad intelectual
+                                </Link>{' '}
+                                y{' '}
+                                <Link
+                                    href="/marketing"
+                                    className="font-semibold text-[#2451C5] underline underline-offset-2"
+                                >
+                                    Marketing
+                                </Link>
+                                . Cualquier consentimiento comercial es independiente de los
+                                términos.
+                            </p>
                             <div className="mt-8 flex items-center gap-3 rounded-xl border border-[#DCE5F3] bg-[#F8FAFE] px-3.5 py-3 text-xs leading-5 text-[#65738A]">
                                 <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-[#EAF0FF] text-[#2451C5]">
                                     <Store className="size-3.5" />
