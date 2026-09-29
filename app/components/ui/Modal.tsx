@@ -11,9 +11,18 @@ type ModalProps = {
     onClose: () => void
     children: ReactNode
     size?: 'sm' | 'lg'
+    closeDisabled?: boolean
 }
 
-export function Modal({ open, title, description, onClose, children, size = 'sm' }: ModalProps) {
+export function Modal({
+    open,
+    title,
+    description,
+    onClose,
+    children,
+    size = 'sm',
+    closeDisabled = false,
+}: ModalProps) {
     const closeButtonRef = useRef<HTMLButtonElement>(null)
     const dialogRef = useRef<HTMLDivElement>(null)
 
@@ -25,7 +34,7 @@ export function Modal({ open, title, description, onClose, children, size = 'sm'
         closeButtonRef.current?.focus()
 
         function handleKeyDown(event: KeyboardEvent) {
-            if (event.key === 'Escape') onClose()
+            if (event.key === 'Escape' && !closeDisabled) onClose()
             if (event.key !== 'Tab') return
 
             const focusable = dialogRef.current?.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])')
@@ -46,7 +55,7 @@ export function Modal({ open, title, description, onClose, children, size = 'sm'
             document.body.style.overflow = previousOverflow
             document.removeEventListener('keydown', handleKeyDown)
         }
-    }, [onClose, open])
+    }, [closeDisabled, onClose, open])
 
     return (
         <AnimatePresence>
@@ -58,7 +67,7 @@ export function Modal({ open, title, description, onClose, children, size = 'sm'
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     onMouseDown={(event) => {
-                        if (event.currentTarget === event.target) onClose()
+                        if (event.currentTarget === event.target && !closeDisabled) onClose()
                     }}
                 >
                     <motion.div
@@ -78,7 +87,7 @@ export function Modal({ open, title, description, onClose, children, size = 'sm'
                                 <h2 id="modal-title" className="font-display text-xl tracking-[-.035em] text-[#12234A]">{title}</h2>
                                 {description && <p id="modal-description" className="mt-1.5 text-sm leading-6 text-[#65738A]">{description}</p>}
                             </div>
-                            <button ref={closeButtonRef} type="button" onClick={onClose} aria-label="Cerrar" className="grid size-9 shrink-0 place-items-center rounded-lg text-[#65738A] transition hover:bg-[#F0F4FA] hover:text-[#12234A] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#1E40AF]/15">
+                            <button ref={closeButtonRef} type="button" onClick={onClose} disabled={closeDisabled} aria-label="Cerrar" className="grid size-9 shrink-0 place-items-center rounded-lg text-[#65738A] transition hover:bg-[#F0F4FA] hover:text-[#12234A] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#1E40AF]/15 disabled:cursor-wait disabled:opacity-40">
                                 <X className="size-4" />
                             </button>
                         </div>
