@@ -1,9 +1,6 @@
 import { cookies } from 'next/headers'
 import { cache } from 'react'
-
-const AUTH_API_URL =
-    process.env.BACKEND_URL ??
-    (process.env.NODE_ENV === 'production' ? 'https://api.pedilo.mx' : 'http://localhost:3001')
+import { getBetterAuthUrl, getLegacyAuthUrl } from './config'
 
 export interface User {
     id: string
@@ -23,6 +20,10 @@ interface AuthMeResponse {
 interface BetterAuthSessionResponse {
     user?: unknown
     session?: unknown
+    data?: {
+        user?: unknown
+        session?: unknown
+    }
 }
 
 export interface SessionResult {
@@ -47,11 +48,36 @@ function isUser(value: unknown): value is User {
 }
 
 export const getSession = cache(async function getSession(): Promise<SessionResult> {
-    try {
-        const cookieHeader = (await cookies()).toString()
-        const headers = cookieHeader ? { cookie: cookieHeader } : undefined
+    const cookieHeader = (await cookies()).toString()
+    const headers = cookieHeader ? { cookie: cookieHeader } : undefined
 
-        const legacyResponse = await fetch(`${AUTH_API_URL}/api/v1/auth/me`, {
+    // Better Auth owns Google sessions. Resolve it first so a failure in the
+    // legacy password-session endpoint cannot turn a valid OAuth session into
+    // a false unauthenticated result.
+    try {
+        const betterAuthResponse = await fetch(`${getBetterAuthUrl()}/get-session`, {
+            method: 'GET',
+            headers,
+            cache: 'no-store',
+        })
+
+        if (betterAuthResponse.ok) {
+            const body: unknown = await betterAuthResponse.json()
+
+            if (typeof body === 'object' && body !== null) {
+                const sessionData = body as BetterAuthSessionResponse
+                const user = sessionData.user ?? sessionData.data?.user
+                if (isUser(user)) return { user }
+            }
+        }
+    } catch {
+        // Try the legacy session endpoint below. Do not expose backend details.
+    }
+
+    // Password login still uses the legacy auth API. Keep it as an isolated
+    // fallback for existing sessions and deployments during the migration.
+    try {
+        const legacyResponse = await fetch(`${getLegacyAuthUrl()}/me`, {
             method: 'POST',
             headers,
             cache: 'no-store',
@@ -67,28 +93,9 @@ export const getSession = cache(async function getSession(): Promise<SessionResu
                 if (isUser(user)) return { user }
             }
         }
-
-        // Google sign-in is handled by Better Auth, while password login uses
-        // the legacy endpoint above. Support both session formats here so the
-        // protected layout does not send a valid Google session back to login.
-        const betterAuthResponse = await fetch(`${AUTH_API_URL}/api/auth/get-session`, {
-            method: 'GET',
-            headers,
-            cache: 'no-store',
-        })
-
-        if (betterAuthResponse.ok) {
-            const body: unknown = await betterAuthResponse.json()
-
-            if (typeof body === 'object' && body !== null) {
-                const sessionData = body as BetterAuthSessionResponse
-                if (isUser(sessionData.user)) return { user: sessionData.user }
-            }
-        }
-
-        return { user: null }
-    } catch (error: unknown) {
-        console.error('No se pudo validar la sesión con el backend', error)
-        return { user: null }
+    } catch {
+        // A failed session lookup is treated as unauthenticated.
     }
+
+    return { user: null }
 })

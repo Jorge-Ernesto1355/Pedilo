@@ -4,6 +4,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import LoginPage from "@/app/auth/login/page";
 
+const socialSignInMock = vi.hoisted(() => vi.fn());
+
+vi.mock("@/authClient", () => ({
+  authClient: { signIn: { social: socialSignInMock } },
+}));
+
 const fetchMock = vi.fn();
 
 function response(status: number, body: unknown = {}) {
@@ -14,6 +20,20 @@ describe("Login frontend", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", fetchMock);
     fetchMock.mockReset();
+    socialSignInMock.mockReset();
+    socialSignInMock.mockResolvedValue(undefined);
+  });
+
+  it("starts Google OAuth with the current app callback", async () => {
+    const user = userEvent.setup();
+    render(<LoginPage />);
+
+    await user.click(screen.getByRole("button", { name: /continuar con google/i }));
+
+    expect(socialSignInMock).toHaveBeenCalledWith({
+      provider: "google",
+      callbackURL: `${window.location.origin}/create-menu`,
+    });
   });
 
   it("renders accessible controls and submits normalized credentials", async () => {
