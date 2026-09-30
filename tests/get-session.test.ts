@@ -30,10 +30,12 @@ describe('server session resolution', () => {
     })
 
     it('resolves a Better Auth session before consulting the legacy API', async () => {
-        fetchMock.mockResolvedValue(response({ session: { id: 'session-1' }, user }))
+        fetchMock
+            .mockResolvedValueOnce(response({ session: { id: 'session-1' }, user }))
+            .mockResolvedValueOnce(response({ user: { ...user, businessId: 'business-1' } }))
 
-        await expect(getSession()).resolves.toEqual({ user })
-        expect(fetchMock).toHaveBeenCalledTimes(1)
+        await expect(getSession()).resolves.toEqual({ user: { ...user, businessId: 'business-1' } })
+        expect(fetchMock).toHaveBeenCalledTimes(2)
         expect(fetchMock).toHaveBeenCalledWith(
             expect.stringContaining('/api/auth/get-session'),
             expect.objectContaining({
@@ -42,6 +44,14 @@ describe('server session resolution', () => {
                 cache: 'no-store',
             }),
         )
+    })
+
+    it('preserves the Better Auth session when business enrichment is unavailable', async () => {
+        fetchMock
+            .mockResolvedValueOnce(response({ session: { id: 'session-1' }, user }))
+            .mockRejectedValueOnce(new Error('legacy service unavailable'))
+
+        await expect(getSession()).resolves.toEqual({ user })
     })
 
     it('falls back to the legacy session format when Better Auth is unavailable', async () => {

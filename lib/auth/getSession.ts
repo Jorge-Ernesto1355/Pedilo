@@ -43,8 +43,34 @@ function isUser(value: unknown): value is User {
         typeof candidate.email === 'string' &&
         (candidate.image === undefined ||
             candidate.image === null ||
-            typeof candidate.image === 'string')
+            typeof candidate.image === 'string') &&
+        (candidate.businessId === undefined ||
+            candidate.businessId === null ||
+            typeof candidate.businessId === 'string')
     )
+}
+
+async function getLegacyUser(headers: HeadersInit | undefined): Promise<User | null> {
+    try {
+        const legacyResponse = await fetch(`${getLegacyAuthUrl()}/me`, {
+            method: 'POST',
+            headers,
+            cache: 'no-store',
+        })
+
+        if (!legacyResponse.ok) return null
+
+        const body: unknown = await legacyResponse.json()
+
+        if (typeof body !== 'object' || body === null) return null
+
+        const responseData = body as AuthMeResponse
+        const user = responseData.user ?? responseData.data?.user
+
+        return isUser(user) ? user : null
+    } catch {
+        return null
+    }
 }
 
 export const getSession = cache(async function getSession(): Promise<SessionResult> {
@@ -67,7 +93,20 @@ export const getSession = cache(async function getSession(): Promise<SessionResu
             if (typeof body === 'object' && body !== null) {
                 const sessionData = body as BetterAuthSessionResponse
                 const user = sessionData.user ?? sessionData.data?.user
-                if (isUser(user)) return { user }
+                if (isUser(user)) {
+                    // Better Auth's user is authoritative for authentication,
+                    // while businessId is application data maintained by the
+                    // legacy API. Enrich without making auth depend on it.
+                    if (user.businessId !== undefined) return { user }
+
+                    const legacyUser = await getLegacyUser(headers)
+                    return {
+                        user:
+                            legacyUser?.businessId !== undefined
+                                ? { ...user, businessId: legacyUser.businessId }
+                                : user,
+                    }
+                }
             }
         }
     } catch {
@@ -76,26 +115,8 @@ export const getSession = cache(async function getSession(): Promise<SessionResu
 
     // Password login still uses the legacy auth API. Keep it as an isolated
     // fallback for existing sessions and deployments during the migration.
-    try {
-        const legacyResponse = await fetch(`${getLegacyAuthUrl()}/me`, {
-            method: 'POST',
-            headers,
-            cache: 'no-store',
-        })
-
-        if (legacyResponse.ok) {
-            const body: unknown = await legacyResponse.json()
-
-            if (typeof body === 'object' && body !== null) {
-                const responseData = body as AuthMeResponse
-                const user = responseData.user ?? responseData.data?.user
-
-                if (isUser(user)) return { user }
-            }
-        }
-    } catch {
-        // A failed session lookup is treated as unauthenticated.
-    }
+    const legacyUser = await getLegacyUser(headers)
+    if (legacyUser) return { user: legacyUser }
 
     return { user: null }
 })
