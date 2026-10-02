@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="es">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Notificaciones</title>
+
+        <!-- Aquí conectamos el archivo de estilos -->
+        <link rel="stylesheet" href="styles.css" />
+    </head>
+    <body>
+        <!-- Esta es solo la página de demo para probar las notificaciones -->
+        <main class="demo">
+            <h1>Notificaciones</h1>
+            <p>
+                Pasa el cursor sobre una notificación para pausarla, o arrástrala hacia un lado para
+                cerrarla.
+            </p>
+
+            <!-- Botones para probar cada tipo de notificación -->
+            <h2>Tipo</h2>
+            <div class="fila">
+                <button class="btn btn-success" id="btn-success">Guardado</button>
+                <button class="btn btn-error" id="btn-error">Error</button>
+                <button class="btn btn-warning" id="btn-warning">Advertencia</button>
+                <button class="btn btn-info" id="btn-info">Información</button>
+            </div>
+
+            <!-- Selector para elegir en qué esquina aparece -->
+            <h2>Posición</h2>
+            <select id="posicion">
+                <option value="top-right">Arriba a la derecha</option>
+                <option value="top-center">Arriba al centro</option>
+                <option value="top-left">Arriba a la izquierda</option>
+                <option value="bottom-right">Abajo a la derecha</option>
+                <option value="bottom-center">Abajo al centro</option>
+                <option value="bottom-left">Abajo a la izquierda</option>
+            </select>
+
+            <!-- Opciones extra -->
+            <h2>Opciones</h2>
+            <label><input type="checkbox" id="sin-cierre" /> Sin cierre automático</label>
+            <label><input type="checkbox" id="con-acciones" /> Con botones de acción</label>
+            <div class="fila">
+                <button class="btn" id="btn-limpiar">Cerrar todas</button>
+            </div>
+        </main>
+
+        <!-- Aquí conectamos el archivo de JavaScript (siempre al final del body) -->
+        <script src="script.js"></script>
+    </body>
+</html>
