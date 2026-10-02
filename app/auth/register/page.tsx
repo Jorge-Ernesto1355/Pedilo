@@ -82,7 +82,7 @@ export default function RegisterPage() {
         mutationFn: registerUser,
         onSuccess: () => {
             setSuccess(true)
-            router.push(RedirectedUrls.createMenu)
+            router.push(RedirectedUrls.login)
         },
     })
     const loading = registerMutation.isPending || googleLoading
@@ -414,7 +414,9 @@ export default function RegisterPage() {
                                         checked={terms}
                                         onChange={(e) => setTerms(e.target.checked)}
                                         aria-invalid={Boolean(errors.terms)}
-                                        aria-describedby={errors.terms ? 'register-terms-error' : undefined}
+                                        aria-describedby={
+                                            errors.terms ? 'register-terms-error' : undefined
+                                        }
                                         className="mt-[3px] h-4 w-4 flex-shrink-0 accent-blue-800"
                                     />
                                     <span>
@@ -423,7 +425,7 @@ export default function RegisterPage() {
                                             href="/terminos"
                                             className="font-semibold text-blue-800 hover:underline"
                                         >
-                                        Términos para Clientes
+                                            Términos para Clientes
                                         </a>{' '}
                                         y la{' '}
                                         <a
