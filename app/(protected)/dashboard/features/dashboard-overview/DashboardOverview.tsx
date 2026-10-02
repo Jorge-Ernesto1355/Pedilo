@@ -18,12 +18,8 @@ import type { OrderStatus } from '@/src/lib/api/order-types'
 import type { OrdersData, ProductPerformance } from '../dashboard-data/dashboardData.types'
 import { DashboardErrorState } from '../../components/DashboardErrorState'
 import { OverviewSkeleton } from '../../components/DashboardSkeletons'
-
-const money = new Intl.NumberFormat('es-MX', {
-    style: 'currency',
-    currency: 'MXN',
-    maximumFractionDigits: 0,
-})
+import { useBusinessSettings } from '@/app/(protected)/create-menu/features/business-settings/useBusinessSettings'
+import { formatMoney } from '../dashboard-data/formatters'
 
 export function DashboardOverview() {
     const { range, setRange } = useDateRangeFilter()
@@ -31,6 +27,8 @@ export function DashboardOverview() {
     const orders = useOrders({ page: 1, limit: 5 })
     const productStats = useProductStats()
     const productAnalytics = useProductAnalytics({ limit: 4 })
+    const settings = useBusinessSettings(true)
+    const currency = settings.settings.data?.currency ?? 'MXN'
 
     const loading =
         sales.isLoading ||
@@ -106,7 +104,7 @@ export function DashboardOverview() {
                 className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
                 aria-label="Resumen del negocio"
             >
-                <SalesKpiCard data={sales.data} />
+                <SalesKpiCard data={sales.data} currency={currency} />
                 <OrdersKpiCard data={{ total: sales.data.ordersCount, recent: [] }} />
                 <SummaryKpiCard
                     label="Productos"
@@ -118,7 +116,7 @@ export function DashboardOverview() {
                 />
                 <SummaryKpiCard
                     label="Ticket promedio"
-                    value={money.format(sales.data.averageTicket)}
+                    value={formatMoney(sales.data.averageTicket, currency)}
                     helper="por pedido"
                     href="/dashboard/sales"
                     icon={Receipt}
@@ -142,7 +140,7 @@ export function DashboardOverview() {
                         Ver detalle
                     </Link>
                 </div>
-                <SalesChart data={sales.data} />
+                <SalesChart data={sales.data} currency={currency} />
             </section>
             <section className="grid gap-4 lg:grid-cols-2">
                 <BestSellersCard data={products} />

@@ -1,14 +1,9 @@
 'use client'
 
 import type { SalesData } from '../dashboard-data/dashboardData.types'
+import { formatMoney } from '../dashboard-data/formatters'
 
-const money = new Intl.NumberFormat('es-MX', {
-    style: 'currency',
-    currency: 'MXN',
-    maximumFractionDigits: 0,
-})
-
-export function SalesPointsTable({ data }: { data: SalesData }) {
+export function SalesPointsTable({ data, currency = 'MXN' }: { data: SalesData; currency?: string }) {
     return (
         <div className="mt-6 overflow-x-auto border-t border-[#EDF2F9] pt-5">
             <table className="w-full min-w-[360px] text-left text-sm">
@@ -25,7 +20,7 @@ export function SalesPointsTable({ data }: { data: SalesData }) {
                         <tr key={point.label}>
                             <td className="py-3 font-medium text-[#243556]">{point.label}</td>
                             <td className="py-3 text-right text-[#243556]">
-                                {money.format(point.sales)}
+                                {formatMoney(point.sales, currency)}
                             </td>
                             <td className="py-3 text-right text-[#65738A]">{point.orderCount}</td>
                         </tr>

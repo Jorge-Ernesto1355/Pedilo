@@ -2,8 +2,8 @@
 
 import type { ProductCategoryOption } from '../../features/dashboard-products/ProductAdminModal'
 import type { ProductRanking } from '@/app/(protected)/create-menu/features/product-management/productApi'
-
-const money = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' })
+import type { ProductSummary } from '@/app/(protected)/create-menu/features/product-management/productApi'
+import { formatMoney } from '../../features/dashboard-data/formatters'
 
 type AnalyticsParams = {
     category: string
@@ -23,13 +23,17 @@ export function ProductAnalytics({
     mostRequested,
     summary,
     isLoading,
+    isError,
+    currency,
 }: {
     categories: ProductCategoryOption[]
     params: AnalyticsParams
     bestSelling: ProductRanking[]
     mostRequested: ProductRanking[]
-    summary?: { categoriesWithProducts: number }
+    summary?: ProductSummary
     isLoading: boolean
+    isError?: boolean
+    currency?: string
 }) {
     return (
         <section className="rounded-2xl border border-[#DCE5F3] bg-white p-4 shadow-[0_8px_22px_rgb(20_48_105_/_0.055)] sm:p-5">
@@ -65,25 +69,26 @@ export function ProductAnalytics({
                     />
                 </div>
             </div>
-            {summary && (
-                <p className="mt-3 text-xs text-[#65738A]">
-                    El catálogo tiene productos distribuidos en{' '}
-                    <strong className="text-[#243556]">{summary.categoriesWithProducts}</strong>{' '}
-                    categorías.
+            {summary && <Summary summary={summary} />}
+            {isError ? (
+                <p role="alert" className="mt-4 rounded-xl bg-[#FFF4F2] p-3 text-sm text-[#B42318]">
+                    No pudimos cargar los analytics de productos. Inténtalo nuevamente.
                 </p>
-            )}
+            ) : null}
             <div className="mt-4 grid gap-4 lg:grid-cols-2">
                 <Ranking
                     title="Más vendidos"
                     rows={bestSelling}
                     type="selling"
                     isLoading={isLoading}
+                    currency={currency ?? 'MXN'}
                 />
                 <Ranking
                     title="Más solicitados"
                     rows={mostRequested}
                     type="requested"
                     isLoading={isLoading}
+                    currency={currency ?? 'MXN'}
                 />
             </div>
         </section>
@@ -95,11 +100,13 @@ function Ranking({
     rows,
     type,
     isLoading,
+    currency,
 }: {
     title: string
     rows: ProductRanking[]
     type: 'selling' | 'requested'
     isLoading: boolean
+    currency: string
 }) {
     return (
         <div className="rounded-xl border border-[#E8EEF6] p-4">
@@ -129,13 +136,32 @@ function Ranking({
                             </div>
                             {type === 'selling' && (
                                 <span className="text-sm font-bold text-[#23794A]">
-                                    {money.format(row.revenue ?? 0)}
+                                    {formatMoney(row.revenue ?? 0, currency)}
                                 </span>
                             )}
                         </div>
                     ))}
                 </div>
             )}
+        </div>
+    )
+}
+
+function Summary({ summary }: { summary: ProductSummary }) {
+    return (
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            <SummaryValue label="Productos activos" value={String(summary.activeProducts)} />
+            <SummaryValue label="Categorías con productos" value={String(summary.categoriesWithProducts)} />
+            <SummaryValue label="Productos inactivos" value={String(summary.inactiveProducts)} />
+        </div>
+    )
+}
+
+function SummaryValue({ label, value }: { label: string; value: string }) {
+    return (
+        <div className="rounded-xl bg-[#F8FAFE] p-3">
+            <p className="text-xs text-[#8996A9]">{label}</p>
+            <p className="mt-1 font-display text-lg text-[#12234A]">{value}</p>
         </div>
     )
 }

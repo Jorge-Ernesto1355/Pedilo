@@ -10,14 +10,17 @@ import { SalesKpiCard } from '../features/dashboard-sales/SalesKpiCard'
 import { SalesPointsTable } from '../features/dashboard-sales/SalesPointsTable'
 import { OrdersKpiCard } from '../features/dashboard-orders/OrdersKpiCard'
 import { SummaryKpiCard } from '../features/dashboard-overview/SummaryKpiCard'
-import { BarChart3, Receipt, TrendingUp } from 'lucide-react'
+import { Receipt, TrendingUp } from 'lucide-react'
 import { DashboardErrorState } from '../components/DashboardErrorState'
 import { SalesSkeleton } from '../components/DashboardSkeletons'
-import { EmptyState } from '../components/EmptyState'
+import { useBusinessSettings } from '../../create-menu/features/business-settings/useBusinessSettings'
+import { formatMoney } from '../features/dashboard-data/formatters'
 
 export default function SalesPage() {
     const { range, setRange } = useDateRangeFilter('today')
     const sales = useSalesData(range)
+    const settings = useBusinessSettings(true)
+    const currency = settings.settings.data?.currency ?? 'MXN'
 
     if (sales.isLoading) return <SalesSkeleton />
 
@@ -54,11 +57,11 @@ export default function SalesPage() {
                         className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
                         aria-label="Métricas de ventas"
                     >
-                        <SalesKpiCard data={sales.data} />
+                        <SalesKpiCard data={sales.data} currency={currency} />
                         <OrdersKpiCard data={{ total: sales.data.ordersCount, recent: [] }} />
                         <SummaryKpiCard
                             label="Ticket promedio"
-                            value={money.format(sales.data.averageTicket)}
+                            value={formatMoney(sales.data.averageTicket, currency)}
                             helper="por pedido"
                             href="/dashboard/sales"
                             icon={Receipt}
@@ -78,23 +81,24 @@ export default function SalesPage() {
                         <p className="mt-1 text-sm text-[#65738A]">
                             Mira cómo se mueven tus ventas.
                         </p>
-                        {sales.data.total === 0 && sales.data.ordersCount === 0 ? (
-                            <div className="mt-5">
-                                <EmptyState
-                                    icon={BarChart3}
-                                    title="No hay ventas en este periodo"
-                                    description="Cuando recibas ventas, tus estadísticas aparecerán aquí."
-                                />
-                            </div>
-                        ) : null}
-                        {sales.data.total > 0 || sales.data.ordersCount > 0 ? (
-                            <>
-                                <div className="mt-5">
-                                    <SalesChart data={sales.data} />
+                        <div className="relative mt-5">
+                            <SalesChart data={sales.data} currency={currency} />
+                            {sales.data.points.every(
+                                (point) => point.sales === 0 && point.orderCount === 0,
+                            ) ? (
+                                <div className="pointer-events-none absolute inset-0 grid place-items-center">
+                                    <div className="pointer-events-auto rounded-xl border border-[#DCE5F3] bg-white/95 px-4 py-3 text-center shadow-sm">
+                                        <p className="text-sm font-semibold text-[#243556]">
+                                            Aún no hay ventas en este periodo.
+                                        </p>
+                                        <p className="mt-1 text-xs text-[#65738A]">
+                                            Cuando recibas pedidos, aparecerán aquí.
+                                        </p>
+                                    </div>
                                 </div>
-                                <SalesPointsTable data={sales.data} />
-                            </>
-                        ) : null}
+                            ) : null}
+                        </div>
+                        <SalesPointsTable data={sales.data} currency={currency} />
                         {sales.isFetching ? (
                             <div className="absolute inset-0 grid place-items-center rounded-2xl bg-white/70 text-sm text-[#65738A]">
                                 Actualizando ventas…
@@ -106,9 +110,3 @@ export default function SalesPage() {
         </main>
     )
 }
-
-const money = new Intl.NumberFormat('es-MX', {
-    style: 'currency',
-    currency: 'MXN',
-    maximumFractionDigits: 0,
-})

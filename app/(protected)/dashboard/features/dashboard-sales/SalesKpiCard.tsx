@@ -3,14 +3,9 @@
 import Link from 'next/link'
 import { ArrowUpRight, CircleDollarSign } from 'lucide-react'
 import type { SalesData } from '../dashboard-data/dashboardData.types'
+import { formatMoney } from '../dashboard-data/formatters'
 
-const money = new Intl.NumberFormat('es-MX', {
-    style: 'currency',
-    currency: 'MXN',
-    maximumFractionDigits: 0,
-})
-
-export function SalesKpiCard({ data }: { data: SalesData }) {
+export function SalesKpiCard({ data, currency = 'MXN' }: { data: SalesData; currency?: string }) {
     const trendPrefix = data.trend > 0 ? '+' : ''
     const trendColor =
         data.trend > 0 ? 'text-[#23814C]' : data.trend < 0 ? 'text-[#B54747]' : 'text-[#65738A]'
@@ -28,7 +23,7 @@ export function SalesKpiCard({ data }: { data: SalesData }) {
             </div>
             <p className="mt-6 text-sm text-[#65738A]">Ventas</p>
             <p className="mt-1 font-display text-2xl tracking-[-.04em] text-[#12234A]">
-                {money.format(data.total)}
+                {formatMoney(data.total, currency)}
             </p>
             <p className={`mt-2 text-xs font-semibold ${trendColor}`}>
                 {trendPrefix}

@@ -23,6 +23,7 @@ import type { ProductCategoryOption } from '../features/dashboard-products/Produ
 import { DashboardErrorState } from '../components/DashboardErrorState'
 import { ProductsSkeleton } from '../components/DashboardSkeletons'
 import { EmptyState as DashboardEmptyState } from '../components/EmptyState'
+import { useBusinessSettings } from '../../create-menu/features/business-settings/useBusinessSettings'
 
 type StatusFilter = '' | 'true' | 'false'
 type Filters = {
@@ -85,6 +86,7 @@ export default function ProductsPage() {
         categoriesQuery = useProductCategories(),
         management = useProductMutations(),
         detail = useProduct(selectedProduct?.id ?? null)
+    const settings = useBusinessSettings(true)
     const categories = useMemo<ProductCategoryOption[]>(
         () =>
             categoriesQuery.data?.flatMap((menu) =>
@@ -292,6 +294,12 @@ export default function ProductsPage() {
                 bestSelling={analytics.bestSelling.data ?? []}
                 mostRequested={analytics.mostRequested.data ?? []}
                 summary={analytics.summary.data}
+                isError={
+                    analytics.bestSelling.isError ||
+                    analytics.mostRequested.isError ||
+                    analytics.summary.isError
+                }
+                currency={settings.settings.data?.currency ?? 'MXN'}
                 isLoading={
                     analytics.bestSelling.isLoading ||
                     analytics.mostRequested.isLoading ||

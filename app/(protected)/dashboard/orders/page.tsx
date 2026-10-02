@@ -8,6 +8,8 @@ import { useOrder, useOrders, useOrderStatusMutation } from '../features/orders/
 import { DashboardErrorState } from '../components/DashboardErrorState'
 import { OrdersSkeleton } from '../components/DashboardSkeletons'
 import { EmptyState } from '../components/EmptyState'
+import { useBusinessSettings } from '../../create-menu/features/business-settings/useBusinessSettings'
+import { formatBusinessDate, formatMoney } from '../features/dashboard-data/formatters'
 
 const labels: Record<OrderStatus, string> = {
     PENDING: 'Pendiente',
@@ -36,7 +38,13 @@ export default function OrdersPage() {
     const query = useOrders({ page, limit, status })
     const detail = useOrder(selectedId)
     const mutation = useOrderStatusMutation()
+    const settings = useBusinessSettings(true)
+    const currency = settings.settings.data?.currency ?? 'MXN'
+    const timezone = settings.settings.data?.timezone ?? 'America/Mazatlan'
     const totalPages = query.data ? Math.max(1, Math.ceil(query.data.total / limit)) : 1
+    const visiblePages = Array.from({ length: totalPages }, (_, index) => index + 1).filter(
+        (value) => totalPages <= 7 || value === 1 || value === totalPages || Math.abs(value - page) <= 1,
+    )
 
     if (query.isLoading) return <OrdersSkeleton />
 
@@ -89,37 +97,35 @@ export default function OrdersPage() {
                 />
             ) : (
                 <div className="overflow-hidden rounded-2xl border border-[#DCE5F3] bg-white">
+                    <div className="hidden grid-cols-[1fr_1.2fr_1fr_1fr_1fr_auto] gap-4 border-b border-[#E8EEF6] px-5 py-3 text-xs font-semibold uppercase tracking-wide text-[#8996A9] sm:grid">
+                        <span>Pedido</span><span>Cliente</span><span>Teléfono</span><span>Total</span><span>Estado</span><span>Acciones</span>
+                    </div>
                     <div className="divide-y divide-[#E8EEF6]">
                         {query.data?.orders.map((order) => (
                             <button
                                 key={order.id}
                                 type="button"
                                 onClick={() => setSelectedId(order.id)}
-                                className="grid w-full gap-3 px-5 py-4 text-left transition hover:bg-[#F8FAFE] sm:grid-cols-[1fr_1.4fr_1fr_auto] sm:items-center"
+                                className="grid w-full gap-3 px-5 py-4 text-left transition hover:bg-[#F8FAFE] sm:grid-cols-[1fr_1.2fr_1fr_1fr_1fr_auto] sm:items-center"
                             >
                                 <div>
                                     <p className="font-bold text-[#12234A]">
                                         Pedido #{order.orderNumber}
                                     </p>
                                     <p className="mt-1 text-xs text-[#8996A9]">
-                                        {order.createdAt
-                                            ? new Date(order.createdAt).toLocaleString('es-MX')
-                                            : 'Fecha no disponible'}
+                                        {formatBusinessDate(order.createdAt, timezone)}
                                     </p>
                                 </div>
                                 <div>
                                     <p className="text-sm font-semibold text-[#243556]">
                                         {order.customerName}
                                     </p>
-                                    <p className="text-xs text-[#65738A]">{order.customerPhone}</p>
+                                    <p className="text-xs text-[#65738A] sm:hidden">{order.customerPhone}</p>
                                 </div>
-                                <p className="text-sm font-bold text-[#1E40AF]">
-                                    $
-                                    {order.total.toLocaleString('es-MX', {
-                                        minimumFractionDigits: 2,
-                                    })}
-                                </p>
+                                <p className="hidden text-sm text-[#65738A] sm:block">{order.customerPhone}</p>
+                                <p className="text-sm font-bold text-[#1E40AF]">{formatMoney(order.total, currency)}</p>
                                 <span className={badge(order.status)}>{labels[order.status]}</span>
+                                <span className="text-xs font-bold text-[#2451C5]">Ver</span>
                             </button>
                         ))}
                     </div>
@@ -130,7 +136,7 @@ export default function OrdersPage() {
                     <p className="text-xs text-[#8996A9]">
                         Página {page} de {totalPages}
                     </p>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap justify-end gap-2">
                         <button
                             type="button"
                             disabled={page <= 1}
@@ -139,6 +145,17 @@ export default function OrdersPage() {
                         >
                             Anterior
                         </button>
+                        {visiblePages.map((value) => (
+                            <button
+                                key={value}
+                                type="button"
+                                aria-current={value === page ? 'page' : undefined}
+                                onClick={() => setPage(value)}
+                                className={`min-w-9 rounded-lg border px-3 py-2 text-sm ${value === page ? 'border-[#2451C5] bg-[#2451C5] font-bold text-white' : 'border-[#D7E1EF] text-[#243556]'}`}
+                            >
+                                {value}
+                            </button>
+                        ))}
                         <button
                             type="button"
                             disabled={page >= totalPages}
@@ -183,19 +200,17 @@ export default function OrdersPage() {
                                         <span className={badge(detail.data.status)}>
                                             {labels[detail.data.status]}
                                         </span>
-                                        <span className="font-display text-xl text-[#12234A]">
-                                            $
-                                            {detail.data.total.toLocaleString('es-MX', {
-                                                minimumFractionDigits: 2,
-                                            })}
-                                        </span>
+                                        <span className="font-display text-xl text-[#12234A]">{formatMoney(detail.data.total, currency)}</span>
                                     </div>
                                     <div className="rounded-xl bg-[#F8FAFE] p-4 text-sm">
                                         <p className="font-bold text-[#243556]">
                                             {detail.data.customerName}
                                         </p>
                                         <p className="mt-1 text-[#65738A]">
-                                            {detail.data.customerPhone}
+                                        {detail.data.customerPhone}
+                                        </p>
+                                        <p className="mt-1 text-xs text-[#8996A9]">
+                                            {formatBusinessDate(detail.data.createdAt, timezone)}
                                         </p>
                                         {detail.data.notes && (
                                             <p className="mt-3 border-t border-[#E8EEF6] pt-3 text-[#65738A]">
@@ -204,6 +219,10 @@ export default function OrdersPage() {
                                         )}
                                     </div>
                                     <div className="space-y-3">
+                                        <div className="flex justify-between border-b border-[#E8EEF6] pb-3 text-sm">
+                                            <span className="text-[#65738A]">Subtotal</span>
+                                            <strong>{formatMoney(detail.data.subtotal, currency)}</strong>
+                                        </div>
                                         {detail.data.items.map((item, index) => (
                                             <div
                                                 key={item.id ?? `${item.productId}-${index}`}
@@ -216,14 +235,7 @@ export default function OrdersPage() {
                                                         item.productId}
                                                 </span>
                                                 <span className="font-semibold">
-                                                    $
-                                                    {(
-                                                        item.subtotal ??
-                                                        item.unitPrice ??
-                                                        0
-                                                    ).toLocaleString('es-MX', {
-                                                        minimumFractionDigits: 2,
-                                                    })}
+                                                    {formatMoney(item.subtotal ?? ((item.unitPrice ?? 0) * item.quantity), currency)}
                                                 </span>
                                             </div>
                                         ))}
@@ -235,10 +247,7 @@ export default function OrdersPage() {
                                         <div className="space-y-2 text-xs text-[#65738A]">
                                             {detail.data.statusHistory.map((entry) => (
                                                 <p key={`${entry.status}-${entry.createdAt}`}>
-                                                    <strong>{labels[entry.status]}</strong> ·{' '}
-                                                    {new Date(entry.createdAt).toLocaleString(
-                                                        'es-MX',
-                                                    )}
+                                                    <strong>{labels[entry.status]}</strong> · {formatBusinessDate(entry.createdAt, timezone)}
                                                 </p>
                                             ))}
                                         </div>
@@ -266,9 +275,11 @@ export default function OrdersPage() {
                                     {mutation.isError && (
                                         <p role="alert" className="text-sm text-[#B42318]">
                                             {mutation.error instanceof ApiError &&
-                                            mutation.error.code
+                                            mutation.error.code === 'ORDER_INVALID_STATUS_TRANSITION'
                                                 ? 'No se puede realizar esa transición.'
-                                                : 'No pudimos actualizar el estado.'}
+                                                : mutation.error instanceof ApiError && mutation.error.code === 'ORDER_NOT_FOUND'
+                                                  ? 'El pedido ya no existe o no está disponible.'
+                                                  : 'No pudimos actualizar el estado.'}
                                         </p>
                                     )}
                                 </div>

@@ -3,11 +3,17 @@ export type DateRange = SalesPeriod
 
 export type SalesPoint = {
     label: string
+    start?: string
     sales: number
     orderCount: number
 }
 
+export type SalesGranularity = 'hour' | 'day'
+
 export type SalesDashboardResponse = {
+    period?: SalesPeriod
+    granularity?: SalesGranularity
+    timezone?: string
     total: number
     ordersCount: number
     trend: number
