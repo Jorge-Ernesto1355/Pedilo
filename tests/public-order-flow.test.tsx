@@ -67,14 +67,15 @@ vi.mock('@/app/menu/[slug]/features/public-menu/useBusinessMenu', () => ({
 describe('public order flow', () => {
     it('creates the order before opening WhatsApp and showing success', async () => {
         const user = userEvent.setup()
-        const replace = vi.fn()
+        const location = { href: '' }
         const open = vi.spyOn(window, 'open').mockImplementation(
             () =>
                 ({
                     closed: false,
                     opener: null,
                     close: vi.fn(),
-                    location: { replace },
+                    location,
+                    document: { title: '', body: { innerHTML: '' } },
                 }) as unknown as Window,
         )
         createPublicOrder.mockResolvedValue({ id: 'order-1' })
@@ -93,9 +94,7 @@ describe('public order flow', () => {
             }),
         )
         expect(open).toHaveBeenCalledWith('about:blank', '_blank')
-        expect(replace).toHaveBeenCalledWith(
-            expect.stringContaining('https://wa.me/526681234567?text='),
-        )
+        expect(location.href).toContain('https://wa.me/526681234567?text=')
         expect(await screen.findByRole('heading', { name: '¡Pedido enviado!' })).toBeInTheDocument()
 
         open.mockRestore()
