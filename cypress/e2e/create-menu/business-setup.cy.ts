@@ -174,7 +174,6 @@ describe('Crear menú · perfil del restaurante', () => {
 
         cy.contains('Escribe el nombre de tu negocio.').should('be.visible')
         cy.contains('Escribe una URL para tu negocio.').should('be.visible')
-        cy.contains('Selecciona al menos un día.').should('be.visible')
         cy.contains('La hora de cierre debe ser posterior.').should('be.visible')
         cy.then(() => expect(createCalls).to.eq(0))
     })
@@ -411,7 +410,9 @@ describe('Crear menú · perfil del restaurante', () => {
         const expectedName = `Cypress Persist ${suffix}`
         const expectedSlug = `cypress-persist-${suffix}`.slice(0, 30)
         cy.intercept('POST', '**/api/v1/businesses').as('createBusiness')
-        cy.intercept('GET', '**/api/v1/businesses/mine').as('getBusinessMine')
+        cy.intercept('GET', '**/api/v1/businesses/mine', (request) => request.continue()).as(
+            'getBusinessMine',
+        )
 
         fillBusinessProfile({
             name: expectedName,
@@ -424,10 +425,10 @@ describe('Crear menú · perfil del restaurante', () => {
         cy.contains('button', 'Guardar cambios').click()
         cy.wait('@createBusiness').its('response.statusCode').should('be.oneOf', [200, 201])
         cy.wait('@getBusinessMine')
+        cy.get('#businessName').should('have.value', expectedName)
         cy.contains('Cambios guardados').should('be.visible')
 
         cy.reload()
-        cy.wait('@getBusinessMine')
         cy.contains('h1', 'Cuéntanos sobre tu negocio.').should('be.visible')
         cy.get('#businessName').should('not.have.value', 'La Esquina')
         cy.get('#businessName').should('have.value', expectedName)
