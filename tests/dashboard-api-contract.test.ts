@@ -45,13 +45,18 @@ describe('dashboard frontend API contracts', () => {
 
     it('uses the official order list, detail, and status endpoints', async () => {
         apiGet.mockResolvedValue({ data: { orders: [], page: 1, limit: 20, total: 0 } })
-        await getOrders('business-1', { page: 1, limit: 20, status: 'PENDING' })
+        await getOrders('business-1', {
+            page: 1,
+            limit: 20,
+            status: 'PREPARING',
+            search: 'Jorge',
+        })
         await getOrder('order-1')
         apiPatch.mockResolvedValueOnce({ data: { id: 'order-1', status: 'PREPARING' } })
         await updateOrderStatus('order-1', 'PREPARING')
 
         expect(apiGet.mock.calls[0][0]).toBe(
-            '/businesses/business-1/orders?page=1&limit=20&status=PENDING',
+            '/businesses/business-1/orders?page=1&limit=20&status=PREPARING&search=Jorge',
         )
         expect(apiGet.mock.calls[1][0]).toBe('/businesses/orders/order-1')
         expect(apiPatch).toHaveBeenCalledWith(

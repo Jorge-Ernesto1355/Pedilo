@@ -34,7 +34,7 @@ export function createPublicOrder(businessId: string, payload: CreateOrderPayloa
 }
 export function getOrders(
     businessId: string,
-    params: { page: number; limit: number; status?: OrderStatus },
+    params: { page: number; limit: number; status?: OrderStatus; search?: string },
 ) {
     return request(() =>
         apiClient.get<OrdersResponse>(

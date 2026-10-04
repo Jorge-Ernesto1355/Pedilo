@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
     ArrowRight,
     BellRing,
@@ -9,6 +9,7 @@ import {
     CircleX,
     LoaderCircle,
     RefreshCw,
+    Search,
     ShoppingBag,
     X,
 } from 'lucide-react'
@@ -99,11 +100,26 @@ function statusErrorMessage(error: unknown) {
 export default function OrdersPage() {
     const [page, setPage] = useState(1)
     const [status, setStatus] = useState<OrderStatus | undefined>()
+    const [search, setSearch] = useState('')
+    const [debouncedSearch, setDebouncedSearch] = useState('')
     const [selectedId, setSelectedId] = useState<string | null>(null)
     const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null)
     const [mutationErrorOrderId, setMutationErrorOrderId] = useState<string | null>(null)
     const [limit] = useState(20)
-    const query = useOrders({ page, limit, status })
+    useEffect(() => {
+        const timer = window.setTimeout(() => {
+            setPage(1)
+            setDebouncedSearch(search.trim())
+        }, 350)
+
+        return () => window.clearTimeout(timer)
+    }, [search])
+    const query = useOrders({
+        page,
+        limit,
+        status,
+        search: debouncedSearch || undefined,
+    })
     const detail = useOrder(selectedId)
     const mutation = useOrderStatusMutation()
     const settings = useBusinessSettings(true)
@@ -127,6 +143,12 @@ export default function OrdersPage() {
                 onSettled: () => setUpdatingOrderId(null),
             },
         )
+    }
+
+    function clearSearch() {
+        setSearch('')
+        setDebouncedSearch('')
+        setPage(1)
     }
 
     if (query.isLoading) return <OrdersSkeleton />
@@ -170,6 +192,41 @@ export default function OrdersPage() {
                     </button>
                 </div>
             </header>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <label className="relative block min-w-0 flex-1 sm:max-w-[520px]">
+                    <Search
+                        aria-hidden="true"
+                        className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-[#8996A9]"
+                    />
+                    <input
+                        type="search"
+                        value={search}
+                        onChange={(event) => setSearch(event.target.value)}
+                        placeholder="Buscar pedido, nombre o teléfono…"
+                        aria-label="Buscar pedidos por número, nombre o teléfono"
+                        className="h-11 w-full rounded-xl border border-[#D7E1EF] bg-white py-2.5 pl-10 pr-10 text-sm text-[#243556] outline-none transition placeholder:text-[#8996A9] focus:border-[#2451C5] focus:ring-2 focus:ring-[#2451C5]/15"
+                    />
+                    {search && (
+                        <button
+                            type="button"
+                            onClick={clearSearch}
+                            className="absolute right-2 top-1/2 grid size-7 -translate-y-1/2 place-items-center rounded-lg text-[#8996A9] transition hover:bg-[#F2F5FA] hover:text-[#243556] focus:outline-none focus:ring-2 focus:ring-[#2451C5]/20"
+                            aria-label="Limpiar búsqueda"
+                        >
+                            <X className="size-4" />
+                        </button>
+                    )}
+                </label>
+                {query.isFetching && debouncedSearch && (
+                    <span
+                        className="inline-flex items-center gap-2 px-1 text-xs text-[#8996A9]"
+                        role="status"
+                    >
+                        <LoaderCircle className="size-3.5 animate-spin" />
+                        Buscando…
+                    </span>
+                )}
+            </div>
             {query.isError ? (
                 <DashboardErrorState
                     title="No pudimos cargar tus pedidos"
@@ -179,8 +236,12 @@ export default function OrdersPage() {
             ) : query.data?.orders.length === 0 ? (
                 <EmptyState
                     icon={ShoppingBag}
-                    title="Aún no tienes pedidos"
-                    description="Cuando tus clientes realicen un pedido, aparecerá aquí."
+                    title={debouncedSearch ? 'No encontramos pedidos' : 'Aún no tienes pedidos'}
+                    description={
+                        debouncedSearch
+                            ? 'Prueba con otro número, nombre o teléfono.'
+                            : 'Cuando tus clientes realicen un pedido, aparecerá aquí.'
+                    }
                 />
             ) : (
                 <div className="space-y-3">

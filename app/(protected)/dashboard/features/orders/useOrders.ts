@@ -4,7 +4,12 @@ import { useAuthStore } from '@/store/authStore'
 import { getOrder, getOrders, updateOrderStatus } from '@/src/lib/api/orderApi'
 import type { OrderStatus } from '@/src/lib/api/order-types'
 import { sileo } from 'sileo'
-export function useOrders(params: { page: number; limit: number; status?: OrderStatus }) {
+export function useOrders(params: {
+    page: number
+    limit: number
+    status?: OrderStatus
+    search?: string
+}) {
     const businessId = useAuthStore((state) => state.user?.businessId)
     return useQuery({
         queryKey: ['orders', businessId, params],
