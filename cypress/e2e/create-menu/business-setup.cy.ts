@@ -14,8 +14,18 @@ type BusinessApi = {
 
 const uniqueSuffix = () => `${Date.now()}${Cypress._.random(100, 999)}`
 
+function inspect(label: string) {
+    cy.log(label)
+    cy.env(['uiDelay', 'pauseForInspection']).then(({ uiDelay, pauseForInspection }) => {
+        const delay = Number(uiDelay ?? 0)
+        if (delay > 0) cy.wait(delay)
+        if (pauseForInspection === true) cy.pause()
+    })
+}
+
 function registerFreshOwner(email: string, password: string) {
     cy.visit('/auth/register')
+    inspect('Página de registro cargada')
     cy.get('[data-testid="register-name"]').type('Cypress Business Owner')
     cy.get('[data-testid="register-email"]').type(email)
     cy.get('[data-testid="register-password"]').type(password)
@@ -23,10 +33,12 @@ function registerFreshOwner(email: string, password: string) {
     cy.get('[data-testid="register-terms"]').check()
     cy.get('[data-testid="register-submit"]').click()
     cy.location('pathname', { timeout: 15_000 }).should('eq', '/auth/login')
+    inspect('Registro completado; página de login cargada')
     cy.get('[data-testid="login-email"]').type(email)
     cy.get('[data-testid="login-password"]').type(password)
     cy.get('[data-testid="login-submit"]').click()
     cy.location('pathname', { timeout: 15_000 }).should('eq', '/create-menu')
+    inspect('Sesión iniciada; create-menu cargado')
 }
 
 function stubEmptyBusiness() {
@@ -40,6 +52,7 @@ function visitCreateMenu() {
     stubEmptyBusiness()
     cy.visit('/create-menu')
     cy.contains('h1', 'Cuéntanos sobre tu negocio.').should('be.visible')
+    inspect('Formulario de negocio visible')
 }
 
 function fillBusinessProfile(overrides: Partial<Record<string, string>> = {}) {
@@ -91,6 +104,7 @@ function businessResponse(overrides: Partial<BusinessApi> = {}): BusinessApi {
 describe('Crear menú · perfil del restaurante', () => {
     let registerEmail = ''
     let registerPassword = 'Strong-pass-123'
+    let ownerEmail = ''
 
     before(function () {
         cy.env(['testRegisterEmail', 'testRegisterPassword']).then(function ({
@@ -104,21 +118,15 @@ describe('Crear menú · perfil del restaurante', () => {
 
             registerPassword = testRegisterPassword
             registerEmail = testRegisterEmail ?? 'cypress-business@example.test'
+            const suffix = uniqueSuffix()
+            ownerEmail = registerEmail.includes('@')
+                ? registerEmail.replace('@', `+${suffix}@`)
+                : `cypress-business-${suffix}@example.test`
         })
     })
 
     beforeEach(() => {
-        const suffix = uniqueSuffix()
-        const email = registerEmail.includes('@')
-            ? registerEmail.replace('@', `+${suffix}@`)
-            : `cypress-business-${suffix}@example.test`
-
-        cy.session(email, () => registerFreshOwner(email, registerPassword), {
-            validate() {
-                cy.visit('/create-menu')
-                cy.location('pathname').should('eq', '/create-menu')
-            },
-        })
+        cy.session(ownerEmail, () => registerFreshOwner(ownerEmail, registerPassword), {})
         visitCreateMenu()
     })
 

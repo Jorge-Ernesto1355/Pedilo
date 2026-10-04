@@ -15,7 +15,9 @@
         "test:e2e": "cypress run",
         "test:e2e:open": "cypress open",
         "test:e2e:auth": "cypress run --spec 'cypress/e2e/auth/**/*.cy.ts'",
-        "test:e2e:auth:open": "cypress open --e2e --browser electron"
+        "test:e2e:auth:open": "cypress open --e2e --browser electron",
+        "test:e2e:create-menu:open": "cypress open --e2e --browser electron --spec 'cypress/e2e/create-menu/business-setup.cy.ts'",
+        "test:e2e:create-menu:headed": "cypress run --headed --browser electron --spec 'cypress/e2e/create-menu/business-setup.cy.ts'"
     },
     "dependencies": {
         "@base-ui/react": "^1.8.0",

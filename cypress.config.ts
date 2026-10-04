@@ -29,6 +29,8 @@ export default defineConfig({
         testUserPassword,
         testRegisterEmail,
         testRegisterPassword,
+        uiDelay: Number(process.env.CYPRESS_UI_DELAY ?? 0),
+        pauseForInspection: process.env.CYPRESS_PAUSE_FOR_INSPECTION === 'true',
     },
     viewportWidth: 1440,
     viewportHeight: 900,
