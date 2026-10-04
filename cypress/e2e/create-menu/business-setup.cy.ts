@@ -442,3 +442,5 @@ describe('Crear menú · perfil del restaurante', () => {
         cy.get('#close-time').should('have.value', '21:00')
     })
 })
+
+export {}
