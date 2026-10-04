@@ -59,11 +59,11 @@ export function getDashboardData(range: DateRange): DashboardData {
         orders: {
             total: orderCount,
             recent: [
-                { id: '#1048', customer: 'Jorge Ramírez', amount: 307, status: 'completed' },
+                { id: '#1048', customer: 'Jorge Ramírez', amount: 307, status: 'ready' },
                 { id: '#1047', customer: 'Mariana López', amount: 189, status: 'preparing' },
                 { id: '#1046', customer: 'Carlos Vega', amount: 425, status: 'pending' },
-                { id: '#1045', customer: 'Ana Torres', amount: 248, status: 'completed' },
-                { id: '#1044', customer: 'Luis Pérez', amount: 156, status: 'completed' },
+                { id: '#1045', customer: 'Ana Torres', amount: 248, status: 'ready' },
+                { id: '#1044', customer: 'Luis Pérez', amount: 156, status: 'ready' },
             ],
         },
         products: {

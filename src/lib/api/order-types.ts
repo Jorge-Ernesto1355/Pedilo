@@ -1,11 +1,4 @@
-export const ORDER_STATUSES = [
-    'PENDING',
-    'CONFIRMED',
-    'PREPARING',
-    'READY',
-    'COMPLETED',
-    'CANCELLED',
-] as const
+export const ORDER_STATUSES = ['PENDING', 'PREPARING', 'READY', 'CANCELLED'] as const
 export type OrderStatus = (typeof ORDER_STATUSES)[number]
 export type OrderItem = {
     id?: string

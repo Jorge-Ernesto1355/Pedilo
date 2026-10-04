@@ -22,3 +22,20 @@ export function formatBusinessDate(value: string | undefined, timezone = 'Americ
         }).format(new Date(value))
     }
 }
+
+export function formatBusinessTime(value: string | undefined, timezone = 'America/Mazatlan') {
+    if (!value) return '—'
+
+    try {
+        return new Intl.DateTimeFormat('es-MX', {
+            hour: 'numeric',
+            minute: '2-digit',
+            timeZone: timezone,
+        }).format(new Date(value))
+    } catch {
+        return new Intl.DateTimeFormat('es-MX', {
+            hour: 'numeric',
+            minute: '2-digit',
+        }).format(new Date(value))
+    }
+}

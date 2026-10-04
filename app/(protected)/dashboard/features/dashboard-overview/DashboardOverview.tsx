@@ -180,11 +180,13 @@ function toOrdersData(
             customer: order.customerName,
             amount: order.total,
             status:
-                order.status === 'COMPLETED'
-                    ? 'completed'
-                    : order.status === 'PENDING'
-                      ? 'pending'
-                      : 'preparing',
+                order.status === 'READY'
+                    ? 'ready'
+                    : order.status === 'CANCELLED'
+                      ? 'cancelled'
+                      : order.status === 'PENDING'
+                        ? 'pending'
+                        : 'preparing',
         })),
     }
 }

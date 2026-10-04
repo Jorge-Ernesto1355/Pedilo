@@ -32,7 +32,7 @@ export function useOrderStatusMutation() {
             client.setQueryData(['order', order.id], order)
             sileo.success({
                 title: 'Estado actualizado',
-                description: `Pedido #${order.orderNumber}: ${order.status}`,
+                description: `Pedido #${order.orderNumber} actualizado correctamente.`,
             })
         },
         onError: (error) =>

@@ -23,7 +23,7 @@ export type SalesDashboardResponse = {
 
 export type SalesData = SalesDashboardResponse
 
-export type OrderStatus = 'completed' | 'pending' | 'preparing'
+export type OrderStatus = 'pending' | 'preparing' | 'ready' | 'cancelled'
 
 export type Order = {
     id: string

@@ -1,39 +1,107 @@
 'use client'
 
 import { useState } from 'react'
-import { RefreshCw, ShoppingBag, X } from 'lucide-react'
+import {
+    ArrowRight,
+    BellRing,
+    ChefHat,
+    CircleCheck,
+    CircleX,
+    LoaderCircle,
+    RefreshCw,
+    ShoppingBag,
+    X,
+} from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { ApiError } from '@/app/auth/lib/client/api-error'
-import { ORDER_STATUSES, type OrderStatus } from '@/src/lib/api/order-types'
+import { ORDER_STATUSES, type Order, type OrderStatus } from '@/src/lib/api/order-types'
 import { useOrder, useOrders, useOrderStatusMutation } from '../features/orders/useOrders'
 import { DashboardErrorState } from '../components/DashboardErrorState'
 import { OrdersSkeleton } from '../components/DashboardSkeletons'
 import { EmptyState } from '../components/EmptyState'
 import { useBusinessSettings } from '../../create-menu/features/business-settings/useBusinessSettings'
-import { formatBusinessDate, formatMoney } from '../features/dashboard-data/formatters'
+import {
+    formatBusinessDate,
+    formatBusinessTime,
+    formatMoney,
+} from '../features/dashboard-data/formatters'
 
-const labels: Record<OrderStatus, string> = {
-    PENDING: 'Pendiente',
-    CONFIRMED: 'Confirmado',
-    PREPARING: 'Preparando',
-    READY: 'Listo',
-    COMPLETED: 'Completado',
-    CANCELLED: 'Cancelado',
+type StatusMeta = {
+    label: string
+    description: string
+    actionLabel?: string
+    icon: LucideIcon
+    badge: string
+    dot: string
+    panel: string
+    button: string
 }
-const next: Record<OrderStatus, OrderStatus[]> = {
-    PENDING: ['CONFIRMED', 'CANCELLED'],
-    CONFIRMED: ['PREPARING', 'CANCELLED'],
-    PREPARING: ['READY', 'CANCELLED'],
-    READY: ['COMPLETED', 'CANCELLED'],
-    COMPLETED: [],
-    CANCELLED: [],
+
+const statusMeta: Record<OrderStatus, StatusMeta> = {
+    PENDING: {
+        label: 'Nueva',
+        description: 'Orden recibida',
+        actionLabel: 'Empezar a preparar',
+        icon: BellRing,
+        badge: 'border-[#F4D99B] bg-[#FFF8E8] text-[#9A6500]',
+        dot: 'bg-[#D59A21]',
+        panel: 'border-[#F4D99B] bg-[#FFFCF4]',
+        button: 'bg-[#C88713] text-white hover:bg-[#AE7008]',
+    },
+    PREPARING: {
+        label: 'Preparando',
+        description: 'El restaurante está preparando la orden',
+        actionLabel: 'Marcar como lista',
+        icon: ChefHat,
+        badge: 'border-[#B9CDFD] bg-[#EEF3FF] text-[#2451C5]',
+        dot: 'bg-[#315FE8]',
+        panel: 'border-[#C8D8FF] bg-[#F7F9FF]',
+        button: 'bg-[#2451C5] text-white hover:bg-[#1E40AF]',
+    },
+    READY: {
+        label: '¡Lista!',
+        description: 'La orden está lista para entregar',
+        icon: CircleCheck,
+        badge: 'border-[#B8E2C8] bg-[#EEF8F2] text-[#23794A]',
+        dot: 'bg-[#39A86B]',
+        panel: 'border-[#B8E2C8] bg-[#F7FCF8]',
+        button: 'bg-[#23814C] text-white hover:bg-[#1D6B3F]',
+    },
+    CANCELLED: {
+        label: 'Cancelada',
+        description: 'La orden fue cancelada',
+        icon: CircleX,
+        badge: 'border-[#F3C2BD] bg-[#FFF3F1] text-[#B42318]',
+        dot: 'bg-[#C94B4B]',
+        panel: 'border-[#F3C2BD] bg-[#FFF9F8]',
+        button: 'bg-[#B42318] text-white hover:bg-[#921C14]',
+    },
 }
-const badge = (status: OrderStatus) =>
-    `inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${status === 'CANCELLED' ? 'bg-[#FFF0EF] text-[#B42318]' : status === 'COMPLETED' ? 'bg-[#EEF8F2] text-[#23814C]' : 'bg-[#EEF3FF] text-[#2451C5]'}`
+
+function nextStatus(status: OrderStatus): OrderStatus | null {
+    if (status === 'PENDING') return 'PREPARING'
+    if (status === 'PREPARING') return 'READY'
+    return null
+}
+
+function canCancel(status: OrderStatus) {
+    return status !== 'CANCELLED'
+}
+
+function statusErrorMessage(error: unknown) {
+    if (error instanceof ApiError && error.code === 'ORDER_INVALID_STATUS_TRANSITION')
+        return 'La orden cambió en otra sesión. Actualiza la lista e inténtalo de nuevo.'
+    if (error instanceof ApiError && error.code === 'ORDER_NOT_FOUND')
+        return 'La orden ya no existe o no está disponible.'
+    return 'No pudimos actualizar el estado. Inténtalo nuevamente.'
+}
 
 export default function OrdersPage() {
     const [page, setPage] = useState(1)
     const [status, setStatus] = useState<OrderStatus | undefined>()
     const [selectedId, setSelectedId] = useState<string | null>(null)
+    const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null)
+    const [mutationErrorOrderId, setMutationErrorOrderId] = useState<string | null>(null)
     const [limit] = useState(20)
     const query = useOrders({ page, limit, status })
     const detail = useOrder(selectedId)
@@ -43,8 +111,23 @@ export default function OrdersPage() {
     const timezone = settings.settings.data?.timezone ?? 'America/Mazatlan'
     const totalPages = query.data ? Math.max(1, Math.ceil(query.data.total / limit)) : 1
     const visiblePages = Array.from({ length: totalPages }, (_, index) => index + 1).filter(
-        (value) => totalPages <= 7 || value === 1 || value === totalPages || Math.abs(value - page) <= 1,
+        (value) =>
+            totalPages <= 7 || value === 1 || value === totalPages || Math.abs(value - page) <= 1,
     )
+
+    function changeStatus(orderId: string, next: OrderStatus) {
+        if (mutation.isPending) return
+        setUpdatingOrderId(orderId)
+        setMutationErrorOrderId(null)
+        mutation.mutate(
+            { orderId, status: next },
+            {
+                onError: () => setMutationErrorOrderId(orderId),
+                onSuccess: () => setMutationErrorOrderId(null),
+                onSettled: () => setUpdatingOrderId(null),
+            },
+        )
+    }
 
     if (query.isLoading) return <OrdersSkeleton />
 
@@ -56,6 +139,9 @@ export default function OrdersPage() {
                     <h1 className="mt-2 font-display text-3xl tracking-[-.06em] text-[#12234A]">
                         Pedidos
                     </h1>
+                    <p className="mt-2 max-w-xl text-sm text-[#65738A]">
+                        Avanza cada orden desde aquí mientras la preparas.
+                    </p>
                 </div>
                 <div className="flex gap-2">
                     <select
@@ -64,22 +150,23 @@ export default function OrdersPage() {
                             setPage(1)
                             setStatus((event.target.value || undefined) as OrderStatus | undefined)
                         }}
-                        className="rounded-xl border border-[#D7E1EF] bg-white px-3 py-2.5 text-sm"
+                        className="rounded-xl border border-[#D7E1EF] bg-white px-3 py-2.5 text-sm text-[#243556] outline-none transition focus:border-[#2451C5] focus:ring-2 focus:ring-[#2451C5]/15"
+                        aria-label="Filtrar pedidos por estado"
                     >
                         <option value="">Todos los estados</option>
                         {ORDER_STATUSES.map((item) => (
                             <option key={item} value={item}>
-                                {labels[item]}
+                                {statusMeta[item].label}
                             </option>
                         ))}
                     </select>
                     <button
                         type="button"
                         onClick={() => void query.refetch()}
-                        className="grid size-11 place-items-center rounded-xl border border-[#D7E1EF] bg-white text-[#65738A]"
+                        className="grid size-11 place-items-center rounded-xl border border-[#D7E1EF] bg-white text-[#65738A] transition hover:border-[#B9CDFD] hover:text-[#2451C5] focus:outline-none focus:ring-2 focus:ring-[#2451C5]/15"
                         aria-label="Actualizar pedidos"
                     >
-                        <RefreshCw className="size-4" />
+                        <RefreshCw className={`size-4 ${query.isFetching ? 'animate-spin' : ''}`} />
                     </button>
                 </div>
             </header>
@@ -96,43 +183,34 @@ export default function OrdersPage() {
                     description="Cuando tus clientes realicen un pedido, aparecerá aquí."
                 />
             ) : (
-                <div className="overflow-hidden rounded-2xl border border-[#DCE5F3] bg-white">
-                    <div className="hidden grid-cols-[1fr_1.2fr_1fr_1fr_1fr_auto] gap-4 border-b border-[#E8EEF6] px-5 py-3 text-xs font-semibold uppercase tracking-wide text-[#8996A9] sm:grid">
-                        <span>Pedido</span><span>Cliente</span><span>Teléfono</span><span>Total</span><span>Estado</span><span>Acciones</span>
+                <div className="space-y-3">
+                    <div className="flex items-center justify-between px-1">
+                        <p className="text-xs font-semibold uppercase tracking-[.14em] text-[#8996A9]">
+                            Cola de trabajo
+                        </p>
+                        <p className="text-xs text-[#8996A9]">
+                            {query.data?.total ?? 0} {query.data?.total === 1 ? 'orden' : 'órdenes'}
+                        </p>
                     </div>
-                    <div className="divide-y divide-[#E8EEF6]">
-                        {query.data?.orders.map((order) => (
-                            <button
-                                key={order.id}
-                                type="button"
-                                onClick={() => setSelectedId(order.id)}
-                                className="grid w-full gap-3 px-5 py-4 text-left transition hover:bg-[#F8FAFE] sm:grid-cols-[1fr_1.2fr_1fr_1fr_1fr_auto] sm:items-center"
-                            >
-                                <div>
-                                    <p className="font-bold text-[#12234A]">
-                                        Pedido #{order.orderNumber}
-                                    </p>
-                                    <p className="mt-1 text-xs text-[#8996A9]">
-                                        {formatBusinessDate(order.createdAt, timezone)}
-                                    </p>
-                                </div>
-                                <div>
-                                    <p className="text-sm font-semibold text-[#243556]">
-                                        {order.customerName}
-                                    </p>
-                                    <p className="text-xs text-[#65738A] sm:hidden">{order.customerPhone}</p>
-                                </div>
-                                <p className="hidden text-sm text-[#65738A] sm:block">{order.customerPhone}</p>
-                                <p className="text-sm font-bold text-[#1E40AF]">{formatMoney(order.total, currency)}</p>
-                                <span className={badge(order.status)}>{labels[order.status]}</span>
-                                <span className="text-xs font-bold text-[#2451C5]">Ver</span>
-                            </button>
-                        ))}
-                    </div>
+                    {query.data?.orders.map((order) => (
+                        <OrderCard
+                            key={order.id}
+                            order={order}
+                            currency={currency}
+                            timezone={timezone}
+                            isUpdating={updatingOrderId === order.id}
+                            hasMutationError={mutationErrorOrderId === order.id}
+                            errorMessage={
+                                mutation.error ? statusErrorMessage(mutation.error) : undefined
+                            }
+                            onOpen={() => setSelectedId(order.id)}
+                            onStatusChange={changeStatus}
+                        />
+                    ))}
                 </div>
             )}
             {query.data && totalPages > 1 && (
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-4">
                     <p className="text-xs text-[#8996A9]">
                         Página {page} de {totalPages}
                     </p>
@@ -141,7 +219,7 @@ export default function OrdersPage() {
                             type="button"
                             disabled={page <= 1}
                             onClick={() => setPage((value) => value - 1)}
-                            className="rounded-lg border border-[#D7E1EF] px-3 py-2 text-sm disabled:opacity-40"
+                            className="rounded-lg border border-[#D7E1EF] px-3 py-2 text-sm text-[#243556] transition hover:border-[#B9CDFD] disabled:opacity-40"
                         >
                             Anterior
                         </button>
@@ -151,7 +229,7 @@ export default function OrdersPage() {
                                 type="button"
                                 aria-current={value === page ? 'page' : undefined}
                                 onClick={() => setPage(value)}
-                                className={`min-w-9 rounded-lg border px-3 py-2 text-sm ${value === page ? 'border-[#2451C5] bg-[#2451C5] font-bold text-white' : 'border-[#D7E1EF] text-[#243556]'}`}
+                                className={`min-w-9 rounded-lg border px-3 py-2 text-sm transition ${value === page ? 'border-[#2451C5] bg-[#2451C5] font-bold text-white' : 'border-[#D7E1EF] text-[#243556] hover:border-[#B9CDFD]'}`}
                             >
                                 {value}
                             </button>
@@ -160,7 +238,7 @@ export default function OrdersPage() {
                             type="button"
                             disabled={page >= totalPages}
                             onClick={() => setPage((value) => value + 1)}
-                            className="rounded-lg border border-[#D7E1EF] px-3 py-2 text-sm disabled:opacity-40"
+                            className="rounded-lg border border-[#D7E1EF] px-3 py-2 text-sm text-[#243556] transition hover:border-[#B9CDFD] disabled:opacity-40"
                         >
                             Siguiente
                         </button>
@@ -168,126 +246,390 @@ export default function OrdersPage() {
                 </div>
             )}
             {selectedId && (
-                <div className="fixed inset-0 z-50 grid place-items-center bg-[#10224A]/25 p-4">
-                    <section
-                        role="dialog"
-                        aria-modal="true"
-                        className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-6"
-                    >
-                        <div className="flex justify-between gap-4">
-                            <div>
-                                <p className="text-xs font-bold uppercase tracking-[.15em] text-[#2451C5]">
-                                    Detalle
-                                </p>
-                                <h2 className="mt-1 font-display text-2xl text-[#12234A]">
-                                    Pedido #{detail.data?.orderNumber ?? '…'}
-                                </h2>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => setSelectedId(null)}
-                                aria-label="Cerrar"
-                            >
-                                <X />
-                            </button>
-                        </div>
-                        {detail.isLoading ? (
-                            <p className="mt-6 text-sm text-[#65738A]">Cargando detalle…</p>
-                        ) : (
-                            detail.data && (
-                                <div className="mt-6 space-y-5">
-                                    <div className="flex items-center justify-between">
-                                        <span className={badge(detail.data.status)}>
-                                            {labels[detail.data.status]}
-                                        </span>
-                                        <span className="font-display text-xl text-[#12234A]">{formatMoney(detail.data.total, currency)}</span>
-                                    </div>
-                                    <div className="rounded-xl bg-[#F8FAFE] p-4 text-sm">
-                                        <p className="font-bold text-[#243556]">
-                                            {detail.data.customerName}
-                                        </p>
-                                        <p className="mt-1 text-[#65738A]">
-                                        {detail.data.customerPhone}
-                                        </p>
-                                        <p className="mt-1 text-xs text-[#8996A9]">
-                                            {formatBusinessDate(detail.data.createdAt, timezone)}
-                                        </p>
-                                        {detail.data.notes && (
-                                            <p className="mt-3 border-t border-[#E8EEF6] pt-3 text-[#65738A]">
-                                                {detail.data.notes}
-                                            </p>
-                                        )}
-                                    </div>
-                                    <div className="space-y-3">
-                                        <div className="flex justify-between border-b border-[#E8EEF6] pb-3 text-sm">
-                                            <span className="text-[#65738A]">Subtotal</span>
-                                            <strong>{formatMoney(detail.data.subtotal, currency)}</strong>
-                                        </div>
-                                        {detail.data.items.map((item, index) => (
-                                            <div
-                                                key={item.id ?? `${item.productId}-${index}`}
-                                                className="flex justify-between gap-4 border-b border-[#E8EEF6] pb-3 text-sm"
-                                            >
-                                                <span>
-                                                    {item.quantity} ×{' '}
-                                                    {item.productName ??
-                                                        item.name ??
-                                                        item.productId}
-                                                </span>
-                                                <span className="font-semibold">
-                                                    {formatMoney(item.subtotal ?? ((item.unitPrice ?? 0) * item.quantity), currency)}
-                                                </span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                    <div>
-                                        <p className="mb-3 text-sm font-bold text-[#243556]">
-                                            Historial
-                                        </p>
-                                        <div className="space-y-2 text-xs text-[#65738A]">
-                                            {detail.data.statusHistory.map((entry) => (
-                                                <p key={`${entry.status}-${entry.createdAt}`}>
-                                                    <strong>{labels[entry.status]}</strong> · {formatBusinessDate(entry.createdAt, timezone)}
-                                                </p>
-                                            ))}
-                                        </div>
-                                    </div>
-                                    {next[detail.data.status].length > 0 && (
-                                        <div className="flex flex-wrap gap-2 border-t border-[#E8EEF6] pt-4">
-                                            {next[detail.data.status].map((nextStatus) => (
-                                                <button
-                                                    key={nextStatus}
-                                                    type="button"
-                                                    disabled={mutation.isPending}
-                                                    onClick={() =>
-                                                        mutation.mutate({
-                                                            orderId: detail.data!.id,
-                                                            status: nextStatus,
-                                                        })
-                                                    }
-                                                    className="rounded-xl bg-[#1E40AF] px-3 py-2 text-sm font-bold text-white disabled:opacity-50"
-                                                >
-                                                    {labels[nextStatus]}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
-                                    {mutation.isError && (
-                                        <p role="alert" className="text-sm text-[#B42318]">
-                                            {mutation.error instanceof ApiError &&
-                                            mutation.error.code === 'ORDER_INVALID_STATUS_TRANSITION'
-                                                ? 'No se puede realizar esa transición.'
-                                                : mutation.error instanceof ApiError && mutation.error.code === 'ORDER_NOT_FOUND'
-                                                  ? 'El pedido ya no existe o no está disponible.'
-                                                  : 'No pudimos actualizar el estado.'}
-                                        </p>
-                                    )}
-                                </div>
-                            )
-                        )}
-                    </section>
-                </div>
+                <OrderDetailModal
+                    order={detail.data}
+                    isLoading={detail.isLoading}
+                    currency={currency}
+                    timezone={timezone}
+                    isUpdating={updatingOrderId === selectedId}
+                    hasMutationError={mutationErrorOrderId === selectedId}
+                    errorMessage={mutation.error ? statusErrorMessage(mutation.error) : undefined}
+                    onClose={() => setSelectedId(null)}
+                    onStatusChange={changeStatus}
+                />
             )}
         </main>
+    )
+}
+
+function OrderCard({
+    order,
+    currency,
+    timezone,
+    isUpdating,
+    hasMutationError,
+    errorMessage,
+    onOpen,
+    onStatusChange,
+}: {
+    order: Order
+    currency: string
+    timezone: string
+    isUpdating: boolean
+    hasMutationError: boolean
+    errorMessage?: string
+    onOpen: () => void
+    onStatusChange: (orderId: string, status: OrderStatus) => void
+}) {
+    const meta = statusMeta[order.status]
+    const Icon = meta.icon
+    const next = nextStatus(order.status)
+
+    return (
+        <article
+            className={`overflow-hidden rounded-2xl border bg-white shadow-[0_8px_22px_rgb(20_48_105_/_0.045)] transition hover:shadow-[0_12px_30px_rgb(20_48_105_/_0.08)] ${isUpdating ? 'border-[#B9CDFD]' : 'border-[#DCE5F3]'}`}
+        >
+            <div className="grid gap-4 p-4 sm:grid-cols-[minmax(0,1fr)_minmax(280px,360px)] sm:items-center sm:p-5">
+                <button
+                    type="button"
+                    onClick={onOpen}
+                    className="min-w-0 text-left outline-none focus-visible:ring-2 focus-visible:ring-[#2451C5] focus-visible:ring-offset-2"
+                >
+                    <span className="flex items-start gap-3">
+                        <span
+                            className={`mt-0.5 grid size-10 shrink-0 place-items-center rounded-xl ${meta.badge}`}
+                        >
+                            <Icon className="size-5" aria-hidden="true" />
+                        </span>
+                        <span className="min-w-0">
+                            <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                <span className="font-display text-lg tracking-[-.03em] text-[#12234A]">
+                                    Pedido #{order.orderNumber}
+                                </span>
+                                <span className="text-xs text-[#8996A9]">
+                                    {formatBusinessTime(order.createdAt ?? '', timezone)}
+                                </span>
+                            </span>
+                            <span className="mt-1 block truncate text-sm font-semibold text-[#243556]">
+                                {order.customerName}
+                            </span>
+                            <span className="mt-1 block text-xs text-[#65738A]">
+                                {order.items.length}{' '}
+                                {order.items.length === 1 ? 'producto' : 'productos'} ·{' '}
+                                {formatMoney(order.total, currency)}
+                            </span>
+                        </span>
+                    </span>
+                </button>
+                <div className="flex min-w-0 items-center justify-between gap-3 rounded-xl border border-[#EDF2F9] bg-[#FBFCFE] p-3 sm:justify-end sm:border-0 sm:bg-transparent sm:p-0">
+                    <div
+                        className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-bold motion-safe:transition-all ${meta.badge} ${isUpdating ? 'scale-[.98] opacity-70' : ''}`}
+                    >
+                        <span className={`size-2 rounded-full ${meta.dot}`} />
+                        {meta.label}
+                    </div>
+                    <div className="flex items-center gap-2">
+                        {next && (
+                            <button
+                                type="button"
+                                disabled={isUpdating}
+                                onClick={() => onStatusChange(order.id, next)}
+                                className={`inline-flex min-h-10 items-center gap-2 rounded-xl px-3 text-xs font-bold shadow-sm transition hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-[#2451C5]/30 disabled:cursor-wait disabled:opacity-60 ${meta.button}`}
+                            >
+                                {isUpdating ? (
+                                    <LoaderCircle className="size-4 animate-spin" />
+                                ) : (
+                                    <ArrowRight className="size-4" />
+                                )}
+                                <span className="hidden sm:inline">
+                                    {isUpdating ? 'Actualizando…' : meta.actionLabel}
+                                </span>
+                                <span className="sm:hidden">{isUpdating ? '…' : 'Avanzar'}</span>
+                            </button>
+                        )}
+                        {canCancel(order.status) && (
+                            <button
+                                type="button"
+                                disabled={isUpdating}
+                                onClick={() => onStatusChange(order.id, 'CANCELLED')}
+                                className="grid size-10 place-items-center rounded-xl border border-[#F3C2BD] text-[#B42318] transition hover:bg-[#FFF3F1] focus:outline-none focus:ring-2 focus:ring-[#B42318]/20 disabled:cursor-wait disabled:opacity-50"
+                                aria-label={`Cancelar pedido #${order.orderNumber}`}
+                                title="Cancelar pedido"
+                            >
+                                <CircleX className="size-4" />
+                            </button>
+                        )}
+                    </div>
+                </div>
+            </div>
+            {hasMutationError && errorMessage && (
+                <p
+                    role="alert"
+                    className="border-t border-[#F3C2BD] bg-[#FFF9F8] px-4 py-2.5 text-xs font-medium text-[#B42318] sm:px-5"
+                >
+                    {errorMessage}
+                </p>
+            )}
+        </article>
+    )
+}
+
+function OrderDetailModal({
+    order,
+    isLoading,
+    currency,
+    timezone,
+    isUpdating,
+    hasMutationError,
+    errorMessage,
+    onClose,
+    onStatusChange,
+}: {
+    order?: Order
+    isLoading: boolean
+    currency: string
+    timezone: string
+    isUpdating: boolean
+    hasMutationError: boolean
+    errorMessage?: string
+    onClose: () => void
+    onStatusChange: (orderId: string, status: OrderStatus) => void
+}) {
+    return (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-[#10224A]/35 p-4 backdrop-blur-[2px]">
+            <section
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="order-detail-title"
+                className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-[#DCE5F3] bg-white p-5 shadow-[0_25px_80px_rgb(16_34_74_/_0.2)] sm:p-7"
+            >
+                <div className="flex items-start justify-between gap-4">
+                    <div>
+                        <p className="text-xs font-bold uppercase tracking-[.15em] text-[#2451C5]">
+                            Detalle de orden
+                        </p>
+                        <h2
+                            id="order-detail-title"
+                            className="mt-1 font-display text-2xl tracking-[-.05em] text-[#12234A]"
+                        >
+                            Pedido #{order?.orderNumber ?? '…'}
+                        </h2>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        aria-label="Cerrar detalle"
+                        className="grid size-10 place-items-center rounded-xl text-[#65738A] transition hover:bg-[#F2F5FA] hover:text-[#12234A] focus:outline-none focus:ring-2 focus:ring-[#2451C5]/20"
+                    >
+                        <X className="size-5" />
+                    </button>
+                </div>
+                {isLoading ? (
+                    <div className="mt-8 grid place-items-center py-12 text-sm text-[#65738A]">
+                        <span className="mb-3">
+                            <RefreshCw className="size-6 animate-spin text-[#2451C5]" />
+                        </span>
+                        Cargando detalle…
+                    </div>
+                ) : order ? (
+                    <div className="mt-6 space-y-6">
+                        <div
+                            className={`flex flex-col gap-4 rounded-2xl border p-4 sm:flex-row sm:items-center sm:justify-between ${statusMeta[order.status].panel}`}
+                        >
+                            <div>
+                                <p className="text-xs font-semibold uppercase tracking-[.12em] text-[#65738A]">
+                                    Estado actual
+                                </p>
+                                <div className="mt-2 flex flex-wrap items-center gap-2">
+                                    <span
+                                        className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-bold ${statusMeta[order.status].badge}`}
+                                    >
+                                        <span
+                                            className={`size-2 rounded-full ${statusMeta[order.status].dot}`}
+                                        />
+                                        {statusMeta[order.status].label}
+                                    </span>
+                                    <span className="text-sm text-[#65738A]">
+                                        {statusMeta[order.status].description}
+                                    </span>
+                                </div>
+                            </div>
+                            <p className="font-display text-2xl text-[#12234A]">
+                                {formatMoney(order.total, currency)}
+                            </p>
+                        </div>
+                        <div className="grid gap-3 rounded-2xl bg-[#F8FAFE] p-4 text-sm sm:grid-cols-2">
+                            <div>
+                                <p className="text-xs text-[#8996A9]">Cliente</p>
+                                <p className="mt-1 font-bold text-[#243556]">
+                                    {order.customerName}
+                                </p>
+                                <p className="mt-1 text-[#65738A]">{order.customerPhone}</p>
+                            </div>
+                            <div className="sm:text-right">
+                                <p className="text-xs text-[#8996A9]">Recibida</p>
+                                <p className="mt-1 font-semibold text-[#243556]">
+                                    {formatBusinessDate(order.createdAt, timezone)}
+                                </p>
+                                {order.notes && (
+                                    <p className="mt-2 text-[#65738A] sm:ml-auto sm:max-w-xs">
+                                        {order.notes}
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                        <div>
+                            <div className="mb-3 flex items-center justify-between">
+                                <h3 className="font-display text-lg text-[#12234A]">Productos</h3>
+                                <span className="text-sm text-[#65738A]">
+                                    {formatMoney(order.subtotal, currency)}
+                                </span>
+                            </div>
+                            <div className="divide-y divide-[#E8EEF6] rounded-2xl border border-[#E8EEF6] px-4">
+                                {order.items.map((item, index) => (
+                                    <div
+                                        key={item.id ?? `${item.productId}-${index}`}
+                                        className="flex justify-between gap-4 py-3 text-sm"
+                                    >
+                                        <span className="text-[#243556]">
+                                            {item.quantity} ×{' '}
+                                            {item.productName ?? item.name ?? item.productId}
+                                        </span>
+                                        <span className="shrink-0 font-semibold text-[#243556]">
+                                            {formatMoney(
+                                                item.subtotal ??
+                                                    (item.unitPrice ?? 0) * item.quantity,
+                                                currency,
+                                            )}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        <OrderTimeline
+                            history={order.statusHistory}
+                            timezone={timezone}
+                            currentStatus={order.status}
+                        />
+                        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#E8EEF6] pt-5">
+                            <div className="flex flex-wrap gap-2">
+                                {nextStatus(order.status) && (
+                                    <button
+                                        type="button"
+                                        disabled={isUpdating}
+                                        onClick={() =>
+                                            onStatusChange(order.id, nextStatus(order.status)!)
+                                        }
+                                        className={`inline-flex min-h-11 items-center gap-2 rounded-xl px-4 text-sm font-bold transition hover:-translate-y-0.5 disabled:cursor-wait disabled:opacity-60 ${statusMeta[order.status].button}`}
+                                    >
+                                        {isUpdating ? (
+                                            <LoaderCircle className="size-4 animate-spin" />
+                                        ) : (
+                                            <ArrowRight className="size-4" />
+                                        )}
+                                        {isUpdating
+                                            ? 'Actualizando…'
+                                            : statusMeta[order.status].actionLabel}
+                                    </button>
+                                )}
+                                {canCancel(order.status) && (
+                                    <button
+                                        type="button"
+                                        disabled={isUpdating}
+                                        onClick={() => onStatusChange(order.id, 'CANCELLED')}
+                                        className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[#F3C2BD] px-4 text-sm font-bold text-[#B42318] transition hover:bg-[#FFF3F1] disabled:opacity-50"
+                                    >
+                                        <CircleX className="size-4" />
+                                        Cancelar
+                                    </button>
+                                )}
+                            </div>
+                            {hasMutationError && errorMessage && (
+                                <p role="alert" className="text-xs font-medium text-[#B42318]">
+                                    {errorMessage}
+                                </p>
+                            )}
+                        </div>
+                    </div>
+                ) : null}
+            </section>
+        </div>
+    )
+}
+
+function OrderTimeline({
+    history,
+    timezone,
+    currentStatus,
+}: {
+    history: Order['statusHistory']
+    timezone: string
+    currentStatus: OrderStatus
+}) {
+    const entries = [...(history ?? [])].sort(
+        (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+    )
+    return (
+        <section aria-labelledby="order-history-title">
+            <div className="mb-4 flex items-end justify-between gap-4">
+                <div>
+                    <p className="text-xs font-bold uppercase tracking-[.14em] text-[#2451C5]">
+                        Trazabilidad
+                    </p>
+                    <h3
+                        id="order-history-title"
+                        className="mt-1 font-display text-lg text-[#12234A]"
+                    >
+                        Historial de la orden
+                    </h3>
+                </div>
+                <span className="text-xs text-[#8996A9]">Datos del pedido</span>
+            </div>
+            {entries.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-[#D7E1EF] p-4 text-sm text-[#65738A]">
+                    El backend no devolvió cambios de estado para esta orden.
+                </div>
+            ) : (
+                <ol className="relative ml-3 border-l border-[#D7E1EF] pl-7">
+                    {entries.map((entry, index) => {
+                        const meta = statusMeta[entry.status]
+                        const Icon = meta.icon
+                        const isCurrent =
+                            entry.status === currentStatus && index === entries.length - 1
+                        return (
+                            <li
+                                key={entry.id ?? `${entry.status}-${entry.createdAt}-${index}`}
+                                className="relative pb-6 last:pb-0"
+                            >
+                                <span
+                                    className={`absolute -left-[2.05rem] grid size-8 place-items-center rounded-full border-4 border-white ${meta.badge} ${isCurrent ? 'ring-2 ring-[#2451C5]/15' : ''}`}
+                                >
+                                    <Icon className="size-3.5" />
+                                </span>
+                                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                                    <p
+                                        className={`text-sm font-bold ${isCurrent ? 'text-[#12234A]' : 'text-[#243556]'}`}
+                                    >
+                                        {meta.label}
+                                        {isCurrent && (
+                                            <span className="ml-2 rounded-full bg-[#E8F0FF] px-2 py-0.5 text-[10px] uppercase tracking-wide text-[#2451C5]">
+                                                Actual
+                                            </span>
+                                        )}
+                                    </p>
+                                    <time
+                                        dateTime={entry.createdAt}
+                                        className="text-xs font-medium text-[#8996A9]"
+                                    >
+                                        {formatBusinessTime(entry.createdAt, timezone)}
+                                    </time>
+                                </div>
+                                <p className="mt-1 text-xs text-[#65738A]">{meta.description}</p>
+                            </li>
+                        )
+                    })}
+                </ol>
+            )}
+        </section>
     )
 }
