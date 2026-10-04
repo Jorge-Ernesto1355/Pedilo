@@ -189,16 +189,22 @@ describe('Crear menú · perfil del restaurante', () => {
             location: response.ubication,
             description: response.description,
         })
-        cy.get('#business-logo').selectFile({
-            contents: Cypress.Buffer.from('fake-logo'),
-            fileName: 'logo.png',
-            mimeType: 'image/png',
-        })
-        cy.get('#business-cover').selectFile({
-            contents: Cypress.Buffer.from('fake-cover'),
-            fileName: 'cover.jpg',
-            mimeType: 'image/jpeg',
-        })
+        cy.get('#business-logo').selectFile(
+            {
+                contents: Cypress.Buffer.from('fake-logo'),
+                fileName: 'logo.png',
+                mimeType: 'image/png',
+            },
+            { force: true },
+        )
+        cy.get('#business-cover').selectFile(
+            {
+                contents: Cypress.Buffer.from('fake-cover'),
+                fileName: 'cover.jpg',
+                mimeType: 'image/jpeg',
+            },
+            { force: true },
+        )
         cy.contains('button', 'Marcar ubicación exacta').click()
         cy.get('#latitude').clear().type('24.8091')
         cy.get('#longitude').clear().type('-107.394')

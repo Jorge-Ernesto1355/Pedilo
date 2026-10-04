@@ -51,12 +51,15 @@ describe('Business Setup product editor', () => {
         renderSetup()
 
         const days = screen.getAllByRole('checkbox')
-        for (const day of days.slice(1, 6)) await user.click(day)
+        for (const day of days.slice(2, 6)) await user.click(day)
 
-        expect(days[0]).toHaveAttribute('aria-checked', 'true')
         await user.click(days[0])
+        expect(days[0]).toHaveAttribute('aria-checked', 'false')
+        expect(screen.queryByText('Selecciona al menos un día.')).not.toBeInTheDocument()
 
-        expect(days[0]).toHaveAttribute('aria-checked', 'true')
+        await user.click(days[1])
+
+        expect(days[1]).toHaveAttribute('aria-checked', 'true')
         expect(screen.getByRole('alert')).toHaveTextContent('Selecciona al menos un día.')
     })
 })
