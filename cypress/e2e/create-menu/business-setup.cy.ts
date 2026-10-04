@@ -153,7 +153,23 @@ describe('Crear menú · perfil del restaurante', () => {
         cy.get('#slug').clear()
         cy.get('#open-time').clear().type('19:00')
         cy.get('#close-time').clear().type('09:00')
-        cy.get('[role="checkbox"]').each(($day) => cy.wrap($day).click())
+        cy.get('[role="checkbox"]').then(($days) => {
+            const enabledIndexes = $days
+                .toArray()
+                .flatMap((day, index) =>
+                    day.getAttribute('aria-checked') === 'true' ? [index] : [],
+                )
+            const lastEnabledIndex = enabledIndexes.at(-1)
+
+            expect(enabledIndexes.length).to.be.greaterThan(0)
+            enabledIndexes.slice(0, -1).forEach((index) => {
+                cy.get('[role="checkbox"]').eq(index).click()
+            })
+            if (lastEnabledIndex !== undefined) {
+                cy.get('[role="checkbox"]').eq(lastEnabledIndex).click()
+            }
+        })
+        cy.contains('Selecciona al menos un día.').should('be.visible')
         cy.contains('button', 'Guardar cambios').click()
 
         cy.contains('Escribe el nombre de tu negocio.').should('be.visible')
@@ -273,10 +289,11 @@ describe('Crear menú · perfil del restaurante', () => {
         }).as('createBusiness')
 
         fillBusinessProfile()
-        cy.contains('button', 'Guardar cambios').click()
-        cy.contains('button', 'Guardar cambios')
+        cy.get('form button[type="submit"]').click()
+        cy.get('form button[type="submit"]')
             .should('be.disabled')
             .and('have.attr', 'aria-busy', 'true')
+            .and('contain', 'Creando negocio…')
             .click({ force: true })
         cy.then(() => expect(createCalls).to.eq(1))
         cy.wait('@createBusiness')
@@ -298,7 +315,16 @@ describe('Crear menú · perfil del restaurante', () => {
         cy.contains('button', 'Guardar cambios').click()
         cy.wait('@createBusiness')
         cy.get('#slug').should('have.value', 'slug-existente')
-        cy.contains('La URL del negocio ya está en uso.').should('be.visible')
+        cy.get('#slug')
+            .parent()
+            .find('[role="alert"]')
+            .should('be.visible')
+            .and('contain', 'La URL del negocio ya está en uso.')
+        cy.get('form button[type="submit"]')
+            .parent()
+            .find('[role="alert"]')
+            .should('be.visible')
+            .and('contain', 'La URL del negocio ya está en uso.')
 
         cy.get('#slug').clear().type(`slug-libre-${uniqueSuffix()}`)
         cy.get('#slug').should('have.value.match', /^slug-libre-/)
