@@ -6,7 +6,11 @@ import BusinessSetupScreen from '@/app/(protected)/create-menu/BusinessSetupScre
 
 function renderSetup() {
     const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false } } })
-    return render(<QueryClientProvider client={queryClient}><BusinessSetupScreen /></QueryClientProvider>)
+    return render(
+        <QueryClientProvider client={queryClient}>
+            <BusinessSetupScreen />
+        </QueryClientProvider>,
+    )
 }
 
 describe('Business Setup product editor', () => {
@@ -40,5 +44,19 @@ describe('Business Setup product editor', () => {
         await user.click(screen.getByRole('button', { name: 'Guardar producto' }))
 
         expect(screen.getByRole('alert')).toHaveTextContent('Escribe el precio base.')
+    })
+
+    it('keeps at least one business day selected', async () => {
+        const user = userEvent.setup()
+        renderSetup()
+
+        const days = screen.getAllByRole('checkbox')
+        for (const day of days.slice(1, 6)) await user.click(day)
+
+        expect(days[0]).toHaveAttribute('aria-checked', 'true')
+        await user.click(days[0])
+
+        expect(days[0]).toHaveAttribute('aria-checked', 'true')
+        expect(screen.getByRole('alert')).toHaveTextContent('Selecciona al menos un día.')
     })
 })
