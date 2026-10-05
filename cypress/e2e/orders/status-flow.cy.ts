@@ -48,7 +48,8 @@ function installStatusApi(state: { status: TestOrderStatus }, counters: { update
     })
 
     cy.intercept('GET', '**/businesses/*/orders*', (request) => {
-        request.alias = 'listOrders'
+        const requestStatus = new URL(request.url).searchParams.get('status')
+        request.alias = requestStatus === 'CANCELLED' ? 'listCancelledOrders' : 'listOrders'
         request.reply({
             statusCode: 200,
             body: {
@@ -150,7 +151,7 @@ describe('Cambio rápido de estados de órdenes', () => {
         })
 
         cy.get('select[aria-label="Filtrar pedidos por estado"]').select('CANCELLED')
-        cy.wait('@listOrders').its('request.url').should('include', 'status=CANCELLED')
+        cy.wait('@listCancelledOrders').its('request.url').should('include', 'status=CANCELLED')
         orderCard().contains('Cancelada').should('be.visible')
         cy.then(() => expect(state.status).to.eq('CANCELLED'))
     })
