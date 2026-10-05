@@ -1,3 +1,5 @@
+import { assertPageFitsViewport, assertTouchTargets } from '../../support/responsive'
+
 type PublicOption = {
     id: string
     optionGroupId: string
@@ -31,6 +33,10 @@ type PublicProduct = {
 }
 
 const slug = 'cocina-de-luna'
+const mobileViewports = [
+    { width: 375, height: 812 },
+    { width: 390, height: 844 },
+]
 const catalog = {
     business: {
         id: 'business-public-e2e',
@@ -267,27 +273,33 @@ describe('Catálogo público', () => {
             .and('contain', '$109')
     })
 
-    it('permite cambiar de menú y conserva una composición usable en móvil', () => {
-        installPublicCatalogApi()
+    mobileViewports.forEach(({ width, height }) => {
+        it(`muestra el catálogo sin cortes en ${width}×${height}`, () => {
+            installPublicCatalogApi()
 
-        cy.viewport(390, 844)
-        cy.visit(`/menu/${slug}`)
-        cy.wait('@getPublicCatalog')
+            cy.viewport(width, height)
+            cy.visit(`/menu/${slug}`)
+            cy.wait('@getPublicCatalog')
 
-        cy.get('section[aria-label="Menús"] button').contains('Postres').click()
-        cy.contains('p', 'Algo dulce para terminar.').should('be.visible')
-        cy.get('nav[aria-label="Categorías del menú"]').contains('Postres').should('be.visible')
-        cy.get('#category-category-postres-public-e2e')
-            .should('be.visible')
-            .and('contain', 'Flan de vainilla')
-            .and('contain', '$55.00')
+            cy.contains('h1', 'Cocina de Luna').should('be.visible')
+            cy.get('section[aria-label="Menús"]').should('be.visible')
+            cy.get('nav[aria-label="Categorías del menú"]').should('be.visible')
+            cy.get('#category-category-tacos-public-e2e')
+                .should('be.visible')
+                .and('contain', 'Taco de asada')
+                .and('contain', '$89.00')
+            assertTouchTargets('button[aria-label="Seleccionar opciones para Taco de asada"]')
+            assertPageFitsViewport()
 
-        cy.get('body').should(($body) => {
-            expect($body[0].scrollWidth).to.be.lte($body[0].clientWidth)
+            cy.get('section[aria-label="Menús"] button').contains('Postres').click()
+            cy.contains('p', 'Algo dulce para terminar.').should('be.visible')
+            cy.get('nav[aria-label="Categorías del menú"]').contains('Postres').should('be.visible')
+            cy.get('#category-category-postres-public-e2e')
+                .should('be.visible')
+                .and('contain', 'Flan de vainilla')
+                .and('contain', '$55.00')
+            assertPageFitsViewport()
         })
-        cy.get('h1').should('be.visible')
-        cy.get('section[aria-label="Menús"]').should('be.visible')
-        cy.get('nav[aria-label="Categorías del menú"]').should('be.visible')
     })
 })
 

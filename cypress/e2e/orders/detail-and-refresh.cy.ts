@@ -1,4 +1,14 @@
+import {
+    assertDialogFitsViewport,
+    assertPageFitsViewport,
+    assertTouchTargets,
+} from '../../support/responsive'
+
 type DetailStatus = 'PENDING' | 'PREPARING' | 'READY'
+const mobileViewports = [
+    { width: 375, height: 812 },
+    { width: 390, height: 844 },
+]
 
 const orderId = 'order-detail-refresh-e2e'
 const orderNumber = 5120
@@ -182,6 +192,32 @@ describe('Persistencia de órdenes después de refresh', () => {
             expect(request.url).to.include('status=PREPARING')
         })
         orderCard().should('be.visible')
+    })
+})
+
+describe('Detalle de órdenes en móvil', () => {
+    mobileViewports.forEach(({ width, height }) => {
+        it(`abre y permite leer el detalle en ${width}×${height}`, () => {
+            const state: { status: DetailStatus } = { status: 'READY' }
+
+            cy.viewport(width, height)
+            cy.login()
+            cy.then(() => installDashboardApi(state))
+            cy.visit('/dashboard/orders')
+            cy.wait('@listOrders')
+            assertPageFitsViewport()
+
+            orderCard().contains('button', `Pedido #${orderNumber}`).click()
+            cy.wait('@getOrderDetail')
+            assertDialogFitsViewport('[role="dialog"][aria-labelledby="order-detail-title"]')
+            assertTouchTargets('button[aria-label="Cerrar detalle"]')
+            cy.get('[role="dialog"][aria-labelledby="order-detail-title"]')
+                .should('contain', 'Jorge Ramírez')
+                .and('contain', 'Pizza familiar')
+                .and('contain', '¡Lista!')
+                .and('contain', 'Historial de la orden')
+            assertPageFitsViewport()
+        })
     })
 })
 

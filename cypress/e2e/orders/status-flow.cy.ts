@@ -1,4 +1,10 @@
+import { assertPageFitsViewport, assertTouchTargets } from '../../support/responsive'
+
 type TestOrderStatus = 'PENDING' | 'PREPARING' | 'READY' | 'CANCELLED'
+const mobileViewports = [
+    { width: 375, height: 812 },
+    { width: 390, height: 844 },
+]
 
 const order = {
     id: 'order-status-flow-e2e',
@@ -154,6 +160,34 @@ describe('Cambio rápido de estados de órdenes', () => {
         cy.wait('@listCancelledOrders').its('request.url').should('include', 'status=CANCELLED')
         orderCard().contains('Cancelada').should('be.visible')
         cy.then(() => expect(state.status).to.eq('CANCELLED'))
+    })
+
+    mobileViewports.forEach(({ width, height }) => {
+        it(`permite avanzar una orden desde la lista en ${width}×${height}`, () => {
+            const state: { status: TestOrderStatus } = { status: 'PENDING' }
+            const counters = { updates: 0 }
+
+            cy.viewport(width, height)
+            cy.login()
+            cy.then(() => installStatusApi(state, counters))
+            cy.visit('/dashboard/orders')
+            cy.wait('@listOrders')
+            cy.scrollTo('top')
+            assertPageFitsViewport()
+            assertTouchTargets('article button')
+            orderCard().contains('Nueva').should('be.visible')
+
+            orderCard().contains('button', 'Avanzar').click()
+            cy.wait('@updateOrderStatus')
+            cy.wait('@listOrders')
+            orderCard().contains('Preparando').should('be.visible')
+            cy.then(() => {
+                expect(state.status).to.eq('PREPARING')
+                expect(counters.updates).to.eq(1)
+            })
+            assertPageFitsViewport()
+            assertTouchTargets('article button')
+        })
     })
 })
 

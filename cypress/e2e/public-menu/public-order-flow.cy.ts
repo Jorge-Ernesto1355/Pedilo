@@ -1,4 +1,14 @@
+import {
+    assertDialogFitsViewport,
+    assertPageFitsViewport,
+    assertTouchTargets,
+} from '../../support/responsive'
+
 const slug = 'antojitos-del-barrio'
+const mobileViewports = [
+    { width: 375, height: 812 },
+    { width: 390, height: 844 },
+]
 const businessId = 'business-public-order-e2e'
 const tacoId = 'product-taco-order-e2e'
 const aguaId = 'product-agua-order-e2e'
@@ -281,6 +291,62 @@ describe('Crear pedido desde el catálogo público', () => {
             'contain',
             '¡Pedido enviado!',
         )
+    })
+
+    mobileViewports.forEach(({ width, height }) => {
+        it(`permite personalizar, revisar el carrito y crear un pedido en ${width}×${height}`, () => {
+            const requests = installOrderApi()
+
+            cy.viewport(width, height)
+            cy.visit(`/menu/${slug}`)
+            cy.wait('@getPublicCatalog')
+            cy.window().then((window) => {
+                cy.stub(window, 'open')
+                    .as('openWhatsApp')
+                    .returns({
+                        document: { title: '', body: { innerHTML: '' } },
+                        location: { href: '' },
+                        close: () => undefined,
+                    })
+            })
+
+            assertPageFitsViewport()
+            assertTouchTargets('button[aria-label="Seleccionar opciones para Taco especial"]')
+            cy.contains('button', 'Seleccionar opciones').click()
+            assertDialogFitsViewport('[role="dialog"][aria-labelledby="customize-title"]')
+            assertPageFitsViewport()
+            assertTouchTargets(`button[aria-label="Agregar Aguacate"]`)
+            cy.get(`button[aria-label="Agregar Aguacate"]`).click()
+            cy.contains('button', 'Agregar al pedido').click()
+
+            cy.contains('button', 'Ver mi pedido').should('be.visible').click()
+            assertDialogFitsViewport('[role="dialog"][aria-labelledby="order-title"]')
+            cy.get('[role="dialog"][aria-labelledby="order-title"]').within(() => {
+                assertTouchTargets(`button[aria-label="Agregar una unidad de Taco especial"]`)
+                assertTouchTargets(`button[aria-label="Quitar una unidad de Taco especial"]`)
+                cy.get('button[aria-label="Agregar una unidad de Taco especial"]').click()
+                cy.contains('button', 'Confirmar pedido').should('contain', '$218')
+                cy.get('button[aria-label="Quitar una unidad de Taco especial"]').click()
+                cy.contains('button', 'Confirmar pedido').should('contain', '$109')
+                cy.get('#customer-name').type('Jorge Pérez')
+                cy.get('#customer-phone').type('669-123-4567')
+                cy.get('#order-notes').type('Sin cebolla')
+                cy.contains('button', 'Confirmar pedido').should('not.be.disabled')
+            })
+            assertPageFitsViewport()
+            cy.get('[role="dialog"][aria-labelledby="order-title"]')
+                .contains('button', 'Confirmar pedido')
+                .click()
+            cy.wait('@createPublicOrder')
+            cy.then(() => expect(requests.orders).to.eq(1))
+
+            assertDialogFitsViewport('[role="dialog"][aria-labelledby="order-confirmation-title"]')
+            cy.get('[role="dialog"][aria-labelledby="order-confirmation-title"]').should(
+                'contain',
+                '¡Pedido enviado!',
+            )
+            assertPageFitsViewport()
+        })
     })
 })
 

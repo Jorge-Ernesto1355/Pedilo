@@ -1,4 +1,10 @@
+import { assertPageFitsViewport, assertTouchTargets } from '../../support/responsive'
+
 type SearchOrderStatus = 'PENDING' | 'PREPARING' | 'READY'
+const mobileViewports = [
+    { width: 375, height: 812 },
+    { width: 390, height: 844 },
+]
 
 const orders = [
     {
@@ -214,6 +220,29 @@ describe('Búsqueda de órdenes', () => {
         })
         cy.get('article').should('have.length', 1).and('contain', 'Pedido #1025')
         cy.get('article').should('not.contain', 'Pedido #1024')
+    })
+
+    mobileViewports.forEach(({ width, height }) => {
+        it(`permite buscar y usar la lista de órdenes en ${width}×${height}`, () => {
+            cy.viewport(width, height)
+            cy.scrollTo('top')
+            cy.get('article').should('have.length', 3)
+            assertPageFitsViewport()
+
+            assertTouchTargets('input[aria-label="Buscar pedidos por número, nombre o teléfono"]')
+            enterSearch('Jorge')
+            cy.wait('@searchOrders')
+            assertVisibleOrderNumbers(['1024', '1025'])
+            assertPageFitsViewport()
+
+            assertTouchTargets('button[aria-label="Limpiar búsqueda"]')
+            cy.get('button[aria-label="Limpiar búsqueda"]').click()
+            cy.wait('@allOrders')
+            cy.get('select[aria-label="Filtrar pedidos por estado"]')
+                .should('be.visible')
+                .and('have.value', '')
+            assertPageFitsViewport()
+        })
     })
 })
 
