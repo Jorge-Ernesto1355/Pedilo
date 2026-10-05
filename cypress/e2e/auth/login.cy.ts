@@ -1,3 +1,5 @@
+const protectedPaths = ['/dashboard', '/create-menu', '/settings', '/orders']
+
 describe('Auth · Login', () => {
     beforeEach(() => cy.visit('/auth/login'))
 
@@ -90,10 +92,13 @@ describe('Auth · Login', () => {
         })
     })
 
-    it('redirecciona al login al entrar al dashboard sin sesión', () => {
-        cy.clearCookies()
-        cy.visit('/dashboard')
-        cy.location('pathname').should('eq', '/auth/login')
+    it('redirecciona al login al entrar a rutas protegidas sin sesión', () => {
+        protectedPaths.forEach((path) => {
+            cy.clearCookies()
+            cy.visit(path)
+            cy.location('pathname').should('eq', '/auth/login')
+            cy.get('[data-testid="login-email"]').should('be.visible')
+        })
     })
 
     it('cierra sesión y protege el dashboard al intentar entrar directamente', function () {
