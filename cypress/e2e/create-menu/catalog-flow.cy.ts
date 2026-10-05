@@ -90,6 +90,20 @@ function catalogBusinessResponse() {
     }
 }
 
+function requestField(body: unknown, field: string, fallback: string) {
+    if (body && typeof body === 'object' && field in body) {
+        const value = (body as Record<string, unknown>)[field]
+        return value == null ? fallback : String(value)
+    }
+
+    if (typeof body === 'string') {
+        const match = body.match(new RegExp(`name="${field}"[\\s\\S]*?\\r?\\n\\r?\\n([^\\r\\n]*)`))
+        if (match?.[1]) return match[1]
+    }
+
+    return fallback
+}
+
 function installCatalogApi(state: CatalogState, counters: CreationCounters = {}) {
     cy.intercept('GET', '**/api/v1/businesses/mine', {
         statusCode: 200,
@@ -148,12 +162,13 @@ function installCatalogApi(state: CatalogState, counters: CreationCounters = {})
     cy.intercept('POST', '**/api/v1/businesses/*/products', (request) => {
         request.alias = 'createProduct'
         counters.product = (counters.product ?? 0) + 1
+        const body = request.body
         state.product = {
             id: productId,
             categoryId,
-            name: 'Taco de asada',
-            description: 'Tortilla, asada y cebolla.',
-            price: 89,
+            name: requestField(body, 'name', `Producto ${counters.product}`),
+            description: requestField(body, 'description', ''),
+            price: Number(requestField(body, 'price', '0')),
             imageUrl: null,
             isAvailable: true,
             active: true,
@@ -173,9 +188,9 @@ function installCatalogApi(state: CatalogState, counters: CreationCounters = {})
         if (state.product) {
             state.product = {
                 ...state.product,
-                name: 'Taco de asada especial',
-                description: 'Tortilla dorada, asada y cebolla.',
-                price: 99.5,
+                name: requestField(request.body, 'name', state.product.name),
+                description: requestField(request.body, 'description', state.product.description),
+                price: Number(requestField(request.body, 'price', String(state.product.price))),
             }
         }
         request.reply({ statusCode: 200, body: state.product })
@@ -300,7 +315,7 @@ describe('Catálogo · menú, categoría, productos y opciones', () => {
             .click({ force: true })
         cy.wait('@createProduct')
         cy.then(() => expect(counters.product).to.eq(1))
-        cy.contains('button[aria-label="Cerrar"]').last().click()
+        cy.get('button[aria-label="Cerrar"]').last().click()
         cy.contains('Taco de asada').should('be.visible')
         cy.contains('$89.00').should('be.visible')
 
@@ -322,7 +337,7 @@ describe('Catálogo · menú, categoría, productos y opciones', () => {
         cy.get('[role="dialog"] button[type="submit"]').click()
         cy.wait('@createProduct')
         cy.then(() => expect(counters.product).to.eq(2))
-        cy.contains('button[aria-label="Cerrar"]').last().click()
+        cy.get('button[aria-label="Cerrar"]').last().click()
         cy.contains('Quesadilla de queso').should('be.visible')
 
         cy.get('button[aria-label="Editar Quesadilla de queso"]').click()
@@ -379,7 +394,7 @@ describe('Catálogo · menú, categoría, productos y opciones', () => {
         cy.visit('/create-menu')
         cy.wait('@listMenus')
         cy.contains('button', 'Crear menú').first().click()
-        cy.get('#menu-name').focus().blur()
+        cy.get('[role="dialog"] button[type="submit"]').click()
         cy.get('[role="dialog"]').contains('Escribe un nombre para el menú.').should('be.visible')
         cy.then(() => expect(counters.menu ?? 0).to.eq(0))
     })
