@@ -68,7 +68,11 @@ function installDashboardApi(state: { status: DetailStatus }, historyData = hist
         const matchesStatus = !requestStatus || requestStatus === state.status
         const matchesSearch =
             !requestSearch || baseOrder.customerName.toLowerCase().includes(requestSearch)
-        request.alias = requestStatus && requestSearch ? 'filteredOrders' : 'listOrders'
+        request.alias = requestStatus
+            ? requestSearch
+                ? 'filteredOrders'
+                : 'filteredStatusOrders'
+            : 'listOrders'
         request.reply({
             statusCode: 200,
             body: {
@@ -169,7 +173,7 @@ describe('Persistencia de órdenes después de refresh', () => {
         cy.get('select[aria-label="Filtrar pedidos por estado"]')
             .should('have.value', '')
             .select('PREPARING')
-        cy.wait('@listOrders').its('request.url').should('include', 'status=PREPARING')
+        cy.wait('@filteredStatusOrders').its('request.url').should('include', 'status=PREPARING')
         orderCard().contains('Preparando').should('be.visible')
 
         cy.get('input[aria-label="Buscar pedidos por número, nombre o teléfono"]').type('Jorge')
