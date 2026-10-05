@@ -131,11 +131,16 @@ function searchInput() {
     return cy.get('input[aria-label="Buscar pedidos por número, nombre o teléfono"]')
 }
 
+function enterSearch(value: string) {
+    searchInput().should('not.be.disabled').clear()
+    searchInput().should('not.be.disabled').type(value)
+}
+
 function visibleOrderNumbers() {
     return cy
         .get('article')
         .then(($articles) =>
-            [...$articles].map((article) => article.textContent?.match(/Pedido #(\d+)/)?.[1]),
+            [...$articles].map((article) => article.textContent?.match(/Pedido #(\d{4})/)?.[1]),
         )
 }
 
@@ -148,44 +153,44 @@ describe('Búsqueda de órdenes', () => {
     })
 
     it('busca por número exacto y por nombre sin distinguir mayúsculas', () => {
-        searchInput().type('1024')
+        enterSearch('1024')
         cy.wait('@searchOrders').its('request.url').should('include', 'search=1024')
         cy.get('article').should('have.length', 1).and('contain', 'Pedido #1024')
 
-        searchInput().clear().type('Jorge')
+        enterSearch('Jorge')
         cy.wait('@searchOrders')
         visibleOrderNumbers().should('deep.equal', ['1024', '1025'])
 
-        searchInput().clear().type('jorge')
+        enterSearch('jorge')
         cy.wait('@searchOrders')
         visibleOrderNumbers().should('deep.equal', ['1024', '1025'])
 
-        searchInput().clear().type('JORGE')
+        enterSearch('JORGE')
         cy.wait('@searchOrders')
         visibleOrderNumbers().should('deep.equal', ['1024', '1025'])
 
-        searchInput().clear().type('JoRgE')
+        enterSearch('JoRgE')
         cy.wait('@searchOrders')
         visibleOrderNumbers().should('deep.equal', ['1024', '1025'])
     })
 
     it('busca por teléfono normalizado y muestra vacío cuando no hay resultados', () => {
-        searchInput().type('6681234567')
+        enterSearch('6681234567')
         cy.wait('@searchOrders').its('request.url').should('include', 'search=6681234567')
         visibleOrderNumbers().should('deep.equal', ['1024', '1025'])
 
-        searchInput().clear().type('668-123-4567')
+        enterSearch('668-123-4567')
         cy.wait('@searchOrders').its('request.url').should('include', 'search=668-123-4567')
         visibleOrderNumbers().should('deep.equal', ['1024', '1025'])
 
-        searchInput().clear().type('cliente-inexistente')
+        enterSearch('cliente-inexistente')
         cy.wait('@searchOrders')
         cy.contains('No encontramos pedidos').should('be.visible')
         cy.contains('Prueba con otro número, nombre o teléfono.').should('be.visible')
     })
 
     it('limpia la búsqueda y combina search con el filtro de estado', () => {
-        searchInput().type('Jorge')
+        enterSearch('Jorge')
         cy.wait('@searchOrders')
         visibleOrderNumbers().should('deep.equal', ['1024', '1025'])
 
@@ -198,7 +203,7 @@ describe('Búsqueda de órdenes', () => {
         cy.wait('@statusOrders').its('request.url').should('include', 'status=PREPARING')
         cy.get('article').should('have.length', 1).and('contain', 'Pedido #1025')
 
-        searchInput().type('Jorge')
+        enterSearch('Jorge')
         cy.wait('@searchAndStatusOrders').then(({ request }) => {
             expect(request.url).to.include('search=Jorge')
             expect(request.url).to.include('status=PREPARING')
