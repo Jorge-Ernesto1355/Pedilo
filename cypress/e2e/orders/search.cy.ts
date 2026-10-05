@@ -132,8 +132,11 @@ function searchInput() {
 }
 
 function enterSearch(value: string) {
-    searchInput().should('not.be.disabled').clear()
-    searchInput().should('not.be.disabled').type(value)
+    searchInput().then(($input) => {
+        if ($input.val()) cy.wrap($input).clear()
+    })
+    cy.wait(400)
+    searchInput().should('exist').and('not.be.disabled').type(value)
 }
 
 function visibleOrderNumbers() {
