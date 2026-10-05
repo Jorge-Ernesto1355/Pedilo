@@ -145,12 +145,12 @@ export function OrderDrawer({
                                                     ${line.unitPrice.toLocaleString('es-MX')} c/u
                                                 </p>
                                             </div>
-                                            <div className="flex h-8 items-center gap-2 rounded-lg border border-[#DCE5F3] px-1">
+                                            <div className="flex min-h-11 items-center gap-1 rounded-lg border border-[#DCE5F3] px-1 sm:min-h-8 sm:gap-2">
                                                 <button
                                                     type="button"
                                                     onClick={() => onChangeQuantity(line.key, -1)}
                                                     aria-label={`Quitar una unidad de ${line.product.name}`}
-                                                    className="grid size-6 place-items-center rounded text-[#65738A] hover:bg-[#F5F8FC]"
+                                                    className="grid size-10 place-items-center rounded text-[#65738A] hover:bg-[#F5F8FC] sm:size-6"
                                                 >
                                                     <Minus className="size-3" />
                                                 </button>
@@ -161,7 +161,7 @@ export function OrderDrawer({
                                                     type="button"
                                                     onClick={() => onChangeQuantity(line.key, 1)}
                                                     aria-label={`Agregar una unidad de ${line.product.name}`}
-                                                    className="grid size-6 place-items-center rounded text-[#2451C5] hover:bg-[#EAF0FF]"
+                                                    className="grid size-10 place-items-center rounded text-[#2451C5] hover:bg-[#EAF0FF] sm:size-6"
                                                 >
                                                     <Plus className="size-3" />
                                                 </button>
@@ -240,10 +240,17 @@ export function OrderDrawer({
                                     className="w-full resize-none rounded-xl border border-[#D7E1EF] px-3.5 py-3 text-sm text-[#12234A] outline-none transition placeholder:text-[#A0ACBD] focus:border-[#2451C5] focus:ring-4 focus:ring-[#2451C5]/10"
                                 />
                                 <p className="mt-3 rounded-xl bg-[#F5F8FC] px-3 py-2.5 text-xs leading-5 text-[#65738A]">
-                                    Al confirmar, estos datos y el detalle de tu pedido se compartirán con{' '}
-                                    <strong className="font-semibold text-[#243556]">{businessName}</strong>{' '}
-                                    para que pueda revisarlo y responderte por WhatsApp. Pedilo es la plataforma tecnológica y no realiza el reparto. Consulta el{' '}
-                                    <Link href="/privacidad" className="font-semibold text-[#2451C5] underline underline-offset-2">
+                                    Al confirmar, estos datos y el detalle de tu pedido se
+                                    compartirán con{' '}
+                                    <strong className="font-semibold text-[#243556]">
+                                        {businessName}
+                                    </strong>{' '}
+                                    para que pueda revisarlo y responderte por WhatsApp. Pedilo es
+                                    la plataforma tecnológica y no realiza el reparto. Consulta el{' '}
+                                    <Link
+                                        href="/privacidad"
+                                        className="font-semibold text-[#2451C5] underline underline-offset-2"
+                                    >
                                         Aviso de Privacidad
                                     </Link>
                                     .

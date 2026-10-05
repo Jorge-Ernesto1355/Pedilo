@@ -210,7 +210,7 @@ export default function OrdersPage() {
                         <button
                             type="button"
                             onClick={clearSearch}
-                            className="absolute right-2 top-1/2 grid size-7 -translate-y-1/2 place-items-center rounded-lg text-[#8996A9] transition hover:bg-[#F2F5FA] hover:text-[#243556] focus:outline-none focus:ring-2 focus:ring-[#2451C5]/20"
+                            className="absolute right-1 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-lg text-[#8996A9] transition hover:bg-[#F2F5FA] hover:text-[#243556] focus:outline-none focus:ring-2 focus:ring-[#2451C5]/20 sm:right-2 sm:size-7"
                             aria-label="Limpiar búsqueda"
                         >
                             <X className="size-4" />

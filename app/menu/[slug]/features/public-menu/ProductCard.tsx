@@ -57,7 +57,8 @@ export function ProductCard({
                 <button
                     type="button"
                     onClick={requiresCustomization ? onSelect : () => onAdd(imageRef.current)}
-                    className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-[#EEF3FF] px-2.5 py-1.5 text-xs font-bold text-[#2451C5] hover:bg-[#E2EBFF]"
+                    aria-label={`${requiresCustomization ? 'Seleccionar opciones para' : 'Agregar'} ${product.name}${requiresCustomization ? '' : ' al carrito'}`}
+                    className="mt-3 inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-[#EEF3FF] px-3 py-2 text-xs font-bold text-[#2451C5] hover:bg-[#E2EBFF] sm:min-h-8 sm:px-2.5 sm:py-1.5"
                 >
                     {requiresCustomization ? (
                         <SlidersHorizontal className="size-3.5" />

@@ -165,7 +165,7 @@ export function ProductCustomizeDialog({
                                                                 )
                                                             }
                                                             aria-label={`Quitar ${option.name}`}
-                                                            className="grid size-7 place-items-center rounded text-[#65738A] disabled:opacity-30"
+                                                            className="grid size-10 place-items-center rounded text-[#65738A] disabled:opacity-30 sm:size-7"
                                                         >
                                                             <Minus className="size-3.5" />
                                                         </button>
@@ -183,7 +183,7 @@ export function ProductCustomizeDialog({
                                                                 )
                                                             }
                                                             aria-label={`Agregar ${option.name}`}
-                                                            className="grid size-7 place-items-center rounded text-[#2451C5] disabled:opacity-30"
+                                                            className="grid size-10 place-items-center rounded text-[#2451C5] disabled:opacity-30 sm:size-7"
                                                         >
                                                             <Plus className="size-3.5" />
                                                         </button>
@@ -212,7 +212,7 @@ export function ProductCustomizeDialog({
                             onAdd(selectedOptions)
                             onClose()
                         }}
-                        className="rounded-xl bg-[#1E40AF] px-4 py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-45"
+                        className="min-h-11 rounded-xl bg-[#1E40AF] px-4 py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-45"
                     >
                         Agregar al pedido
                     </button>
