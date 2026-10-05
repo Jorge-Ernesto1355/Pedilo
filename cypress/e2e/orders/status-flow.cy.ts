@@ -1,4 +1,4 @@
-type TestOrderStatus = 'PENDING' | 'PREPARING' | 'READY'
+type TestOrderStatus = 'PENDING' | 'PREPARING' | 'READY' | 'CANCELLED'
 
 const order = {
     id: 'order-status-flow-e2e',
@@ -120,6 +120,39 @@ describe('Cambio rápido de estados de órdenes', () => {
             cy.contains('¡Lista!').should('be.visible')
         })
         cy.then(() => expect(state.status).to.eq('READY'))
+    })
+
+    it('cancela una orden nueva, la muestra en el filtro y bloquea avances posteriores', () => {
+        const state: { status: TestOrderStatus } = { status: 'PENDING' }
+        const counters = { updates: 0 }
+
+        cy.login()
+        cy.then(() => installStatusApi(state, counters))
+        cy.visit('/dashboard/orders')
+        cy.wait('@listOrders')
+
+        orderCard().within(() => {
+            cy.contains('Nueva').should('be.visible')
+            cy.get(`button[aria-label="Cancelar pedido #${order.orderNumber}"]`).click()
+        })
+
+        cy.get('[role="dialog"][aria-labelledby="order-detail-title"]').should('not.exist')
+        orderCard().contains('button', 'Actualizando…').should('be.disabled').click({ force: true })
+        cy.wait('@updateOrderStatus')
+        cy.then(() => expect(counters.updates).to.eq(1))
+        cy.wait('@listOrders')
+
+        orderCard().within(() => {
+            cy.contains('Cancelada').should('be.visible')
+            cy.contains('button', 'Empezar a preparar').should('not.exist')
+            cy.contains('button', 'Marcar como lista').should('not.exist')
+            cy.get(`button[aria-label="Cancelar pedido #${order.orderNumber}"]`).should('not.exist')
+        })
+
+        cy.get('select[aria-label="Filtrar pedidos por estado"]').select('CANCELLED')
+        cy.wait('@listOrders').its('request.url').should('include', 'status=CANCELLED')
+        orderCard().contains('Cancelada').should('be.visible')
+        cy.then(() => expect(state.status).to.eq('CANCELLED'))
     })
 })
 
