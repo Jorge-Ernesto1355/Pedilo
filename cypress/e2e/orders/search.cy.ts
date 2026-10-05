@@ -139,12 +139,13 @@ function enterSearch(value: string) {
     searchInput().should('exist').and('not.be.disabled').type(value)
 }
 
-function visibleOrderNumbers() {
-    return cy
-        .get('article')
-        .then(($articles) =>
-            [...$articles].map((article) => article.textContent?.match(/Pedido #(\d{4})/)?.[1]),
+function assertVisibleOrderNumbers(expected: string[]) {
+    cy.get('article').should(($articles) => {
+        const actual = [...$articles].map(
+            (article) => article.textContent?.match(/Pedido #(\d{4})/)?.[1],
         )
+        expect(actual).to.deep.equal(expected)
+    })
 }
 
 describe('Búsqueda de órdenes', () => {
@@ -162,29 +163,29 @@ describe('Búsqueda de órdenes', () => {
 
         enterSearch('Jorge')
         cy.wait('@searchOrders')
-        visibleOrderNumbers().should('deep.equal', ['1024', '1025'])
+        assertVisibleOrderNumbers(['1024', '1025'])
 
         enterSearch('jorge')
         cy.wait('@searchOrders')
-        visibleOrderNumbers().should('deep.equal', ['1024', '1025'])
+        assertVisibleOrderNumbers(['1024', '1025'])
 
         enterSearch('JORGE')
         cy.wait('@searchOrders')
-        visibleOrderNumbers().should('deep.equal', ['1024', '1025'])
+        assertVisibleOrderNumbers(['1024', '1025'])
 
         enterSearch('JoRgE')
         cy.wait('@searchOrders')
-        visibleOrderNumbers().should('deep.equal', ['1024', '1025'])
+        assertVisibleOrderNumbers(['1024', '1025'])
     })
 
     it('busca por teléfono normalizado y muestra vacío cuando no hay resultados', () => {
         enterSearch('6681234567')
         cy.wait('@searchOrders').its('request.url').should('include', 'search=6681234567')
-        visibleOrderNumbers().should('deep.equal', ['1024', '1025'])
+        assertVisibleOrderNumbers(['1024', '1025'])
 
         enterSearch('668-123-4567')
         cy.wait('@searchOrders').its('request.url').should('include', 'search=668-123-4567')
-        visibleOrderNumbers().should('deep.equal', ['1024', '1025'])
+        assertVisibleOrderNumbers(['1024', '1025'])
 
         enterSearch('cliente-inexistente')
         cy.wait('@searchOrders')
@@ -195,7 +196,7 @@ describe('Búsqueda de órdenes', () => {
     it('limpia la búsqueda y combina search con el filtro de estado', () => {
         enterSearch('Jorge')
         cy.wait('@searchOrders')
-        visibleOrderNumbers().should('deep.equal', ['1024', '1025'])
+        assertVisibleOrderNumbers(['1024', '1025'])
 
         cy.get('button[aria-label="Limpiar búsqueda"]').click()
         cy.wait('@allOrders')
