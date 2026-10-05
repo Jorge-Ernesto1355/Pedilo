@@ -112,6 +112,8 @@ const catalog = {
 }
 
 function installOrderApi() {
+    const requests = { orders: 0 }
+
     cy.intercept('GET', `**/api/v1/public/businesses/${slug}/catalog`, {
         statusCode: 200,
         body: catalog,
@@ -119,7 +121,9 @@ function installOrderApi() {
 
     cy.intercept('POST', '**/businesses/*/orders', (request) => {
         request.alias = 'createPublicOrder'
+        requests.orders += 1
         request.reply({
+            delay: 350,
             statusCode: 201,
             body: {
                 order: {
@@ -138,6 +142,19 @@ function installOrderApi() {
             },
         })
     })
+
+    return requests
+}
+
+function addConfiguredTacoAndOpenOrder() {
+    cy.contains('button', 'Seleccionar opciones').click()
+    cy.get('[role="dialog"][aria-labelledby="customize-title"]').within(() => {
+        cy.get('button[aria-label="Agregar Aguacate"]').click()
+        cy.contains('button', 'Agregar al pedido').click()
+    })
+    cy.contains('button', 'Ver mi pedido').click()
+    cy.get('#customer-name').type('Jorge Pérez')
+    cy.get('#customer-phone').type('669-123-4567')
 }
 
 describe('Crear pedido desde el catálogo público', () => {
@@ -231,6 +248,39 @@ describe('Crear pedido desde el catálogo público', () => {
             .should('be.visible')
             .and('contain', '¡Pedido enviado!')
             .and('contain', 'Tu pedido fue enviado al negocio.')
+    })
+
+    it('evita crear pedidos duplicados al confirmar dos veces', () => {
+        const requests = installOrderApi()
+
+        cy.visit(`/menu/${slug}`)
+        cy.wait('@getPublicCatalog')
+        cy.window().then((window) => {
+            cy.stub(window, 'open')
+                .as('openWhatsApp')
+                .returns({
+                    document: { title: '', body: { innerHTML: '' } },
+                    location: { href: '' },
+                    close: () => undefined,
+                })
+        })
+
+        addConfiguredTacoAndOpenOrder()
+
+        cy.get('[role="dialog"][aria-labelledby="order-title"]')
+            .contains('button', 'Confirmar pedido')
+            .click()
+        cy.get('[role="dialog"][aria-labelledby="order-title"] button[type="button"]')
+            .contains('Enviando pedido…')
+            .should('be.disabled')
+            .click({ force: true })
+
+        cy.wait('@createPublicOrder')
+        cy.then(() => expect(requests.orders).to.eq(1))
+        cy.get('[role="dialog"][aria-labelledby="order-confirmation-title"]').should(
+            'contain',
+            '¡Pedido enviado!',
+        )
     })
 })
 
