@@ -95,4 +95,29 @@ describe('Auth · Login', () => {
         cy.visit('/dashboard')
         cy.location('pathname').should('eq', '/auth/login')
     })
+
+    it('cierra sesión y protege el dashboard al intentar entrar directamente', function () {
+        cy.env(['testUserEmail', 'testUserPassword']).then(function ({
+            testUserEmail,
+            testUserPassword,
+        }) {
+            cy.login({ email: testUserEmail, password: testUserPassword })
+            cy.location('pathname').should('eq', '/dashboard')
+
+            cy.intercept('POST', '**/api/v1/auth/logout').as('logout')
+            cy.get('button[aria-label^="Abrir menú de "]').click()
+            cy.get('[role="menu"] [role="menuitem"]')
+                .contains('Cerrar sesión')
+                .should('be.visible')
+                .click()
+
+            cy.wait('@logout').its('response.statusCode').should('be.oneOf', [200, 204])
+            cy.location('pathname').should('eq', '/auth/login')
+            cy.get('[data-testid="login-submit"]').should('be.visible')
+
+            cy.visit('/dashboard')
+            cy.location('pathname').should('eq', '/auth/login')
+            cy.get('[data-testid="login-email"]').should('be.visible')
+        })
+    })
 })
