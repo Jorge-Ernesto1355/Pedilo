@@ -379,10 +379,13 @@ describe('Catálogo · menú, categoría, productos y opciones', () => {
         cy.contains('Tocino').should('be.visible')
 
         cy.get('[role="dialog"]').last().find('button[aria-label="Cerrar"]').click()
-        cy.get('button[aria-label="Editar Quesadilla de queso"]').click()
-        cy.contains('h5', 'Extras').should('be.visible')
-        cy.contains('Aguacate').should('be.visible')
-        cy.contains('Tocino').should('be.visible')
+        cy.get('[role="dialog"]')
+            .should('have.length', 1)
+            .within(() => {
+                cy.contains('h5', 'Extras').should('be.visible')
+                cy.contains('Aguacate').should('be.visible')
+                cy.contains('Tocino').should('be.visible')
+            })
     })
 
     it('no crea menú ni producto cuando faltan datos obligatorios', () => {
