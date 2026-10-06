@@ -278,6 +278,7 @@ export default function BusinessSetupScreen({
                             ? { description: business.description }
                             : {}),
                     })
+                    router.refresh()
                 },
                 onError: (error) => {
                     if (!(error instanceof ApiError)) return

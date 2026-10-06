@@ -45,15 +45,23 @@ type BusinessMineResponse = {
 export function DashboardNav() {
     const pathname = usePathname()
     const router = useRouter()
+    const authUser = useAuthStore((state) => state.user)
     const clearUser = useAuthStore((state) => state.clearUser)
+    const businessQueryKey = [
+        'business',
+        'mine',
+        authUser?.id ?? 'anonymous',
+        authUser?.businessId ?? 'none',
+    ] as const
     const businessQuery = useQuery({
-        queryKey: ['business', 'mine'],
+        queryKey: businessQueryKey,
         queryFn: async () => {
             const { data } = await apiClient.get<BusinessMineResponse>('/businesses/mine', {
                 withCredentials: true,
             })
             return data.business ?? null
         },
+        enabled: Boolean(authUser?.id),
         staleTime: 10 * 60 * 1000,
     })
     const [accountMenuOpen, setAccountMenuOpen] = useState(false)
@@ -74,7 +82,10 @@ export function DashboardNav() {
         if (!accountMenuOpen) return
 
         function handlePointerDown(event: MouseEvent) {
-            if (!accountMenuRef.current?.contains(event.target as Node) && !accountMenuPortalRef.current?.contains(event.target as Node)) {
+            if (
+                !accountMenuRef.current?.contains(event.target as Node) &&
+                !accountMenuPortalRef.current?.contains(event.target as Node)
+            ) {
                 setAccountMenuOpen(false)
             }
         }
@@ -104,7 +115,10 @@ export function DashboardNav() {
             clearUser()
             router.replace('/auth/login')
         } catch {
-            sileo.error({ title: 'No pudimos cerrar sesión', description: 'Revisa tu conexión e inténtalo de nuevo.' })
+            sileo.error({
+                title: 'No pudimos cerrar sesión',
+                description: 'Revisa tu conexión e inténtalo de nuevo.',
+            })
             setIsLoggingOut(false)
         }
     }
@@ -188,34 +202,36 @@ export function DashboardNav() {
                                 className={`size-3.5 shrink-0 text-[#8996A9] transition-transform ${accountMenuOpen ? 'rotate-180' : ''}`}
                             />
                         </button>
-                        {accountMenuOpen && typeof document !== 'undefined' && createPortal(
-                            <div
-                                ref={accountMenuPortalRef}
-                                role="menu"
-                                aria-label="Opciones de cuenta"
-                                className="fixed z-[9999] min-w-48 -translate-x-full rounded-xl border border-[#DCE5F3] bg-white p-1.5 shadow-[0_16px_35px_rgb(18_35_74_/_0.14)]"
-                                style={{ top: menuPosition.top, left: menuPosition.left }}
-                            >
-                                <Link
-                                    href="/dashboard/account"
-                                    role="menuitem"
-                                    onClick={() => setAccountMenuOpen(false)}
-                                    className="flex w-full items-center rounded-lg px-3 py-2.5 text-left text-sm font-semibold text-[#243556] transition hover:bg-[#F5F8FC] hover:text-[#1E40AF]"
+                        {accountMenuOpen &&
+                            typeof document !== 'undefined' &&
+                            createPortal(
+                                <div
+                                    ref={accountMenuPortalRef}
+                                    role="menu"
+                                    aria-label="Opciones de cuenta"
+                                    className="fixed z-[9999] min-w-48 -translate-x-full rounded-xl border border-[#DCE5F3] bg-white p-1.5 shadow-[0_16px_35px_rgb(18_35_74_/_0.14)]"
+                                    style={{ top: menuPosition.top, left: menuPosition.left }}
                                 >
-                                    Cuenta
-                                </Link>
-                                <button
-                                    type="button"
-                                    role="menuitem"
-                                    onClick={() => handleLogout()}
-                                    disabled={isLoggingOut}
-                                    className="flex w-full items-center rounded-lg px-3 py-2.5 text-left text-sm font-semibold text-[#243556] transition hover:bg-[#F5F8FC] hover:text-[#1E40AF] disabled:cursor-wait disabled:opacity-60"
-                                >
-                                    {isLoggingOut ? 'Cerrando sesión…' : 'Cerrar sesión'}
-                                </button>
-                            </div>,
-                            document.body,
-                        )}
+                                    <Link
+                                        href="/dashboard/account"
+                                        role="menuitem"
+                                        onClick={() => setAccountMenuOpen(false)}
+                                        className="flex w-full items-center rounded-lg px-3 py-2.5 text-left text-sm font-semibold text-[#243556] transition hover:bg-[#F5F8FC] hover:text-[#1E40AF]"
+                                    >
+                                        Cuenta
+                                    </Link>
+                                    <button
+                                        type="button"
+                                        role="menuitem"
+                                        onClick={() => handleLogout()}
+                                        disabled={isLoggingOut}
+                                        className="flex w-full items-center rounded-lg px-3 py-2.5 text-left text-sm font-semibold text-[#243556] transition hover:bg-[#F5F8FC] hover:text-[#1E40AF] disabled:cursor-wait disabled:opacity-60"
+                                    >
+                                        {isLoggingOut ? 'Cerrando sesión…' : 'Cerrar sesión'}
+                                    </button>
+                                </div>,
+                                document.body,
+                            )}
                     </div>
                 </div>
             </div>
