@@ -108,6 +108,7 @@ function installSearchApi() {
         const url = new URL(request.url)
         const search = (url.searchParams.get('search') ?? '').trim().toLowerCase()
         const status = url.searchParams.get('status') as SearchOrderStatus | null
+        const period = url.searchParams.get('period')
         const normalizedSearch = normalizePhone(search)
         const hasPhoneSearch = normalizedSearch.length >= 7 && /^\d+$/.test(normalizedSearch)
         const filteredOrders = orders.filter((order) => {
@@ -121,7 +122,10 @@ function installSearchApi() {
             return matchesStatus && matchesSearch
         })
 
-        if (status && search) request.alias = 'searchAndStatusOrders'
+        if (period && status && search) request.alias = 'periodStatusSearchOrders'
+        else if (period && status) request.alias = 'periodStatusOrders'
+        else if (period) request.alias = 'periodOrders'
+        else if (status && search) request.alias = 'searchAndStatusOrders'
         else if (status) request.alias = 'statusOrders'
         else if (search) request.alias = 'searchOrders'
         else request.alias = 'allOrders'
@@ -220,6 +224,44 @@ describe('Búsqueda de órdenes', () => {
         })
         cy.get('article').should('have.length', 1).and('contain', 'Pedido #1025')
         cy.get('article').should('not.contain', 'Pedido #1024')
+    })
+
+    it('envía los cuatro periodos soportados por backend y no muestra CONFIRMED', () => {
+        const periods = ['today', '7d', '30d', 'lastMonth']
+
+        periods.forEach((period) => {
+            cy.get('select[aria-label="Filtrar pedidos por periodo"]')
+                .select(period)
+                .should('have.value', period)
+            cy.wait('@periodOrders').its('request.url').should('include', `period=${period}`)
+        })
+
+        cy.get('select[aria-label="Filtrar pedidos por estado"] option').should(
+            'not.contain',
+            'CONFIRMED',
+        )
+    })
+
+    it('conserva periodo, estado y búsqueda en la misma petición', () => {
+        cy.get('select[aria-label="Filtrar pedidos por periodo"]').select('lastMonth')
+        cy.wait('@periodOrders')
+
+        cy.get('select[aria-label="Filtrar pedidos por estado"]').select('PREPARING')
+        cy.wait('@periodStatusOrders').then(({ request }) => {
+            expect(request.url).to.include('period=lastMonth')
+            expect(request.url).to.include('status=PREPARING')
+            expect(request.url).to.include('page=1')
+            expect(request.url).to.include('limit=20')
+        })
+
+        enterSearch('Jorge')
+        cy.wait('@periodStatusSearchOrders').then(({ request }) => {
+            expect(request.url).to.include('period=lastMonth')
+            expect(request.url).to.include('status=PREPARING')
+            expect(request.url).to.include('search=Jorge')
+            expect(request.url).to.include('page=1')
+            expect(request.url).to.include('limit=20')
+        })
     })
 
     mobileViewports.forEach(({ width, height }) => {

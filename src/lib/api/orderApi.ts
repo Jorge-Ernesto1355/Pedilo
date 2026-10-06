@@ -3,10 +3,12 @@ import { apiClient } from './client'
 import { publicApiClient } from './publicClient'
 import type {
     CreateOrderPayload,
+    CreateRestaurantOrderPayload,
     Customer,
     CustomerPayload,
     CustomersResponse,
     Order,
+    OrderPeriod,
     OrderStatus,
     OrdersResponse,
 } from './order-types'
@@ -32,9 +34,24 @@ export function createPublicOrder(businessId: string, payload: CreateOrderPayloa
         publicApiClient.post<{ order: Order }>(`/businesses/${businessId}/orders`, payload),
     ).then((body) => body.order)
 }
+export function createRestaurantOrder(businessId: string, payload: CreateRestaurantOrderPayload) {
+    return request(() =>
+        apiClient.post<{ order: Order }>(
+            `/businesses/${businessId}/orders/restaurant`,
+            payload,
+            credentials,
+        ),
+    ).then((body) => body.order)
+}
 export function getOrders(
     businessId: string,
-    params: { page: number; limit: number; status?: OrderStatus; search?: string },
+    params: {
+        page: number
+        limit: number
+        status?: OrderStatus
+        search?: string
+        period?: OrderPeriod
+    },
 ) {
     return request(() =>
         apiClient.get<OrdersResponse>(

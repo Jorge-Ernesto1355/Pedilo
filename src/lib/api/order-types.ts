@@ -1,5 +1,7 @@
 export const ORDER_STATUSES = ['PENDING', 'PREPARING', 'READY', 'CANCELLED'] as const
 export type OrderStatus = (typeof ORDER_STATUSES)[number]
+export const ORDER_PERIODS = ['today', '7d', '30d', 'lastMonth'] as const
+export type OrderPeriod = (typeof ORDER_PERIODS)[number]
 export type OrderItem = {
     id?: string
     productId: string
@@ -15,11 +17,11 @@ export type Order = {
     id: string
     orderNumber: number
     status: OrderStatus
-    customerId: string
+    customerId: string | null
     subtotal: number
     total: number
-    customerName: string
-    customerPhone: string
+    customerName: string | null
+    customerPhone: string | null
     notes: string | null
     items: OrderItem[]
     statusHistory: OrderStatusHistory[]
@@ -31,6 +33,17 @@ export type CreateOrderPayload = {
     customer: { name: string; phone: string }
     items: Array<{ productId: string; quantity: number; optionIds: string[] }>
     notes?: string
+}
+export type RestaurantOrderItemPayload = {
+    productId: string
+    quantity: number
+    optionIds?: string[]
+}
+export type CreateRestaurantOrderPayload = {
+    customerName?: string
+    customerPhone?: string | null
+    notes?: string
+    items: RestaurantOrderItemPayload[]
 }
 export type Customer = {
     id: string

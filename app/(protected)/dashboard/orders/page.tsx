@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import dynamic from 'next/dynamic'
 import {
     ArrowRight,
     BellRing,
@@ -15,7 +16,13 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { ApiError } from '@/app/auth/lib/client/api-error'
-import { ORDER_STATUSES, type Order, type OrderStatus } from '@/src/lib/api/order-types'
+import {
+    ORDER_PERIODS,
+    ORDER_STATUSES,
+    type Order,
+    type OrderPeriod,
+    type OrderStatus,
+} from '@/src/lib/api/order-types'
 import { useOrder, useOrders, useOrderStatusMutation } from '../features/orders/useOrders'
 import { DashboardErrorState } from '../components/DashboardErrorState'
 import { OrdersSkeleton } from '../components/DashboardSkeletons'
@@ -26,6 +33,14 @@ import {
     formatBusinessTime,
     formatMoney,
 } from '../features/dashboard-data/formatters'
+
+const NewRestaurantOrderDrawer = dynamic(
+    () =>
+        import('../features/orders/NewRestaurantOrderDrawer').then(
+            (module) => module.NewRestaurantOrderDrawer,
+        ),
+    { ssr: false },
+)
 
 type StatusMeta = {
     label: string
@@ -79,6 +94,13 @@ const statusMeta: Record<OrderStatus, StatusMeta> = {
     },
 }
 
+const periodLabels: Record<OrderPeriod, string> = {
+    today: 'Hoy',
+    '7d': 'Últimos 7 días',
+    '30d': 'Últimos 30 días',
+    lastMonth: 'Último mes',
+}
+
 function nextStatus(status: OrderStatus): OrderStatus | null {
     if (status === 'PENDING') return 'PREPARING'
     if (status === 'PREPARING') return 'READY'
@@ -100,9 +122,11 @@ function statusErrorMessage(error: unknown) {
 export default function OrdersPage() {
     const [page, setPage] = useState(1)
     const [status, setStatus] = useState<OrderStatus | undefined>()
+    const [period, setPeriod] = useState<OrderPeriod | undefined>()
     const [search, setSearch] = useState('')
     const [debouncedSearch, setDebouncedSearch] = useState('')
     const [selectedId, setSelectedId] = useState<string | null>(null)
+    const [newOrderOpen, setNewOrderOpen] = useState(false)
     const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null)
     const [mutationErrorOrderId, setMutationErrorOrderId] = useState<string | null>(null)
     const [limit] = useState(20)
@@ -119,6 +143,7 @@ export default function OrdersPage() {
         limit,
         status,
         search: debouncedSearch || undefined,
+        period,
     })
     const detail = useOrder(selectedId)
     const mutation = useOrderStatusMutation()
@@ -165,7 +190,30 @@ export default function OrdersPage() {
                         Avanza cada orden desde aquí mientras la preparas.
                     </p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
+                    <button
+                        type="button"
+                        onClick={() => setNewOrderOpen(true)}
+                        className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[#2451C5] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#1E40AF] focus:outline-none focus:ring-4 focus:ring-[#2451C5]/15"
+                    >
+                        + Nueva orden
+                    </button>
+                    <select
+                        value={period ?? ''}
+                        onChange={(event) => {
+                            setPage(1)
+                            setPeriod((event.target.value || undefined) as OrderPeriod | undefined)
+                        }}
+                        className="rounded-xl border border-[#D7E1EF] bg-white px-3 py-2.5 text-sm text-[#243556] outline-none transition focus:border-[#2451C5] focus:ring-2 focus:ring-[#2451C5]/15"
+                        aria-label="Filtrar pedidos por periodo"
+                    >
+                        <option value="">Todos los periodos</option>
+                        {ORDER_PERIODS.map((item) => (
+                            <option key={item} value={item}>
+                                {periodLabels[item]}
+                            </option>
+                        ))}
+                    </select>
                     <select
                         value={status ?? ''}
                         onChange={(event) => {
@@ -319,6 +367,14 @@ export default function OrdersPage() {
                     onStatusChange={changeStatus}
                 />
             )}
+            <NewRestaurantOrderDrawer
+                open={newOrderOpen}
+                onClose={() => setNewOrderOpen(false)}
+                onViewOrder={(order) => {
+                    setNewOrderOpen(false)
+                    setSelectedId(order.id)
+                }}
+            />
         </main>
     )
 }
