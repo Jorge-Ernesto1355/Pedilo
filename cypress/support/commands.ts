@@ -4,6 +4,7 @@ declare global {
     namespace Cypress {
         interface Chainable {
             login(options?: { email?: string; password?: string }): Chainable<void>
+            loginWithApi(options: { email: string; password: string }): Chainable<void>
         }
     }
 }
@@ -37,6 +38,32 @@ Cypress.Commands.add('login', ({ email, password } = {}) => {
         )
         cy.visit('/dashboard')
     })
+})
+
+Cypress.Commands.add('loginWithApi', ({ email, password }) => {
+    cy.session(
+        ['api-login', email, password],
+        () => {
+            cy.request({
+                method: 'POST',
+                url: '/api/auth/login',
+                body: { email, password, remember: true },
+                failOnStatusCode: false,
+            }).then((response) => {
+                expect(
+                    response.status,
+                    `No se pudo iniciar sesión con ${email}: ${JSON.stringify(response.body)}. Ejecuta npm run e2e:seed y confirma que termine correctamente antes de ejecutar dashboard.cy.ts.`,
+                ).to.be.oneOf([200, 201])
+            })
+        },
+        {
+            validate() {
+                cy.visit('/dashboard')
+                cy.location('pathname').should('eq', '/dashboard')
+            },
+        },
+    )
+    cy.visit('/dashboard')
 })
 
 export {}

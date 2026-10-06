@@ -8,6 +8,9 @@ const testUserPassword = process.env.CYPRESS_TEST_USER_PASSWORD ?? process.env.E
 const testRegisterEmail = process.env.CYPRESS_TEST_REGISTER_EMAIL ?? process.env.E2E_REGISTER_EMAIL
 const testRegisterPassword =
     process.env.CYPRESS_TEST_REGISTER_PASSWORD ?? process.env.E2E_REGISTER_PASSWORD
+const e2eSeedEmail = process.env.E2E_SEED_EMAIL ?? 'cypress-dashboard-seed@pedilo.test'
+const e2eSeedPassword = process.env.E2E_SEED_PASSWORD ?? 'Strong-pass-123'
+const e2eSeedSlug = process.env.E2E_SEED_SLUG ?? 'e2e-dashboard-restaurante'
 
 export default defineConfig({
     e2e: {
@@ -29,6 +32,9 @@ export default defineConfig({
         testUserPassword,
         testRegisterEmail,
         testRegisterPassword,
+        e2eSeedEmail,
+        e2eSeedPassword,
+        e2eSeedSlug,
         uiDelay: Number(process.env.CYPRESS_UI_DELAY ?? 0),
         pauseForInspection: process.env.CYPRESS_PAUSE_FOR_INSPECTION === 'true',
     },
