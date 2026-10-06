@@ -211,7 +211,7 @@ describe('Catálogo público', () => {
     it('muestra el negocio, menús, categorías, productos, precios y opciones sin autenticación', () => {
         installPublicCatalogApi()
 
-        cy.visit(`/menu/${slug}`)
+        cy.visit(`/${slug}`)
         cy.wait('@getPublicCatalog')
 
         cy.get('body').should('not.contain', 'Iniciar sesión')
@@ -278,7 +278,7 @@ describe('Catálogo público', () => {
             installPublicCatalogApi()
 
             cy.viewport(width, height)
-            cy.visit(`/menu/${slug}`)
+            cy.visit(`/${slug}`)
             cy.wait('@getPublicCatalog')
 
             cy.contains('h1', 'Cocina de Luna').should('be.visible')

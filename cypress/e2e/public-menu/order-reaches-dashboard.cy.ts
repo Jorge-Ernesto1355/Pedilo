@@ -166,7 +166,7 @@ describe('Pedido público visible en el dashboard', () => {
             createdOrder = order
         })
 
-        cy.visit(`/menu/${slug}`)
+        cy.visit(`/${slug}`)
         cy.wait('@getPublicCatalog')
         cy.window().then((window) => {
             cy.stub(window, 'open').returns({

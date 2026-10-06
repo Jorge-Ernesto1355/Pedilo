@@ -171,7 +171,7 @@ describe('Crear pedido desde el catálogo público', () => {
     it('agrega productos, valida opciones, modifica cantidades y crea el pedido', () => {
         installOrderApi()
 
-        cy.visit(`/menu/${slug}`)
+        cy.visit(`/${slug}`)
         cy.wait('@getPublicCatalog')
         cy.window().then((window) => {
             cy.stub(window, 'open')
@@ -263,7 +263,7 @@ describe('Crear pedido desde el catálogo público', () => {
     it('evita crear pedidos duplicados al confirmar dos veces', () => {
         const requests = installOrderApi()
 
-        cy.visit(`/menu/${slug}`)
+        cy.visit(`/${slug}`)
         cy.wait('@getPublicCatalog')
         cy.window().then((window) => {
             cy.stub(window, 'open')
@@ -298,7 +298,7 @@ describe('Crear pedido desde el catálogo público', () => {
             const requests = installOrderApi()
 
             cy.viewport(width, height)
-            cy.visit(`/menu/${slug}`)
+            cy.visit(`/${slug}`)
             cy.wait('@getPublicCatalog')
             cy.window().then((window) => {
                 cy.stub(window, 'open')

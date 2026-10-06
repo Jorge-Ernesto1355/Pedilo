@@ -10,7 +10,6 @@ import { MapPinned } from 'lucide-react'
 import type { FormEventHandler } from 'react'
 import { ProgressiveImage } from './ProgressiveImage'
 import { BusinessProfileSkeleton } from '../../components/CreateMenuStates'
-import Link from 'next/link'
 type BusinessProfileFormProps = {
     logoPreview: string | null
     logoBlurPreview: string | null
@@ -98,7 +97,7 @@ export function BusinessProfileForm({
                     </label>
                     <span className="mt-4 max-w-md text-sm leading-7 text-[#65738A]">
                         Crea una URL sencilla y fácil de recordar para que tus clientes accedan a tu
-                        menú. Ejemplo: /menu/la-esquina
+                        menú. Ejemplo: /la-esquina
                     </span>
                     <input
                         id="slug"

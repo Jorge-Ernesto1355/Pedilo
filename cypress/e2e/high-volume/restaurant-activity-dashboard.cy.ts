@@ -114,7 +114,7 @@ function configureWhatsapp() {
 }
 
 function placeOrder(slug: string, seed: OrderSeed, index: number) {
-    cy.visit(`/menu/${slug}`)
+    cy.visit(`/${slug}`)
     cy.window().then((window) => {
         cy.stub(window, 'open').returns({
             document: { title: '', body: { innerHTML: '' } },
@@ -185,7 +185,7 @@ describe('High volume · restaurante con actividad real y métricas', () => {
                 })
             })
 
-            cy.visit(`/menu/${slug}`)
+            cy.visit(`/${slug}`)
             cy.contains('h1', 'Actividad Cypress').should('be.visible')
             menus.forEach((menu, menuIndex) => {
                 cy.get('section[aria-label="Menús"]').contains('button', menu.name).click()

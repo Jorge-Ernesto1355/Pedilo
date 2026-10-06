@@ -19,8 +19,8 @@ export function useBusinessShareLink(BusinesSlug: string) {
     const slug = useMemo(() => slugify(BusinesSlug), [BusinesSlug])
     const shareUrl =
         typeof window === 'undefined'
-            ? `/menu/${slug}`
-            : new URL(`/menu/${slug}`, window.location.origin).toString()
+            ? `/${slug}`
+            : new URL(`/${slug}`, window.location.origin).toString()
 
     async function copyLink() {
         if (navigator.clipboard?.writeText) {

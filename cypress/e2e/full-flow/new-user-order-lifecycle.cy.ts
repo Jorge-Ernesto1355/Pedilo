@@ -141,7 +141,7 @@ describe('Flujo completo · usuario nuevo hasta orden lista', () => {
             configureWhatsapp()
 
             // Abrir catálogo público → agregar producto → crear pedido como cliente.
-            cy.visit(`/menu/${slug}`)
+            cy.visit(`/${slug}`)
             cy.contains('Hamburguesa Cypress', { timeout: 15_000 }).should('be.visible')
             cy.window().then((window) => {
                 cy.stub(window, 'open').returns({
