@@ -20,6 +20,7 @@ import { DashboardErrorState } from '../../components/DashboardErrorState'
 import { OverviewSkeleton } from '../../components/DashboardSkeletons'
 import { useBusinessSettings } from '@/app/(protected)/create-menu/features/business-settings/useBusinessSettings'
 import { formatMoney } from '../dashboard-data/formatters'
+import { SalesAccountingNotice } from '../dashboard-sales/SalesAccountingNotice'
 
 export function DashboardOverview() {
     const { range, setRange } = useDateRangeFilter()
@@ -141,6 +142,9 @@ export function DashboardOverview() {
                     </Link>
                 </div>
                 <SalesChart data={sales.data} currency={currency} />
+                <div className="mt-5">
+                    <SalesAccountingNotice />
+                </div>
             </section>
             <section className="grid gap-4 lg:grid-cols-2">
                 <BestSellersCard data={products} />
@@ -168,7 +172,7 @@ function toOrdersData(
     orders: Array<{
         id: string
         orderNumber: number
-        customerName: string
+        customerName: string | null
         total: number
         status: OrderStatus
     }>,
@@ -177,7 +181,7 @@ function toOrdersData(
         total: orders.length,
         recent: orders.map((order) => ({
             id: `#${order.orderNumber}`,
-            customer: order.customerName,
+            customer: order.customerName ?? 'Cliente sin nombre',
             amount: order.total,
             status:
                 order.status === 'READY'

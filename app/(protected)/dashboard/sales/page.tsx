@@ -15,6 +15,7 @@ import { DashboardErrorState } from '../components/DashboardErrorState'
 import { SalesSkeleton } from '../components/DashboardSkeletons'
 import { useBusinessSettings } from '../../create-menu/features/business-settings/useBusinessSettings'
 import { formatMoney } from '../features/dashboard-data/formatters'
+import { SalesAccountingNotice } from '../features/dashboard-sales/SalesAccountingNotice'
 
 export default function SalesPage() {
     const { range, setRange } = useDateRangeFilter('today')
@@ -73,7 +74,13 @@ export default function SalesPage() {
                             helper="vs. periodo anterior"
                             href="/dashboard/sales"
                             icon={TrendingUp}
-                            tone="blue"
+                            tone={
+                                sales.data.trend > 0
+                                    ? 'green'
+                                    : sales.data.trend < 0
+                                      ? 'red'
+                                      : 'blue'
+                            }
                         />
                     </section>
                     <section className="relative rounded-2xl border border-[#DCE5F3] bg-white p-5 shadow-[0_8px_22px_rgb(20_48_105_/_0.055)] sm:p-6">
@@ -97,6 +104,9 @@ export default function SalesPage() {
                                     </div>
                                 </div>
                             ) : null}
+                        </div>
+                        <div className="mt-5">
+                            <SalesAccountingNotice />
                         </div>
                         <SalesPointsTable data={sales.data} currency={currency} />
                         {sales.isFetching ? (
