@@ -22,7 +22,7 @@ const links = [
     { href: '/dashboard', label: 'Resumen', icon: LayoutDashboard },
     { href: '/dashboard/sales', label: 'Ventas', icon: BarChart3 },
     { href: '/dashboard/orders', label: 'Pedidos', icon: ShoppingBag },
-    { href: '/dashboard/customers', label: 'Customers', icon: Users },
+    { href: '/dashboard/customers', label: 'Clientes', icon: Users },
     { href: '/dashboard/products', label: 'Productos', icon: Package },
 ]
 
