@@ -3,6 +3,8 @@ type BusinessApi = {
     name: string
     slug: string
     description: string
+    logoUrl?: string | null
+    coverUrl?: string | null
     ubication: string
     ubicationMaps: { latitude: number; longitude: number } | null
     businessSchedule: {
@@ -51,6 +53,7 @@ function stubEmptyBusiness() {
 function visitCreateMenu() {
     stubEmptyBusiness()
     cy.visit('/create-menu')
+    cy.wait('@getBusiness')
     cy.contains('h1', 'Cuéntanos sobre tu negocio.').should('be.visible')
     inspect('Formulario de negocio visible')
 }
@@ -141,6 +144,83 @@ describe('Crear menú · perfil del restaurante', () => {
         cy.get('#business-cover').should('exist')
         cy.contains('button', 'Marcar ubicación exacta').should('be.visible')
         cy.contains('button', 'Guardar cambios').should('be.visible')
+    })
+
+    it('después de refrescar carga el negocio existente y lo guarda como edición', () => {
+        const existingBusiness = businessResponse({
+            name: 'NEGOCIO-TEST-123',
+            slug: 'negocio-test-123',
+            description: 'Dato persistido para verificar la recuperación tras refresh.',
+            ubication: 'Zona de prueba, Culiacán',
+            logoUrl: 'https://cdn.example.test/negocio-test-logo.png',
+            coverUrl: 'https://cdn.example.test/negocio-test-cover.jpg',
+        })
+        let createRequests = 0
+
+        cy.intercept('GET', '**/api/v1/businesses/mine', {
+            statusCode: 200,
+            body: { business: existingBusiness },
+        }).as('getExistingBusiness')
+        cy.reload()
+        cy.wait('@getExistingBusiness')
+
+        cy.get('#businessName', { timeout: 15_000 }).should('have.value', 'NEGOCIO-TEST-123')
+        cy.get('#slug').should('have.value', 'negocio-test-123')
+        cy.get('#location').should('have.value', 'Zona de prueba, Culiacán')
+        cy.get('#description').should(
+            'have.value',
+            'Dato persistido para verificar la recuperación tras refresh.',
+        )
+        cy.get('img[alt="Vista previa del logo"]').should(
+            'have.attr',
+            'src',
+            'https://cdn.example.test/negocio-test-logo.png',
+        )
+        cy.get('img[alt="Vista previa de la portada"]').should(
+            'have.attr',
+            'src',
+            'https://cdn.example.test/negocio-test-cover.jpg',
+        )
+        cy.get('button[aria-label="Abrir menú de NEGOCIO-TEST-123"]')
+            .should('be.visible')
+            .and('contain', 'NEGOCIO-TEST-123')
+        cy.get('button[aria-label="Abrir menú de NEGOCIO-TEST-123"] span[aria-hidden="true"]')
+            .should('have.css', 'background-image')
+            .and('include', 'negocio-test-logo.png')
+        cy.get('input[type="file"]#business-logo').should('exist')
+        cy.get('input[type="file"]#business-cover').should('exist')
+        cy.get('#businessName').should('not.have.value', 'La Esquina')
+        cy.get('#description').should(
+            'not.have.value',
+            'Hamburguesas, wings y papas hechas para compartir.',
+        )
+
+        cy.intercept('POST', '**/api/v1/businesses', (request) => {
+            createRequests += 1
+            request.continue()
+        }).as('unexpectedCreate')
+        cy.intercept('PATCH', '**/api/v1/businesses/business-cypress-1', {
+            statusCode: 200,
+            body: { business: existingBusiness },
+        }).as('updateExistingBusiness')
+
+        cy.get('#description').clear().type('Descripción editada desde el negocio recuperado.')
+        cy.contains('button', 'Guardar cambios').click()
+        cy.wait('@updateExistingBusiness').its('request.method').should('eq', 'PATCH')
+        cy.then(() => expect(createRequests).to.eq(0))
+    })
+
+    it('después de refrescar muestra crear negocio solo cuando el backend confirma que no existe', () => {
+        cy.intercept('GET', '**/api/v1/businesses/mine', {
+            statusCode: 200,
+            body: { business: null },
+        }).as('confirmNoBusiness')
+        cy.reload()
+        cy.wait('@confirmNoBusiness')
+
+        cy.get('#businessName', { timeout: 15_000 }).should('have.value', 'La Esquina')
+        cy.contains('button', 'Guardar cambios').should('be.visible')
+        cy.get('button[aria-label="Abrir menú de Tu negocio"]').should('be.visible')
     })
 
     it('valida campos obligatorios y horarios sin enviar la creación', () => {

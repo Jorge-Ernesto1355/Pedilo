@@ -50,23 +50,50 @@ describe('Auth · acceso condicionado a negocio', () => {
         cy.get('#description').clear().type('Negocio creado durante la prueba de onboarding.')
         cy.get('#open-time').clear().type('10:00')
         cy.get('#close-time').clear().type('20:00')
+        cy.get('#business-logo').selectFile('public/logoPediloSinfondo.png', { force: true })
+        cy.get('#business-cover').selectFile(
+            'app/home/components/Gemini_Generated_Image_4tokpo4tokpo4tok-2.jpg',
+            { force: true },
+        )
+        cy.intercept('GET', '**/api/v1/businesses/mine').as('businessAfterCreate')
         cy.contains('button', 'Guardar cambios').click()
 
-        cy.wait('@createBusiness').its('response.statusCode').should('be.oneOf', [200, 201])
+        cy.wait('@createBusiness').then(({ request, response }) => {
+            expect(response?.statusCode).to.be.oneOf([200, 201])
+            expect(request.headers['content-type']).to.include('multipart/form-data')
+            expect(response?.body).to.have.property('business')
+        })
+        cy.wait('@businessAfterCreate').then(({ response }) => {
+            const business = response?.body?.business
+            expect(response?.statusCode).to.eq(200)
+            expect(business?.logoUrl).to.be.a('string').and.not.be.empty
+            expect(business?.coverUrl).to.be.a('string').and.not.be.empty
+        })
         cy.contains('Cambios guardados', { timeout: 15_000 }).should('be.visible')
 
         // El navbar debe reflejar el negocio en el estado actual, sin reload.
         cy.get(`button[aria-label="Abrir menú de ${businessName}"]`, { timeout: 15_000 })
             .should('be.visible')
             .and('contain', businessName)
-        cy.get(
-            `button[aria-label="Abrir menú de ${businessName}"] span[aria-hidden="true"]`,
-        ).should('contain', 'N')
+        cy.get(`button[aria-label="Abrir menú de ${businessName}"] span[aria-hidden="true"]`)
+            .should('have.css', 'background-image')
+            .and('not.equal', 'none')
 
         // La navegación al dashboard funciona con el estado actualizado, sin recargar la página.
         cy.contains('nav[aria-label="Navegación principal"] a', 'Resumen').click()
         cy.location('pathname', { timeout: 15_000 }).should('eq', '/dashboard')
         cy.get('[aria-label="Resumen del negocio"]', { timeout: 15_000 }).should('be.visible')
+        cy.get(`button[aria-label="Abrir menú de ${businessName}"] span[aria-hidden="true"]`)
+            .should('have.css', 'background-image')
+            .and('not.equal', 'none')
+
+        cy.reload()
+        cy.location('pathname', { timeout: 15_000 }).should('eq', '/dashboard')
+        cy.get(`button[aria-label="Abrir menú de ${businessName}"] span[aria-hidden="true"]`, {
+            timeout: 15_000,
+        })
+            .should('have.css', 'background-image')
+            .and('not.equal', 'none')
     })
 })
 
