@@ -90,6 +90,7 @@ function CategoryProducts({
             return
         const onError = (error: unknown) => {
             if (error instanceof ApiError) {
+                const description = errorMessage(error, 'Revisa los datos e inténtalo nuevamente.')
                 Object.entries(error.fieldErrors).forEach(([field, messages]) => {
                     if (field in values)
                         setError(field as keyof ProductFormValues, {
@@ -97,12 +98,17 @@ function CategoryProducts({
                             message: messages[0],
                         })
                 })
+                setError('root.server', { type: 'server', message: description })
                 notify.error({
                     title: 'No se pudo guardar el producto',
-                    description: errorMessage(error, 'Revisa los datos e inténtalo nuevamente.'),
+                    description,
                 })
                 return
             }
+            setError('root.server', {
+                type: 'server',
+                message: 'No pudimos guardar el producto. Inténtalo nuevamente.',
+            })
             notify.error({
                 title: 'No se pudo guardar el producto',
                 description: 'Inténtalo nuevamente.',

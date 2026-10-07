@@ -334,6 +334,11 @@ export function AddProductModal({
                         </button>
                     </div>
                 </div>
+                {errors.root?.server?.message && (
+                    <p role="alert" className="text-center text-xs text-[#B42318]">
+                        {errors.root.server.message}
+                    </p>
+                )}
             </form>
             {currentProduct && (
                 <OptionGroupsEditor
