@@ -62,6 +62,11 @@ export function AddProductModal({
 
     useEffect(() => {
         if (!open) return
+
+        // A new product must never inherit the temporary preview from the
+        // product that was just saved or edited.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setSelectedImage(null)
         reset({
             name: currentProduct?.name ?? '',
             description: currentProduct?.description ?? '',
@@ -69,6 +74,13 @@ export function AddProductModal({
             image: null,
         })
     }, [open, currentProduct, reset])
+
+    useEffect(
+        () => () => {
+            if (selectedImage) URL.revokeObjectURL(selectedImage.url)
+        },
+        [selectedImage],
+    )
 
     const imageSource = currentProduct?.id ?? 'new-product'
     const imagePreview =
@@ -256,6 +268,7 @@ export function AddProductModal({
                                 </span>
                             </span>
                             <input
+                                key={imageSource}
                                 id="product-image"
                                 type="file"
                                 accept="image/png,image/jpeg,image/webp"
