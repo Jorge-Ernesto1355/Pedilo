@@ -21,7 +21,12 @@ export default function QueryProvider({ children }: { children: React.ReactNode 
 
     return (
         <QueryClientProvider client={queryClient}>
-            <Toaster position="top-right" />
+            <Toaster
+                position="top-right"
+                theme="light"
+                offset={{ top: '0.75rem', right: '0.75rem' }}
+                options={{ fill: '#111827', roundness: 14 }}
+            />
             {children}
         </QueryClientProvider>
     )
