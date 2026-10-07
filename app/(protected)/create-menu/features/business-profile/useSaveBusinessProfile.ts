@@ -83,7 +83,10 @@ export function useSaveBusinessProfile() {
                           withCredentials: true,
                       })
 
-                let business = response.data.business
+                // Some deployed API versions return 204 after persisting the multipart update.
+                // Do not turn that successful upload into a client-side exception.
+                const responseData = response.data ?? {}
+                let business = responseData.business
                 if (!businessId) {
                     try {
                         const mineResponse = await apiClient.get<BusinessResponse>(
@@ -130,7 +133,7 @@ export function useSaveBusinessProfile() {
                     })
                 }
 
-                return { ...response.data, business }
+                return { ...responseData, business }
             } catch (error) {
                 const normalizedError = normalizeApiError(error)
                 notify.error({
