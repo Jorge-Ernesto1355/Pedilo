@@ -383,6 +383,17 @@ export function getUserFriendlyError(
     options: UserFriendlyErrorOptions = {},
 ): UserFriendlyError {
     const parts = getErrorParts(error)
+
+    // Backend messages that are already safe, localized Spanish copy should
+    // remain useful to the user even when the backend also sends a generic
+    // status code such as INTERNAL_ERROR or CONFLICT.
+    if (error instanceof ApiError && isSafeSpanishMessage(parts.message)) {
+        return {
+            title: options.fallback?.title ?? 'No se pudo completar la acción',
+            description: parts.message,
+        }
+    }
+
     const mapped = parts.code ? knownErrors[parts.code] : undefined
     if (mapped) return mapped
 
