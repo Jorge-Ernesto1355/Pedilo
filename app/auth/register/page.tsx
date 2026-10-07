@@ -8,7 +8,6 @@ import { getRegisterError } from '@/app/auth/lib/client/error-message'
 import { registerUser } from '@/app/auth/lib/client/register'
 import { useMutation } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
-import { RedirectedUrls } from '@/src/lib/RedirectUrls'
 import { authClient } from '@/authClient'
 import { SiteFooter } from '@/app/components/SiteFooter'
 
@@ -82,7 +81,7 @@ export default function RegisterPage() {
         mutationFn: registerUser,
         onSuccess: () => {
             setSuccess(true)
-            router.push(RedirectedUrls.login)
+            router.push('/auth/login')
         },
     })
     const loading = registerMutation.isPending || googleLoading
@@ -96,7 +95,7 @@ export default function RegisterPage() {
         try {
             await authClient.signIn.social({
                 provider: 'google',
-                callbackURL: `${window.location.origin}${RedirectedUrls.createMenu}`,
+                callbackURL: `${window.location.origin}/auth/login`,
             })
         } catch {
             setAuthError('No pudimos iniciar sesión con Google. Intenta con tu correo.')
@@ -421,19 +420,19 @@ export default function RegisterPage() {
                                     />
                                     <span>
                                         Al crear una cuenta, aceptas los{' '}
-                                        <a
+                                        <Link
                                             href="/terminos"
                                             className="font-semibold text-blue-800 hover:underline"
                                         >
                                             Términos para Clientes
-                                        </a>{' '}
+                                        </Link>{' '}
                                         y la{' '}
-                                        <a
+                                        <Link
                                             href="/privacidad"
                                             className="font-semibold text-blue-800 hover:underline"
                                         >
                                             Aviso de Privacidad
-                                        </a>
+                                        </Link>
                                         .
                                     </span>
                                 </label>
@@ -518,12 +517,12 @@ export default function RegisterPage() {
 
                             <p className="mt-5 text-center text-[14px] text-slate-500">
                                 ¿Ya tienes una cuenta?{' '}
-                                <a
-                                    href="#register"
+                                <Link
+                                    href="/auth/login"
                                     className="font-semibold text-blue-800 hover:underline"
                                 >
                                     Iniciar sesión
-                                </a>
+                                </Link>
                             </p>
                         </motion.div>
                     </div>

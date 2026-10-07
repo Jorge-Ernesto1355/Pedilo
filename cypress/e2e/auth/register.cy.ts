@@ -53,13 +53,79 @@ describe('Auth · Register', () => {
             })
             request.reply({
                 statusCode: 409,
-                body: { error: { code: 'EMAIL_ALREADY_IN_USE', message: 'Este correo ya está registrado.' } },
+                body: {
+                    error: {
+                        code: 'EMAIL_ALREADY_IN_USE',
+                        message: 'Este correo ya tiene una cuenta. inicia sesión para continuar',
+                    },
+                },
             })
         }).as('register')
         fillRegistration('registered@example.test')
         cy.get('[data-testid="register-submit"]').click()
         cy.wait('@register').its('request.method').should('eq', 'POST')
-        cy.get('[role="alert"]').should('contain', 'Este correo ya está registrado.')
+        cy.get('[role="alert"]').should(
+            'contain',
+            'Este correo ya tiene una cuenta. Inicia sesión para continuar.',
+        )
+    })
+
+    it('después de registrarse solo navega al login y no consulta datos privados', () => {
+        let privateRequests = 0
+
+        cy.intercept('GET', '**/api/v1/businesses/**', (request) => {
+            privateRequests += 1
+            request.continue()
+        })
+        cy.intercept('GET', '**/dashboard**', (request) => {
+            privateRequests += 1
+            request.continue()
+        })
+        cy.intercept('POST', '**/api/v1/auth/register', {
+            statusCode: 201,
+            body: { success: true },
+        }).as('register')
+
+        fillRegistration('isolated-signup@example.test')
+        cy.get('[data-testid="register-submit"]').click()
+        cy.wait('@register')
+
+        cy.location('pathname', { timeout: 15_000 }).should('eq', '/auth/login')
+        cy.get('[data-testid="login-email"]').should('be.visible')
+        cy.then(() => expect(privateRequests).to.eq(0))
+    })
+
+    it('mantiene el login visible si había otra sesión activa', function () {
+        cy.env(['testUserEmail', 'testUserPassword']).then(function ({
+            testUserEmail,
+            testUserPassword,
+        }) {
+            if (!testUserEmail || !testUserPassword) {
+                this.skip()
+                return
+            }
+
+            cy.login({ email: testUserEmail, password: testUserPassword })
+
+            let privateRequests = 0
+            cy.intercept('GET', '**/api/v1/businesses/**', (request) => {
+                privateRequests += 1
+                request.continue()
+            })
+            cy.intercept('POST', '**/api/v1/auth/register', {
+                statusCode: 201,
+                body: { success: true },
+            }).as('registerWithExistingSession')
+
+            cy.visit('/auth/register')
+            fillRegistration('isolated-signup-with-session@example.test')
+            cy.get('[data-testid="register-submit"]').click()
+            cy.wait('@registerWithExistingSession')
+
+            cy.location('pathname', { timeout: 15_000 }).should('eq', '/auth/login')
+            cy.get('[data-testid="login-email"]').should('be.visible')
+            cy.then(() => expect(privateRequests).to.eq(0))
+        })
     })
 
     it('no duplica la petición durante loading', () => {
@@ -70,14 +136,19 @@ describe('Auth · Register', () => {
         }).as('register')
         fillRegistration()
         cy.get('[data-testid="register-submit"]').click()
-        cy.get('[data-testid="register-submit"]').should('be.disabled').and('have.attr', 'aria-busy', 'true')
+        cy.get('[data-testid="register-submit"]')
+            .should('be.disabled')
+            .and('have.attr', 'aria-busy', 'true')
         cy.get('[data-testid="register-submit"]').click({ force: true })
         cy.then(() => expect(registerCalls).to.eq(1))
         cy.wait('@register')
     })
 
     it('registra un usuario real con email único cuando hay credenciales configuradas', function () {
-        cy.env(['testRegisterEmail', 'testRegisterPassword']).then(function ({ testRegisterEmail, testRegisterPassword }) {
+        cy.env(['testRegisterEmail', 'testRegisterPassword']).then(function ({
+            testRegisterEmail,
+            testRegisterPassword,
+        }) {
             if (!testRegisterPassword) {
                 this.skip()
                 return
@@ -88,7 +159,7 @@ describe('Auth · Register', () => {
                 : `${uniqueSuffix}@example.test`
             fillRegistration(email)
             cy.get('[data-testid="register-submit"]').click()
-            cy.location('pathname', { timeout: 15_000 }).should('eq', '/create-menu')
+            cy.location('pathname', { timeout: 15_000 }).should('eq', '/auth/login')
         })
     })
 })
