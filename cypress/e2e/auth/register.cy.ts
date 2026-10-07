@@ -102,6 +102,12 @@ describe('Auth · Register', () => {
             }
 
             cy.login({ email: testUserEmail, password: testUserPassword })
+            // cy.login waits for the route, but the dashboard's business query
+            // can finish just after that navigation. Let the existing session
+            // settle before counting requests caused by registration.
+            cy.get('button[aria-label^="Abrir menú de "]', { timeout: 15_000 })
+                .should('be.visible')
+                .and('not.contain', 'Tu negocio')
 
             let privateRequests = 0
             cy.intercept('GET', '**/api/v1/businesses/mine', (request) => {
