@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { accountNameSchema, passwordSchema } from '@/app/auth/lib/validation'
 import { ApiError } from '@/app/auth/lib/client/api-error'
+import { getUserFriendlyError } from '@/src/lib/errors/user-friendly-error'
 import { DashboardErrorState } from '../components/DashboardErrorState'
 import { useAccount, useAccountMutations } from './useAccount'
 import { AccountSkeleton } from './AccountSkeleton'
@@ -208,16 +209,18 @@ export default function AccountPage() {
     const mutationError = mutations.changePassword.error
     const currentPasswordError =
         mutationError instanceof ApiError &&
-        (mutationError.code === 'CURRENT_PASSWORD_INCORRECT' ||
-            mutationError.status === 401 ||
-            mutationError.message.toLowerCase().includes('current password'))
+        (mutationError.code === 'CURRENT_PASSWORD_INCORRECT' || mutationError.status === 401)
             ? 'La contraseña actual es incorrecta.'
             : undefined
 
-    const deleteAccountError =
-        mutations.removeAccount.error instanceof ApiError && mutations.removeAccount.error.message
-            ? mutations.removeAccount.error.message
-            : 'No pudimos borrar tu cuenta. Inténtalo nuevamente.'
+    const deleteAccountError = mutations.removeAccount.error
+        ? getUserFriendlyError(mutations.removeAccount.error, {
+              fallback: {
+                  title: 'No se pudo borrar la cuenta',
+                  description: 'Inténtalo nuevamente.',
+              },
+          }).description
+        : 'No pudimos borrar tu cuenta. Inténtalo nuevamente.'
 
     return (
         <main className="mx-auto max-w-[1100px] space-y-6 px-5 py-8 sm:px-8 lg:py-10">
@@ -464,15 +467,27 @@ export default function AccountPage() {
             </section>
 
             <section className="rounded-2xl border border-[#DCE5F3] bg-white p-5 shadow-[0_8px_22px_rgb(20_48_105_/_0.035)] sm:p-6">
-                <p className="text-xs font-bold uppercase tracking-[.16em] text-[#8996A9]">Información y derechos</p>
+                <p className="text-xs font-bold uppercase tracking-[.16em] text-[#8996A9]">
+                    Información y derechos
+                </p>
                 <h2 className="mt-2 font-display text-xl text-[#12234A]">Documentos legales</h2>
                 <p className="mt-2 text-sm leading-6 text-[#65738A]">
-                    Consulta cómo tratamos la información de tu cuenta y cómo presentar una solicitud ARCO.
+                    Consulta cómo tratamos la información de tu cuenta y cómo presentar una
+                    solicitud ARCO.
                 </p>
-                <nav aria-label="Documentos legales de la cuenta" className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm font-semibold text-[#2451C5]">
-                    <Link href="/privacidad" className="underline underline-offset-2">Aviso de Privacidad</Link>
-                    <Link href="/arco" className="underline underline-offset-2">Procedimiento ARCO</Link>
-                    <a href="mailto:soporte@pedilo.mx" className="underline underline-offset-2">soporte@pedilo.mx</a>
+                <nav
+                    aria-label="Documentos legales de la cuenta"
+                    className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm font-semibold text-[#2451C5]"
+                >
+                    <Link href="/privacidad" className="underline underline-offset-2">
+                        Aviso de Privacidad
+                    </Link>
+                    <Link href="/arco" className="underline underline-offset-2">
+                        Procedimiento ARCO
+                    </Link>
+                    <a href="mailto:soporte@pedilo.mx" className="underline underline-offset-2">
+                        soporte@pedilo.mx
+                    </a>
                 </nav>
             </section>
 
@@ -482,8 +497,8 @@ export default function AccountPage() {
                 </p>
                 <h2 className="mt-2 font-display text-xl text-[#12234A]">Eliminar cuenta</h2>
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-[#65738A]">
-                    Borra tu cuenta y toda la información asociada, incluyendo clientes, menús y productos.
-                    Esta acción no se puede deshacer.
+                    Borra tu cuenta y toda la información asociada, incluyendo clientes, menús y
+                    productos. Esta acción no se puede deshacer.
                 </p>
                 <button
                     type="button"

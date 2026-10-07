@@ -1,7 +1,7 @@
 'use client'
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { sileo } from 'sileo'
+import { notify } from '@/src/lib/notifications/notify'
 import { useAuthStore } from '@/store/authStore'
 import {
     createProduct,
@@ -75,7 +75,10 @@ export function useProductManagement() {
         },
         onSuccess: (_, variables) => {
             invalidateProducts([variables.categoryId])
-            sileo.success({ title: 'Producto creado' })
+            notify.success({
+                title: 'Producto creado',
+                description: `“${variables.input.name}” se agregó correctamente a tu catálogo.`,
+            })
         },
     })
     const updateProductMutation = useMutation({
@@ -83,14 +86,20 @@ export function useProductManagement() {
             updateProduct(productId, input),
         onSuccess: (product) => {
             invalidateProducts([product.categoryId])
-            sileo.success({ title: 'Producto actualizado' })
+            notify.success({
+                title: 'Producto actualizado',
+                description: 'Los cambios del producto se guardaron.',
+            })
         },
     })
     const deleteProductMutation = useMutation({
         mutationFn: deleteProduct,
         onSuccess: () => {
             invalidateProducts()
-            sileo.success({ title: 'Producto eliminado' })
+            notify.success({
+                title: 'Producto eliminado',
+                description: 'El producto se eliminó del catálogo.',
+            })
         },
     })
     const updateProductStatusMutation = useMutation({
@@ -98,8 +107,12 @@ export function useProductManagement() {
             updateProductStatus(productId, active),
         onSuccess: (product) => {
             invalidateProducts([product.categoryId])
-            sileo.success({
+            notify.success({
                 title: product.active === false ? 'Producto desactivado' : 'Producto activado',
+                description:
+                    product.active === false
+                        ? 'El producto ya no aparecerá disponible en tu catálogo.'
+                        : 'El producto volvió a estar disponible en tu catálogo.',
             })
         },
     })
@@ -114,7 +127,10 @@ export function useProductManagement() {
         }) => moveProductToCategory(productId, targetCategoryId),
         onSuccess: (_, variables) => {
             invalidateProducts([variables.sourceCategoryId, variables.targetCategoryId])
-            sileo.success({ title: 'Producto movido' })
+            notify.success({
+                title: 'Producto movido',
+                description: 'El producto cambió de categoría.',
+            })
         },
     })
     const reorderProductsMutation = useMutation({

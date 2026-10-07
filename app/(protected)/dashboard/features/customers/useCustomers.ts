@@ -9,7 +9,7 @@ import {
     updateCustomer,
 } from '@/src/lib/api/orderApi'
 import type { CustomerPayload } from '@/src/lib/api/order-types'
-import { sileo } from 'sileo'
+import { friendlyNotificationError, notify } from '@/src/lib/notifications/notify'
 export function useCustomers(params: { page: number; limit: number; search?: string }) {
     const businessId = useAuthStore((state) => state.user?.businessId)
     return useQuery({
@@ -32,8 +32,9 @@ export function useCustomerMutations() {
     const client = useQueryClient()
     const invalidate = () => void client.invalidateQueries({ queryKey: ['customers'] })
     const showError = (error: unknown) =>
-        sileo.error({
-            title: error instanceof Error ? error.message : 'No pudimos completar la operación.',
+        notify.error({
+            title: 'No se pudo actualizar el cliente',
+            description: friendlyNotificationError(error, 'Inténtalo nuevamente.'),
         })
     const businessId = useAuthStore((state) => state.user?.businessId)
     return {
@@ -41,8 +42,8 @@ export function useCustomerMutations() {
             mutationFn: (payload: CustomerPayload) => createCustomer(businessId as string, payload),
             onSuccess: () => {
                 invalidate()
-                sileo.success({
-                    title: 'Customer guardado',
+                notify.success({
+                    title: 'Cliente guardado',
                     description: 'La información quedó actualizada.',
                 })
             },
@@ -53,7 +54,10 @@ export function useCustomerMutations() {
                 updateCustomer(id, payload),
             onSuccess: () => {
                 invalidate()
-                sileo.success({ title: 'Customer actualizado' })
+                notify.success({
+                    title: 'Cliente actualizado',
+                    description: 'Los cambios se guardaron correctamente.',
+                })
             },
             onError: showError,
         }),
@@ -61,7 +65,10 @@ export function useCustomerMutations() {
             mutationFn: deleteCustomer,
             onSuccess: () => {
                 invalidate()
-                sileo.success({ title: 'Customer eliminado' })
+                notify.success({
+                    title: 'Cliente eliminado',
+                    description: 'El cliente se eliminó correctamente.',
+                })
             },
             onError: showError,
         }),

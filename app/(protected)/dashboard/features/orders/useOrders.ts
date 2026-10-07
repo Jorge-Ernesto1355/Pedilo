@@ -3,7 +3,11 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { useAuthStore } from '@/store/authStore'
 import { getOrder, getOrders, updateOrderStatus } from '@/src/lib/api/orderApi'
 import type { OrderPeriod, OrderStatus } from '@/src/lib/api/order-types'
-import { sileo } from 'sileo'
+import {
+    friendlyNotificationError,
+    notify,
+    orderStatusNotification,
+} from '@/src/lib/notifications/notify'
 export function useOrders(params: {
     page: number
     limit: number
@@ -36,14 +40,12 @@ export function useOrderStatusMutation() {
         onSuccess: (order) => {
             void client.invalidateQueries({ queryKey: ['orders'] })
             client.setQueryData(['order', order.id], order)
-            sileo.success({
-                title: 'Estado actualizado',
-                description: `Pedido #${order.orderNumber} actualizado correctamente.`,
-            })
+            notify.success(orderStatusNotification(order.status, order.orderNumber))
         },
         onError: (error) =>
-            sileo.error({
-                title: error instanceof Error ? error.message : 'No pudimos actualizar el pedido.',
+            notify.error({
+                title: 'No se pudo actualizar la orden',
+                description: friendlyNotificationError(error, 'Inténtalo nuevamente.'),
             }),
     })
 }

@@ -19,7 +19,11 @@ import { LocationPickerModal } from './features/business-location/LocationPicker
 import { useBusinessLocation } from './features/business-location/useBusinessLocation'
 import type { LocationCoordinates } from './features/business-location/location.schema'
 import { ApiError } from '@/app/auth/lib/client/api-error'
-import { sileo } from 'sileo'
+import {
+    getUserFriendlyError,
+    getUserFriendlyFieldError,
+} from '@/src/lib/errors/user-friendly-error'
+import { notify } from '@/src/lib/notifications/notify'
 import { apiClient } from '@/src/lib/api/client'
 import { locationCoordinatesSchema } from './features/business-location/location.schema'
 import { useAuthStore } from '@/store/authStore'
@@ -166,7 +170,7 @@ export default function BusinessSetupScreen({
     useEffect(() => {
         if (!businessRequiredNotice) return
 
-        sileo.warning({
+        notify.warning({
             title: 'Crea tu negocio primero',
             description: 'Para acceder al dashboard necesitas crear un negocio.',
         })
@@ -211,7 +215,7 @@ export default function BusinessSetupScreen({
             } catch {
                 if (!cancelled) {
                     setBusinessLoading(false)
-                    sileo.error({
+                    notify.error({
                         title: 'No pudimos cargar tu negocio',
                         description: 'Inténtalo de nuevo en unos momentos.',
                     })
@@ -290,9 +294,16 @@ export default function BusinessSetupScreen({
                         location: 'location',
                     }
 
-                    Object.entries(error.fieldErrors).forEach(([field, messages]) => {
+                    Object.entries(error.fieldErrors).forEach(([field]) => {
                         const fieldName = fieldNames[field] ?? field
-                        form.setError(fieldName, { type: 'server', message: messages.join(' ') })
+                        form.setError(fieldName, {
+                            type: 'server',
+                            message: getUserFriendlyFieldError(
+                                error,
+                                field,
+                                'Revisa este campo e inténtalo nuevamente.',
+                            ),
+                        })
                     })
                 },
             },
@@ -325,7 +336,11 @@ export default function BusinessSetupScreen({
                                           ? 'error'
                                           : 'idle'
                                 }
-                                errorMessage={saveProfile.error?.message}
+                                errorMessage={
+                                    saveProfile.error
+                                        ? getUserFriendlyError(saveProfile.error).description
+                                        : undefined
+                                }
                             />
                             <p className="mt-3 max-w-md text-xs leading-5 text-[#65738A]">
                                 Al configurar tu negocio aplican los{' '}
@@ -432,7 +447,11 @@ export default function BusinessSetupScreen({
                 <AddCategoryModal
                     open={categories.isOpen}
                     isSaving={categories.createMenu.isPending}
-                    errorMessage={categories.createMenu.error?.message}
+                    errorMessage={
+                        categories.createMenu.error
+                            ? getUserFriendlyError(categories.createMenu.error).description
+                            : undefined
+                    }
                     onClose={categories.close}
                     onSave={(menu) => categories.createMenu.mutate(menu)}
                 />

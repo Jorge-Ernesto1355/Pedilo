@@ -6,7 +6,7 @@ import { useState } from 'react'
 import type { UseFormSetError } from 'react-hook-form'
 import { motion, useReducedMotion } from 'framer-motion'
 import { GripVertical, LoaderCircle, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react'
-import { sileo } from 'sileo'
+import { friendlyNotificationError, notify } from '@/src/lib/notifications/notify'
 import { Modal } from '@/app/components/ui/Modal'
 import { ApiError } from '@/app/auth/lib/client/api-error'
 import type { MenuCategory } from './menu.types'
@@ -42,7 +42,7 @@ function errorMessage(error: unknown, fallback: string) {
         BUSINESS_ACCESS_DENIED: 'No tienes permiso para administrar este negocio.',
         NOT_AUTHENTICATED: 'Tu sesión expiró. Vuelve a iniciar sesión.',
     }
-    return (error.code && messages[error.code]) ?? error.message ?? fallback
+    return (error.code && messages[error.code]) ?? friendlyNotificationError(error, fallback)
 }
 
 function ReorderStatus({ children }: { children: string }) {
@@ -97,10 +97,16 @@ function CategoryProducts({
                             message: messages[0],
                         })
                 })
-                sileo.error({ title: errorMessage(error, 'Revisa los datos del producto.') })
+                notify.error({
+                    title: 'No se pudo guardar el producto',
+                    description: errorMessage(error, 'Revisa los datos e inténtalo nuevamente.'),
+                })
                 return
             }
-            sileo.error({ title: 'No pudimos guardar el producto. Inténtalo de nuevo.' })
+            notify.error({
+                title: 'No se pudo guardar el producto',
+                description: 'Inténtalo nuevamente.',
+            })
         }
         if (editingProduct) {
             productManagement.updateProduct.mutate(
@@ -140,8 +146,9 @@ function CategoryProducts({
             { categoryId: category.id, productIds: next.map((product) => product.id) },
             {
                 onError: (error) =>
-                    sileo.error({
-                        title: errorMessage(error, 'No pudimos reordenar los productos.'),
+                    notify.error({
+                        title: 'No se pudieron reordenar los productos',
+                        description: errorMessage(error, 'Inténtalo nuevamente.'),
                     }),
                 onSettled: () => setReorderingProductId(null),
             },
@@ -152,7 +159,10 @@ function CategoryProducts({
         if (!window.confirm(`¿Eliminar “${product.name}”?`)) return
         productManagement.deleteProduct.mutate(product.id, {
             onError: (error) =>
-                sileo.error({ title: errorMessage(error, 'No pudimos eliminar el producto.') }),
+                notify.error({
+                    title: 'No se pudo eliminar el producto',
+                    description: errorMessage(error, 'Inténtalo nuevamente.'),
+                }),
         })
     }
 
@@ -219,8 +229,7 @@ function CategoryProducts({
                         }}
                         onDragEnd={() => setDraggedProductId(null)}
                         onDragOver={(event) => {
-                            if (!productManagement.reorderProducts.isPending)
-                                event.preventDefault()
+                            if (!productManagement.reorderProducts.isPending) event.preventDefault()
                         }}
                         onDrop={() => dropProduct(product.id)}
                         className={`group rounded-lg border bg-white px-3 py-2 transition-colors ${reorderingProductId === product.id ? 'border-[#8EA9F5] bg-[#F8FAFF] ring-2 ring-[#2451C5]/10' : 'border-[#E8EEF6] hover:border-[#B8C8E5]'} ${productManagement.reorderProducts.isPending ? 'cursor-wait' : 'cursor-grab active:cursor-grabbing'}`}
@@ -372,7 +381,10 @@ export function MenuManagementPanel({ management }: { management: MenuManagement
     function saveMenu() {
         if (management.updateMenu.isPending) return
         if (!selectedMenu || !menuName.trim()) {
-            sileo.error({ title: 'Escribe un nombre para el menú.' })
+            notify.warning({
+                title: 'Falta el nombre del menú',
+                description: 'Escribe un nombre para continuar.',
+            })
             return
         }
         management.updateMenu.mutate(
@@ -387,7 +399,10 @@ export function MenuManagementPanel({ management }: { management: MenuManagement
     function saveCategory() {
         if (management.createCategory.isPending) return
         if (!selectedMenu || !categoryName.trim()) {
-            sileo.error({ title: 'Escribe un nombre para la categoría.' })
+            notify.warning({
+                title: 'Falta el nombre de la categoría',
+                description: 'Escribe un nombre para continuar.',
+            })
             return
         }
         management.createCategory.mutate(
@@ -423,14 +438,21 @@ export function MenuManagementPanel({ management }: { management: MenuManagement
     function deleteCategory(category: MenuCategory) {
         if (management.deleteCategory.isPending) return
         management.deleteCategory.mutate(category.id, {
-            onSuccess: () => sileo.success({ title: 'Categoría eliminada' }),
+            onSuccess: () =>
+                notify.success({
+                    title: 'Categoría eliminada',
+                    description: 'La categoría se eliminó del menú.',
+                }),
             onError: (error) => {
                 if (error instanceof ApiError && error.code === 'CATEGORY_CONTAINS_PRODUCTS') {
                     setMovingCategory(category)
                     setTargetCategoryId('')
                     return
                 }
-                sileo.error({ title: errorMessage(error, 'No pudimos eliminar la categoría.') })
+                notify.error({
+                    title: 'No se pudo eliminar la categoría',
+                    description: errorMessage(error, 'Inténtalo nuevamente.'),
+                })
             },
         })
     }
@@ -440,7 +462,10 @@ export function MenuManagementPanel({ management }: { management: MenuManagement
         if (!selectedMenu || !window.confirm(`¿Eliminar el menú “${selectedMenu.name}”?`)) return
         management.deleteMenu.mutate(selectedMenu.id, {
             onError: (error) =>
-                sileo.error({ title: errorMessage(error, 'No pudimos eliminar el menú.') }),
+                notify.error({
+                    title: 'No se pudo eliminar el menú',
+                    description: errorMessage(error, 'Inténtalo nuevamente.'),
+                }),
         })
     }
 
@@ -450,8 +475,9 @@ export function MenuManagementPanel({ management }: { management: MenuManagement
             { menuId: selectedMenu.id, categoryIds },
             {
                 onError: (error) =>
-                    sileo.error({
-                        title: errorMessage(error, 'No pudimos reordenar las categorías.'),
+                    notify.error({
+                        title: 'No se pudieron reordenar las categorías',
+                        description: errorMessage(error, 'Inténtalo nuevamente.'),
                     }),
                 onSettled: () => setReorderingCategoryId(null),
             },
@@ -487,7 +513,10 @@ export function MenuManagementPanel({ management }: { management: MenuManagement
                     setTargetCategoryId('')
                 },
                 onError: (error) =>
-                    sileo.error({ title: errorMessage(error, 'No pudimos mover los productos.') }),
+                    notify.error({
+                        title: 'No se pudieron mover los productos',
+                        description: errorMessage(error, 'Inténtalo nuevamente.'),
+                    }),
             },
         )
     }
@@ -615,7 +644,10 @@ export function MenuManagementPanel({ management }: { management: MenuManagement
                                 </div>
                                 <div className="mt-5 flex items-center justify-between gap-3">
                                     <p className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-[.13em] text-[#8996A9]">
-                                        <GripVertical className="size-3.5 text-[#5572B8]" aria-hidden="true" />
+                                        <GripVertical
+                                            className="size-3.5 text-[#5572B8]"
+                                            aria-hidden="true"
+                                        />
                                         Categorías
                                     </p>
                                     <button
@@ -689,10 +721,10 @@ export function MenuManagementPanel({ management }: { management: MenuManagement
                                                     transition={{
                                                         duration: reducedMotion ? 0 : 0.22,
                                                     }}
-                                                    draggable={!management.reorderCategories.isPending}
-                                                    aria-busy={
-                                                        reorderingCategoryId === category.id
+                                                    draggable={
+                                                        !management.reorderCategories.isPending
                                                     }
+                                                    aria-busy={reorderingCategoryId === category.id}
                                                     aria-label={`Reordenar categoría ${category.name}`}
                                                     onDragStart={() => {
                                                         if (!management.reorderCategories.isPending)
@@ -722,9 +754,15 @@ export function MenuManagementPanel({ management }: { management: MenuManagement
                                                                     </p>
                                                                 )}
                                                                 <p className="mt-1 text-[11px] text-[#8996A9]">
-                                                                    {category.isActive ? 'Activa' : 'Inactiva'}{' '}
-                                                                    <span className="mx-1 text-[#C2CCDA]">·</span>
-                                                                    <span className="text-[#5572B8]">Orden</span>
+                                                                    {category.isActive
+                                                                        ? 'Activa'
+                                                                        : 'Inactiva'}{' '}
+                                                                    <span className="mx-1 text-[#C2CCDA]">
+                                                                        ·
+                                                                    </span>
+                                                                    <span className="text-[#5572B8]">
+                                                                        Orden
+                                                                    </span>
                                                                 </p>
                                                             </div>
                                                         </div>

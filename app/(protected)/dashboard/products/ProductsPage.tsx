@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from 'react'
 import { Package, Plus, RefreshCw } from 'lucide-react'
-import { sileo } from 'sileo'
+import { friendlyNotificationError, notify } from '@/src/lib/notifications/notify'
+import { getUserFriendlyFieldError } from '@/src/lib/errors/user-friendly-error'
 import { ApiError } from '@/app/auth/lib/client/api-error'
 import type {
     Product,
@@ -126,7 +127,10 @@ export default function ProductsPage() {
         if (apiError?.code === 'PRODUCT_HAS_ORDERS')
             return 'Este producto tiene historial de pedidos y no puede eliminarse. Desactívalo en lugar de eliminarlo.'
         if (apiError?.code === 'BUSINESS_ACCESS_DENIED') return 'No tienes acceso a este negocio.'
-        return apiError?.message ?? 'No pudimos completar la operación. Inténtalo de nuevo.'
+        return friendlyNotificationError(
+            apiError,
+            'No pudimos completar la operación. Inténtalo nuevamente.',
+        )
     }
     const saveProduct = (input: ProductInput) => {
         if (management.createProduct.isPending || management.updateProduct.isPending) return
@@ -137,9 +141,13 @@ export default function ProductsPage() {
             if (apiError?.code === 'VALIDATION_ERROR')
                 setFieldErrors(
                     Object.fromEntries(
-                        Object.entries(apiError.fieldErrors).map(([key, messages]) => [
+                        Object.entries(apiError.fieldErrors).map(([key]) => [
                             key,
-                            messages[0] ?? 'Campo inválido.',
+                            getUserFriendlyFieldError(
+                                error,
+                                key,
+                                'Revisa este campo e inténtalo nuevamente.',
+                            ),
                         ]),
                     ),
                 )
@@ -177,14 +185,24 @@ export default function ProductsPage() {
                 if ((catalog.data?.products.length ?? 1) === 1 && page > 1)
                     setPage((current) => current - 1)
             },
-            onError: (error) => sileo.error({ title: mutationError(error) }),
+            onError: (error) =>
+                notify.error({
+                    title: 'No se pudo eliminar el producto',
+                    description: mutationError(error),
+                }),
         })
     }
     const toggleProduct = (product: Product) => {
         if (management.updateProductStatus.isPending) return
         management.updateProductStatus.mutate(
             { productId: product.id, active: !(product.active ?? product.isAvailable) },
-            { onError: (error) => sileo.error({ title: mutationError(error) }) },
+            {
+                onError: (error) =>
+                    notify.error({
+                        title: 'No se pudo cambiar la disponibilidad',
+                        description: mutationError(error),
+                    }),
+            },
         )
     }
     const openCreate = () => {

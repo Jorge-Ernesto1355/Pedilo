@@ -1,7 +1,7 @@
 'use client'
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { sileo } from 'sileo'
+import { friendlyNotificationError, notify } from '@/src/lib/notifications/notify'
 import { normalizeApiError, type ApiError } from '@/app/auth/lib/client/api-error'
 import {
     changeAccountPassword,
@@ -29,9 +29,11 @@ function readableError(error: unknown, fallback: string) {
         return 'Ese nombre ya está en uso. Elige otro para continuar.'
     }
     if (apiError.status === 401) return 'Tu sesión expiró. Inicia sesión nuevamente.'
-    if (apiError.status === 429) return 'Has realizado demasiadas solicitudes. Espera un momento e inténtalo de nuevo.'
-    if (apiError.status === undefined) return 'No pudimos conectar con el servidor. Revisa tu conexión.'
-    return apiError.message || fallback
+    if (apiError.status === 429)
+        return 'Has realizado demasiadas solicitudes. Espera un momento e inténtalo de nuevo.'
+    if (apiError.status === undefined)
+        return 'No pudimos conectar con el servidor. Revisa tu conexión.'
+    return friendlyNotificationError(apiError, fallback)
 }
 
 export function useAccountMutations() {
@@ -42,27 +44,58 @@ export function useAccountMutations() {
         mutationFn: updateAccountName,
         onSuccess: () => {
             invalidate()
-            sileo.success({ title: 'Nombre actualizado', description: 'Tu cuenta quedó actualizada.' })
+            notify.success({
+                title: 'Nombre actualizado',
+                description: 'Tu cuenta quedó actualizada.',
+            })
         },
-        onError: (error) => sileo.error({ title: readableError(error, 'No pudimos actualizar tu nombre.') }),
+        onError: (error) =>
+            notify.error({
+                title: 'No se pudo actualizar tu nombre',
+                description: readableError(error, 'Inténtalo nuevamente.'),
+            }),
     })
 
     const sendVerification = useMutation({
         mutationFn: requestEmailVerification,
-        onSuccess: () => sileo.success({ title: 'Correo enviado', description: 'Revisa tu bandeja de entrada para verificar tu email.' }),
-        onError: (error) => sileo.error({ title: readableError(error, 'No pudimos enviar el correo de verificación.') }),
+        onSuccess: () =>
+            notify.success({
+                title: 'Correo enviado',
+                description: 'Revisa tu bandeja de entrada para verificar tu email.',
+            }),
+        onError: (error) =>
+            notify.error({
+                title: 'No se pudo enviar el correo',
+                description: readableError(error, 'Inténtalo nuevamente.'),
+            }),
     })
 
     const resendVerification = useMutation({
         mutationFn: resendEmailVerification,
-        onSuccess: () => sileo.success({ title: 'Correo reenviado', description: 'Revisa tu bandeja de entrada.' }),
-        onError: (error) => sileo.error({ title: readableError(error, 'No pudimos reenviar el correo de verificación.') }),
+        onSuccess: () =>
+            notify.success({
+                title: 'Correo reenviado',
+                description: 'Revisa tu bandeja de entrada.',
+            }),
+        onError: (error) =>
+            notify.error({
+                title: 'No se pudo reenviar el correo',
+                description: readableError(error, 'Inténtalo nuevamente.'),
+            }),
     })
 
     const changePassword = useMutation({
         mutationFn: changeAccountPassword,
-        onSuccess: () => sileo.success({ title: 'Contraseña actualizada', description: 'Tu contraseña se cambió correctamente.' }),
-        onError: (error) => sileo.error({ title: readableError(error, 'No pudimos cambiar tu contraseña.') }),
+        onSuccess: () =>
+            notify.success({
+                title: 'Contraseña actualizada',
+                description: 'Tu contraseña se cambió correctamente.',
+            }),
+        onError: (error) =>
+            notify.error({
+                title: 'No se pudo cambiar la contraseña',
+                description: readableError(error, 'Inténtalo nuevamente.'),
+            }),
     })
 
     const removeAccount = useMutation({

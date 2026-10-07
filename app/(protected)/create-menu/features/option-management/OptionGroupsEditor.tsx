@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { Modal } from '@/app/components/ui/Modal'
-import { sileo } from 'sileo'
+import { friendlyNotificationError, notify } from '@/src/lib/notifications/notify'
 import { useOptionGroups, useOptionManagement, useOptions } from './useOptionManagement'
 import type { OptionGroup, ProductOption } from './option.types'
 
@@ -71,8 +71,10 @@ type GroupValues = z.infer<typeof groupSchema>
 type OptionValues = z.infer<typeof optionSchema>
 
 function mutationError(error: unknown) {
-    const value = error as { code?: string; message?: string }
-    sileo.error({ title: value.message ?? value.code ?? 'No se pudo completar la operación' })
+    notify.error({
+        title: 'No se pudo completar la acción',
+        description: friendlyNotificationError(error, 'Inténtalo nuevamente.'),
+    })
 }
 
 export function OptionModal({

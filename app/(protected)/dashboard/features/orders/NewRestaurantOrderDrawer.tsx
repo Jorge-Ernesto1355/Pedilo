@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { ApiError } from '@/app/auth/lib/client/api-error'
+import { getUserFriendlyError } from '@/src/lib/errors/user-friendly-error'
 import { useAuthStore } from '@/store/authStore'
 import type {
     PublicCatalog,
@@ -122,20 +123,12 @@ function useRestaurantCatalog(enabled: boolean) {
 }
 
 function orderErrorMessage(error: unknown) {
-    if (!(error instanceof ApiError)) return 'No pudimos crear la orden. Inténtalo nuevamente.'
-    if (error.status === 401 || error.code === 'NOT_AUTHENTICATED')
-        return 'Tu sesión terminó. Inicia sesión nuevamente.'
-    if (error.status === 403 || error.code === 'ORDER_BUSINESS_ACCESS_DENIED')
-        return 'No tienes acceso a este negocio.'
-    if (error.code === 'ORDER_PRODUCT_NOT_AVAILABLE')
-        return 'Uno de los productos ya no está disponible. Revisa la orden e inténtalo nuevamente.'
-    if (error.code === 'ORDER_INVALID_OPTIONS')
-        return 'Las opciones seleccionadas ya no son válidas.'
-    if (error.status === 404 || error.code === 'BUSINESS_NOT_FOUND')
-        return 'No encontramos este negocio.'
-    if (error.code === 'VALIDATION_ERROR')
-        return 'Revisa los datos de la orden e inténtalo nuevamente.'
-    return error.message || 'No pudimos crear la orden. Inténtalo nuevamente.'
+    return getUserFriendlyError(error, {
+        fallback: {
+            title: 'No pudimos crear la orden',
+            description: 'Revisa los datos e inténtalo nuevamente.',
+        },
+    }).description
 }
 
 export function NewRestaurantOrderDrawer({

@@ -1,7 +1,7 @@
 'use client'
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { sileo } from 'sileo'
+import { friendlyNotificationError, notify } from '@/src/lib/notifications/notify'
 import { apiClient } from '@/src/lib/api/client'
 import { normalizeApiError } from '@/app/auth/lib/client/api-error'
 import { useAuthStore } from '@/store/authStore'
@@ -118,21 +118,13 @@ export function useSaveBusinessProfile() {
                 void queryClient.invalidateQueries({ queryKey: ['business', 'mine'] })
 
                 if (!businessId) {
-                    sileo.success({
-                        title: '¡Tu negocio fue creado! 🎉',
+                    notify.success({
+                        title: 'Negocio creado',
                         description: 'Ya puedes comenzar a personalizar tu menú.',
-                        duration: 5000,
-                        roundness: 24, // pill más suave, se ve más premium
-                        fill: 'black', // fondo oscuro contrasta fuerte contra tu app blanca
-                        styles: {
-                            title: 'font-semibold text-white',
-                            description: 'text-white/75',
-                            badge: 'bg-emerald-400/20', // el ícono de éxito con un halo verde
-                        },
                     })
                 } else {
-                    sileo.success({
-                        title: '¡Tu negocio fue actualizado!',
+                    notify.success({
+                        title: 'Negocio actualizado',
                         description: 'Los cambios se guardaron correctamente.',
                         duration: 5000,
                     })
@@ -141,13 +133,14 @@ export function useSaveBusinessProfile() {
                 return { ...response.data, business }
             } catch (error) {
                 const normalizedError = normalizeApiError(error)
-                sileo.error({
+                notify.error({
                     title: businessId
                         ? 'No pudimos actualizar tu negocio'
                         : 'No pudimos crear tu negocio',
-                    description:
-                        normalizedError.message || 'Revisa la información e inténtalo de nuevo.',
-                    duration: 5000,
+                    description: friendlyNotificationError(
+                        normalizedError,
+                        'Revisa la información e inténtalo nuevamente.',
+                    ),
                 })
                 throw normalizedError
             }

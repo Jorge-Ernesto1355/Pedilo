@@ -1,10 +1,24 @@
 'use client'
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { sileo } from 'sileo'
+import { notify } from '@/src/lib/notifications/notify'
 import { useState } from 'react'
 import { useAuthStore } from '@/store/authStore'
-import { createCategory, createMenu, deleteCategory, deleteMenu, getMenu, getMenus, moveProductToCategory, moveProductsAndDeleteCategory, reorderCategories, updateCategory, updateCategoryStatus, updateMenu, updateMenuStatus } from './menuApi'
+import {
+    createCategory,
+    createMenu,
+    deleteCategory,
+    deleteMenu,
+    getMenu,
+    getMenus,
+    moveProductToCategory,
+    moveProductsAndDeleteCategory,
+    reorderCategories,
+    updateCategory,
+    updateCategoryStatus,
+    updateMenu,
+    updateMenuStatus,
+} from './menuApi'
 import type { CategoryInput, MenuCreationInput, MenuUpdateInput } from './menu.types'
 
 export const menuQueryKeys = {
@@ -26,7 +40,9 @@ export function useCategoryManagement() {
         staleTime: 5 * 60 * 1000,
     })
     const menuQuery = useQuery({
-        queryKey: selectedMenuId ? menuQueryKeys.detail(selectedMenuId) : ['menus', 'detail', 'none'],
+        queryKey: selectedMenuId
+            ? menuQueryKeys.detail(selectedMenuId)
+            : ['menus', 'detail', 'none'],
         queryFn: () => getMenu(selectedMenuId as string),
         enabled: Boolean(selectedMenuId),
         staleTime: 5 * 60 * 1000,
@@ -34,7 +50,8 @@ export function useCategoryManagement() {
 
     function invalidateMenus() {
         void queryClient.invalidateQueries({ queryKey: menuQueryKeys.all })
-        if (selectedMenuId) void queryClient.invalidateQueries({ queryKey: menuQueryKeys.detail(selectedMenuId) })
+        if (selectedMenuId)
+            void queryClient.invalidateQueries({ queryKey: menuQueryKeys.detail(selectedMenuId) })
     }
 
     const createMenuMutation = useMutation({
@@ -45,19 +62,103 @@ export function useCategoryManagement() {
         onSuccess: () => {
             setIsOpen(false)
             invalidateMenus()
-            sileo.success({ title: '¡Menú creado!', description: 'Tu menú y sus categorías ya están listos.' })
+            notify.success({
+                title: 'Menú creado',
+                description: 'Tu menú y sus categorías ya están listos.',
+            })
         },
     })
-    const updateMenuMutation = useMutation({ mutationFn: ({ menuId, input }: { menuId: string; input: MenuUpdateInput }) => updateMenu(menuId, input), onSuccess: () => { invalidateMenus(); sileo.success({ title: 'Menú actualizado' }) } })
-    const updateMenuStatusMutation = useMutation({ mutationFn: ({ menuId, isActive }: { menuId: string; isActive: boolean }) => updateMenuStatus(menuId, isActive), onSuccess: invalidateMenus })
-    const deleteMenuMutation = useMutation({ mutationFn: deleteMenu, onSuccess: () => { setSelectedMenuId(null); invalidateMenus(); sileo.success({ title: 'Menú eliminado' }) } })
-    const createCategoryMutation = useMutation({ mutationFn: ({ menuId, input }: { menuId: string; input: CategoryInput }) => { if (!businessId) throw new Error('No encontramos el negocio del usuario.'); return createCategory(businessId, menuId, input) }, onSuccess: invalidateMenus })
-    const updateCategoryMutation = useMutation({ mutationFn: ({ categoryId, input }: { categoryId: string; input: CategoryInput }) => updateCategory(categoryId, input), onSuccess: () => { invalidateMenus(); sileo.success({ title: 'Categoría actualizada' }) } })
-    const updateCategoryStatusMutation = useMutation({ mutationFn: ({ categoryId, isActive }: { categoryId: string; isActive: boolean }) => updateCategoryStatus(categoryId, isActive), onSuccess: invalidateMenus })
-    const deleteCategoryMutation = useMutation({ mutationFn: deleteCategory, onSuccess: invalidateMenus })
-    const moveProductsMutation = useMutation({ mutationFn: ({ categoryId, targetCategoryId }: { categoryId: string; targetCategoryId: string }) => moveProductsAndDeleteCategory(categoryId, targetCategoryId), onSuccess: () => { invalidateMenus(); sileo.success({ title: 'Categoría eliminada' }) } })
-    const reorderCategoriesMutation = useMutation({ mutationFn: ({ menuId, categoryIds }: { menuId: string; categoryIds: string[] }) => reorderCategories(menuId, categoryIds), onSuccess: invalidateMenus })
-    const moveProductMutation = useMutation({ mutationFn: ({ productId, targetCategoryId }: { productId: string; targetCategoryId: string }) => moveProductToCategory(productId, targetCategoryId), onSuccess: invalidateMenus })
+    const updateMenuMutation = useMutation({
+        mutationFn: ({ menuId, input }: { menuId: string; input: MenuUpdateInput }) =>
+            updateMenu(menuId, input),
+        onSuccess: () => {
+            invalidateMenus()
+            notify.success({
+                title: 'Menú actualizado',
+                description: 'Los cambios del menú se guardaron correctamente.',
+            })
+        },
+    })
+    const updateMenuStatusMutation = useMutation({
+        mutationFn: ({ menuId, isActive }: { menuId: string; isActive: boolean }) =>
+            updateMenuStatus(menuId, isActive),
+        onSuccess: invalidateMenus,
+    })
+    const deleteMenuMutation = useMutation({
+        mutationFn: deleteMenu,
+        onSuccess: () => {
+            setSelectedMenuId(null)
+            invalidateMenus()
+            notify.success({
+                title: 'Menú eliminado',
+                description: 'El menú se eliminó correctamente.',
+            })
+        },
+    })
+    const createCategoryMutation = useMutation({
+        mutationFn: ({ menuId, input }: { menuId: string; input: CategoryInput }) => {
+            if (!businessId) throw new Error('No encontramos el negocio del usuario.')
+            return createCategory(businessId, menuId, input)
+        },
+        onSuccess: (_, variables) => {
+            invalidateMenus()
+            notify.success({
+                title: 'Categoría creada',
+                description: `“${variables.input.name}” se agregó a tu catálogo.`,
+            })
+        },
+    })
+    const updateCategoryMutation = useMutation({
+        mutationFn: ({ categoryId, input }: { categoryId: string; input: CategoryInput }) =>
+            updateCategory(categoryId, input),
+        onSuccess: () => {
+            invalidateMenus()
+            notify.success({
+                title: 'Categoría actualizada',
+                description: 'Los cambios se guardaron correctamente.',
+            })
+        },
+    })
+    const updateCategoryStatusMutation = useMutation({
+        mutationFn: ({ categoryId, isActive }: { categoryId: string; isActive: boolean }) =>
+            updateCategoryStatus(categoryId, isActive),
+        onSuccess: invalidateMenus,
+    })
+    const deleteCategoryMutation = useMutation({
+        mutationFn: deleteCategory,
+        onSuccess: invalidateMenus,
+    })
+    const moveProductsMutation = useMutation({
+        mutationFn: ({
+            categoryId,
+            targetCategoryId,
+        }: {
+            categoryId: string
+            targetCategoryId: string
+        }) => moveProductsAndDeleteCategory(categoryId, targetCategoryId),
+        onSuccess: () => {
+            invalidateMenus()
+            notify.success({
+                title: 'Categoría eliminada',
+                description: 'Los productos se movieron y la categoría se eliminó.',
+            })
+        },
+    })
+    const reorderCategoriesMutation = useMutation({
+        mutationFn: ({ menuId, categoryIds }: { menuId: string; categoryIds: string[] }) =>
+            reorderCategories(menuId, categoryIds),
+        onSuccess: invalidateMenus,
+    })
+    const moveProductMutation = useMutation({
+        mutationFn: ({
+            productId,
+            targetCategoryId,
+        }: {
+            productId: string
+            targetCategoryId: string
+        }) => moveProductToCategory(productId, targetCategoryId),
+        onSuccess: invalidateMenus,
+    })
 
     const selectedMenu = menuQuery.data
     const categories = selectedMenu?.categories?.map((category) => category.name) ?? []
@@ -71,8 +172,14 @@ export function useCategoryManagement() {
         menusQuery,
         menuQuery,
         isOpen,
-        open: () => { createMenuMutation.reset(); setIsOpen(true) },
-        close: () => { createMenuMutation.reset(); setIsOpen(false) },
+        open: () => {
+            createMenuMutation.reset()
+            setIsOpen(true)
+        },
+        close: () => {
+            createMenuMutation.reset()
+            setIsOpen(false)
+        },
         createMenu: createMenuMutation,
         updateMenu: updateMenuMutation,
         updateMenuStatus: updateMenuStatusMutation,

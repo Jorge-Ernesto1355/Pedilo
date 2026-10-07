@@ -13,7 +13,7 @@ import {
     ShoppingBag,
     Users,
 } from 'lucide-react'
-import { sileo } from 'sileo'
+import { notify } from '@/src/lib/notifications/notify'
 import { usePathname, useRouter } from 'next/navigation'
 import { apiClient } from '@/src/lib/api/client'
 import { useAuthStore } from '@/store/authStore'
@@ -115,7 +115,7 @@ export function DashboardNav() {
             clearUser()
             router.replace('/auth/login')
         } catch {
-            sileo.error({
+            notify.error({
                 title: 'No pudimos cerrar sesión',
                 description: 'Revisa tu conexión e inténtalo de nuevo.',
             })

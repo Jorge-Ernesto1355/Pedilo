@@ -12,7 +12,7 @@ import type { Product } from './product.types'
 import { OptionGroupsEditor } from '../option-management/OptionGroupsEditor'
 import { useProduct } from './useProductManagement'
 import { ApiError } from '@/app/auth/lib/client/api-error'
-import { sileo } from 'sileo'
+import { notify } from '@/src/lib/notifications/notify'
 import { ImagePlus } from 'lucide-react'
 import Link from 'next/link'
 
@@ -96,11 +96,12 @@ export function AddProductModal({
     const submit = (values: ProductFormValues) => onSave(values, setError)
     const showDetailError = () => {
         if (productDetail.isError)
-            sileo.error({
-                title:
+            notify.error({
+                title: 'No se pudo cargar el producto',
+                description:
                     productDetail.error instanceof ApiError
-                        ? productDetail.error.message
-                        : 'No se pudo cargar la información del producto.',
+                        ? 'Revisa tu conexión e inténtalo nuevamente.'
+                        : 'Inténtalo nuevamente.',
             })
     }
     return (
@@ -126,11 +127,17 @@ export function AddProductModal({
                     </p>
                     <p className="mt-2 text-xs leading-5 text-[#65738A]">
                         Publica únicamente alimentos y bebidas permitidos por la{' '}
-                        <Link href="/productos-y-contenido" className="font-semibold text-[#2451C5] underline underline-offset-2">
+                        <Link
+                            href="/productos-y-contenido"
+                            className="font-semibold text-[#2451C5] underline underline-offset-2"
+                        >
                             Política de Productos y Contenido
                         </Link>
                         . Para imágenes, revisa la{' '}
-                        <Link href="/propiedad-intelectual" className="font-semibold text-[#2451C5] underline underline-offset-2">
+                        <Link
+                            href="/propiedad-intelectual"
+                            className="font-semibold text-[#2451C5] underline underline-offset-2"
+                        >
                             Política de Propiedad Intelectual
                         </Link>
                         .

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { LoaderCircle, Pencil, Plus, RefreshCw, Trash2, Users, X } from 'lucide-react'
 import { ApiError } from '@/app/auth/lib/client/api-error'
+import { getUserFriendlyFieldError } from '@/src/lib/errors/user-friendly-error'
 import type { Customer } from '@/src/lib/api/order-types'
 import { isValidPhone, sanitizePhoneInput } from '@/src/lib/validation/phone'
 import { useCustomer, useCustomerMutations, useCustomers } from '../features/customers/useCustomers'
@@ -36,9 +37,13 @@ export default function CustomersPage() {
         customerMutationError instanceof ApiError &&
         (customerMutationError.code === 'CUSTOMER_PHONE_ALREADY_EXISTS' ||
             customerMutationError.code === 'CUSTOMER_PHONE_CONFLICT')
-            ? 'Este teléfono ya pertenece a otro Customer de este negocio.'
+            ? 'Este teléfono ya pertenece a otro cliente de este negocio.'
             : customerMutationError instanceof ApiError
-              ? customerMutationError.fieldErrors.phone?.[0]
+              ? getUserFriendlyFieldError(
+                    customerMutationError,
+                    'phone',
+                    'Ingresa un número de teléfono válido.',
+                )
               : undefined
     const totalPages = query.data ? Math.max(1, Math.ceil(query.data.total / limit)) : 1
 
@@ -67,7 +72,7 @@ export default function CustomersPage() {
         event.preventDefault()
         if (mutations.create.isPending || mutations.update.isPending) return
         if (!form.name.trim()) {
-            setFormError('El nombre es obligatorio para identificar al customer.')
+            setFormError('El nombre es obligatorio para identificar al cliente.')
             return
         }
         if (!isValidPhone(form.phone)) {
@@ -95,7 +100,7 @@ export default function CustomersPage() {
                 <div>
                     <p className="text-sm text-[#65738A]">Relación con tus clientes</p>
                     <h1 className="mt-2 font-display text-3xl tracking-[-.06em] text-[#12234A]">
-                        Customers
+                        Clientes
                     </h1>
                     <p className="mt-2 max-w-xl text-sm leading-6 text-[#65738A]">
                         Consulta quién te compra, cuántos pedidos ha realizado y mantén sus datos de
@@ -108,7 +113,7 @@ export default function CustomersPage() {
                     className="inline-flex items-center gap-2 rounded-xl bg-[#1E40AF] px-4 py-3 text-sm font-bold text-white"
                 >
                     <Plus className="size-4" />
-                    Nuevo customer
+                    Nuevo cliente
                 </button>
             </header>
             <div className="flex gap-2">
@@ -116,21 +121,21 @@ export default function CustomersPage() {
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
                     placeholder="Busca por nombre o teléfono…"
-                    aria-label="Buscar customers por nombre o teléfono"
+                    aria-label="Buscar clientes por nombre o teléfono"
                     className="w-full max-w-md rounded-xl border border-[#D7E1EF] bg-white px-4 py-3 text-sm outline-none focus:border-[#2451C5]"
                 />
                 <button
                     type="button"
                     onClick={() => void query.refetch()}
                     className="grid size-11 place-items-center rounded-xl border border-[#D7E1EF] bg-white"
-                    aria-label="Actualizar customers"
+                    aria-label="Actualizar clientes"
                 >
                     <RefreshCw className="size-4" />
                 </button>
             </div>
             {query.isError ? (
                 <DashboardErrorState
-                    title="No pudimos cargar tus customers"
+                    title="No pudimos cargar tus clientes"
                     description="No logramos obtener la lista de clientes. Revisa tu conexión e inténtalo nuevamente."
                     onRetry={() => void query.refetch()}
                 />
@@ -228,7 +233,7 @@ export default function CustomersPage() {
                     <section className="w-full max-w-md rounded-2xl bg-white p-6">
                         <div className="flex justify-between">
                             <h2 className="font-display text-xl text-[#12234A]">
-                                {editing ? 'Editar customer' : 'Nuevo customer'}
+                                {editing ? 'Editar cliente' : 'Nuevo cliente'}
                             </h2>
                             <button
                                 type="button"
@@ -277,7 +282,7 @@ export default function CustomersPage() {
                                         (customerMutationError instanceof ApiError &&
                                         customerMutationError.status === 400
                                             ? 'Revisa el nombre y el formato del teléfono.'
-                                            : 'No pudimos guardar el customer. Revisa los datos e inténtalo nuevamente.')}
+                                            : 'No pudimos guardar el cliente. Revisa los datos e inténtalo nuevamente.')}
                                 </p>
                             )}
                             <button
@@ -302,7 +307,7 @@ export default function CustomersPage() {
                     <section className="w-full max-w-md rounded-2xl bg-white p-6">
                         <div className="flex justify-between">
                             <h2 className="font-display text-xl text-[#12234A]">
-                                Detalle del customer
+                                Detalle del cliente
                             </h2>
                             <button
                                 type="button"
@@ -354,7 +359,7 @@ export default function CustomersPage() {
                                             ) : (
                                                 <p className="text-xs text-[#8996A9]">
                                                     El backend no devolvió pedidos para este
-                                                    customer.
+                                                    cliente.
                                                 </p>
                                             )}
                                         </div>
@@ -369,8 +374,8 @@ export default function CustomersPage() {
                 <p role="alert" className="text-sm text-[#B42318]">
                     {mutations.remove.error instanceof ApiError &&
                     mutations.remove.error.code === 'CUSTOMER_HAS_ORDERS'
-                        ? 'No puedes eliminar un customer que tiene pedidos.'
-                        : 'No pudimos eliminar el customer.'}
+                        ? 'No puedes eliminar un cliente que tiene pedidos.'
+                        : 'No pudimos eliminar el cliente.'}
                 </p>
             )}
         </main>

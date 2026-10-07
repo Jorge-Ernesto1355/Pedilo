@@ -1,7 +1,7 @@
 'use client'
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { sileo } from 'sileo'
+import { notify } from '@/src/lib/notifications/notify'
 import { productQueryKeys } from '../product-management/useProductManagement'
 import {
     createOption,
@@ -92,7 +92,10 @@ export function useOptionManagement() {
         onSuccess: (_, v) => {
             void queryClient.invalidateQueries({ queryKey: optionQueryKeys.groups(v.productId) })
             invalidateProduct(v.productId)
-            sileo.success({ title: 'Grupo creado' })
+            notify.success({
+                title: 'Grupo de opciones creado',
+                description: 'El grupo se agregó al producto.',
+            })
         },
     })
     const updateGroup = useMutation({
@@ -105,7 +108,10 @@ export function useOptionManagement() {
             void queryClient.invalidateQueries({ queryKey: optionQueryKeys.groups(v.productId) })
             void queryClient.invalidateQueries({ queryKey: optionQueryKeys.group(v.optionGroupId) })
             invalidateProduct(v.productId)
-            sileo.success({ title: 'Grupo actualizado' })
+            notify.success({
+                title: 'Grupo de opciones actualizado',
+                description: 'Los cambios se guardaron correctamente.',
+            })
         },
     })
     const statusGroup = useMutation({
@@ -122,7 +128,10 @@ export function useOptionManagement() {
         onSuccess: (_, v) => {
             void queryClient.invalidateQueries({ queryKey: optionQueryKeys.groups(v.productId) })
             invalidateProduct(v.productId)
-            sileo.success({ title: 'Grupo eliminado' })
+            notify.success({
+                title: 'Grupo de opciones eliminado',
+                description: 'El grupo se eliminó del producto.',
+            })
         },
     })
     const reorderGroups = useMutation({
@@ -148,7 +157,10 @@ export function useOptionManagement() {
         },
         onError: (_, __, context) => {
             if (context?.previous) queryClient.setQueryData(context.key, context.previous)
-            sileo.error({ title: 'No se pudo reordenar los grupos' })
+            notify.error({
+                title: 'No se pudo reordenar los grupos',
+                description: 'Inténtalo nuevamente.',
+            })
         },
         onSettled: (_, __, v) => {
             void queryClient.invalidateQueries({ queryKey: optionQueryKeys.groups(v.productId) })
@@ -167,7 +179,7 @@ export function useOptionManagement() {
         }) => createOption(optionGroupId, input),
         onSuccess: (_, v) => {
             invalidateGroup(v.optionGroupId, v.productId)
-            sileo.success({ title: 'Opción creada' })
+            notify.success({ title: 'Opción creada', description: 'La opción se agregó al grupo.' })
         },
     })
     const updateOpt = useMutation({
@@ -182,7 +194,10 @@ export function useOptionManagement() {
         }) => updateOption(optionId, input),
         onSuccess: (_, v) => {
             invalidateGroup(v.optionGroupId, v.productId)
-            sileo.success({ title: 'Opción actualizada' })
+            notify.success({
+                title: 'Opción actualizada',
+                description: 'Los cambios se guardaron correctamente.',
+            })
         },
     })
     const statusOpt = useMutation({
@@ -207,7 +222,10 @@ export function useOptionManagement() {
         }) => deleteOption(optionId),
         onSuccess: (_, v) => {
             invalidateGroup(v.optionGroupId, v.productId)
-            sileo.success({ title: 'Opción eliminada' })
+            notify.success({
+                title: 'Opción eliminada',
+                description: 'La opción se eliminó del grupo.',
+            })
         },
     })
     const reorderOpts = useMutation({
@@ -234,7 +252,10 @@ export function useOptionManagement() {
         },
         onError: (_, __, context) => {
             if (context?.previous) queryClient.setQueryData(context.key, context.previous)
-            sileo.error({ title: 'No se pudo reordenar las opciones' })
+            notify.error({
+                title: 'No se pudo reordenar las opciones',
+                description: 'Inténtalo nuevamente.',
+            })
         },
         onSettled: (_, __, v) => {
             void queryClient.invalidateQueries({

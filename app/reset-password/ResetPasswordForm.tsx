@@ -9,6 +9,10 @@ import { useState } from 'react'
 import { ApiError } from '@/app/auth/lib/client/api-error'
 import { resetAccountPassword } from '@/app/auth/lib/client/password-recovery'
 import { resetPasswordSchema } from '@/app/auth/lib/validation'
+import {
+    getUserFriendlyError,
+    getUserFriendlyFieldError,
+} from '@/src/lib/errors/user-friendly-error'
 
 const inter = Inter({
     subsets: ['latin'],
@@ -25,25 +29,18 @@ function resetError(error: unknown) {
     if (!(error instanceof ApiError))
         return 'No pudimos cambiar tu contraseña. Revisa tu conexión e inténtalo de nuevo.'
     const passwordError = error.fieldErrors.newPassword?.[0]
-    if (passwordError) return passwordError
-    if (
-        error.code === 'INVALID_TOKEN' ||
-        error.code === 'TOKEN_INVALID' ||
-        error.code === 'RESET_TOKEN_INVALID'
-    )
-        return 'Este enlace de recuperación no es válido. Solicita uno nuevo.'
-    if (
-        error.status === 401 ||
-        error.status === 410 ||
-        error.code === 'TOKEN_EXPIRED' ||
-        error.code === 'RESET_TOKEN_EXPIRED' ||
-        error.code === 'TOKEN_ALREADY_USED' ||
-        error.code === 'RESET_TOKEN_USED'
-    )
-        return 'Este enlace de recuperación expiró o ya fue utilizado. Solicita uno nuevo.'
-    if (error.status === 400) return 'Revisa la nueva contraseña e inténtalo de nuevo.'
-    if (error.status === 429) return 'Demasiados intentos. Espera un momento e inténtalo de nuevo.'
-    return 'No pudimos cambiar tu contraseña. Inténtalo de nuevo.'
+    if (passwordError)
+        return getUserFriendlyFieldError(
+            error,
+            'newPassword',
+            'Revisa la nueva contraseña e inténtalo nuevamente.',
+        )
+    return getUserFriendlyError(error, {
+        fallback: {
+            title: 'No se pudo cambiar la contraseña',
+            description: 'Revisa los datos e inténtalo nuevamente.',
+        },
+    }).description
 }
 
 function PasswordField({

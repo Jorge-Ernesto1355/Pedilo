@@ -221,7 +221,7 @@ export function CustomersSkeleton() {
         <main
             className="mx-auto max-w-[1200px] space-y-6 px-5 py-8 sm:px-8 lg:py-10"
             aria-busy="true"
-            aria-label="Cargando customers"
+            aria-label="Cargando clientes"
         >
             <PageHeaderSkeleton description action />
             <FilterSkeleton withRefresh />

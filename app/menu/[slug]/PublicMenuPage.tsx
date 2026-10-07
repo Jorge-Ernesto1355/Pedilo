@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react'
 import { AlertCircle, Utensils } from 'lucide-react'
 import { ApiError } from '@/app/auth/lib/client/api-error'
+import { getUserFriendlyError } from '@/src/lib/errors/user-friendly-error'
 import { CategoryTabs } from './features/public-menu/CategoryTabs'
 import { MenuHeader } from './features/public-menu/MenuHeader'
 import { OrderDrawer } from './features/public-menu/OrderDrawer'
@@ -60,9 +61,12 @@ export default function PublicMenuPage({ slug }: { slug: string }) {
 
     if (query.isLoading) return <LoadingMenu />
     if (query.isError || !query.data) {
-        const notFound =
-            query.error instanceof ApiError &&
-            (query.error.status === 404 || query.error.code === 'PUBLIC_BUSINESS_NOT_FOUND')
+        const friendlyError = getUserFriendlyError(query.error, {
+            fallback: {
+                title: 'No pudimos cargar el menú',
+                description: 'Inténtalo nuevamente en unos momentos.',
+            },
+        })
         return (
             <main className="grid min-h-screen place-items-center bg-[#F5F8FC] p-6 text-center">
                 <div>
@@ -70,14 +74,12 @@ export default function PublicMenuPage({ slug }: { slug: string }) {
                         <AlertCircle />
                     </div>
                     <h1 className="mt-5 font-display text-3xl text-[#10224A]">
-                        {notFound ? 'Negocio no encontrado' : 'No pudimos cargar el menú'}
+                        {friendlyError.title}
                     </h1>
                     <p className="mt-2 max-w-sm text-sm leading-6 text-[#65738A]">
-                        {notFound
-                            ? 'No pudimos encontrar este menú.'
-                            : 'Intenta nuevamente en unos momentos.'}
+                        {friendlyError.description}
                     </p>
-                    {!notFound && (
+                    {query.error instanceof ApiError && query.error.status !== 404 && (
                         <button
                             type="button"
                             onClick={() => void query.refetch()}
@@ -324,9 +326,12 @@ export default function PublicMenuPage({ slug }: { slug: string }) {
         } catch (error) {
             whatsappWindow?.close()
             setOrderError(
-                error instanceof ApiError && error.message
-                    ? error.message
-                    : 'No pudimos crear tu pedido. Inténtalo de nuevo.',
+                getUserFriendlyError(error, {
+                    fallback: {
+                        title: 'No pudimos crear tu pedido',
+                        description: 'Inténtalo nuevamente.',
+                    },
+                }).description,
             )
         } finally {
             setIsSubmittingOrder(false)

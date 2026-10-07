@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { LoaderCircle, Save } from 'lucide-react'
-import { sileo } from 'sileo'
+import { friendlyNotificationError, notify } from '@/src/lib/notifications/notify'
 import { Modal } from '@/app/components/ui/Modal'
 import { ApiError } from '@/app/auth/lib/client/api-error'
 import { isValidPhone } from '@/src/lib/validation/phone'
@@ -69,7 +69,7 @@ function errorMessage(error: unknown, fallback: string) {
         return 'La configuración ya existe. Vuelve a abrirla para actualizarla.'
     if (error.code === 'INTERNAL_ERROR' || error.status === 500)
         return 'Ocurrió un error del servidor. Inténtalo nuevamente.'
-    return error.message || fallback
+    return friendlyNotificationError(error, fallback)
 }
 
 export function BusinessSettingsModal({ open, onClose }: BusinessSettingsModalProps) {
@@ -154,13 +154,16 @@ export function BusinessSettingsModal({ open, onClose }: BusinessSettingsModalPr
                 setPhone(nextState.phone)
                 setWhatsapp(nextState.whatsapp)
                 setTimezone(nextState.timezone)
-                sileo.success({ title: 'Configuración guardada' })
+                notify.success({
+                    title: 'Configuración guardada',
+                    description: 'Los datos del negocio se actualizaron correctamente.',
+                })
                 onClose()
             },
             onError: (error) => {
                 const message = errorMessage(error, 'No pudimos guardar la configuración.')
                 setValidationError(message)
-                sileo.error({ title: message })
+                notify.error({ title: 'No se pudo guardar la configuración', description: message })
             },
         })
     }
