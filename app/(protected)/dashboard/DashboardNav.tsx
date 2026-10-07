@@ -3,7 +3,7 @@
 import { createPortal } from 'react-dom'
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { useQuery } from '@tanstack/react-query'
+import { useQueryClient } from '@tanstack/react-query'
 import {
     BarChart3,
     ChevronDown,
@@ -17,6 +17,7 @@ import { notify } from '@/src/lib/notifications/notify'
 import { usePathname, useRouter } from 'next/navigation'
 import { apiClient } from '@/src/lib/api/client'
 import { useAuthStore } from '@/store/authStore'
+import { useCurrentBusiness } from '@/app/(protected)/create-menu/features/business-profile/useCurrentBusiness'
 
 const links = [
     { href: '/dashboard', label: 'Resumen', icon: LayoutDashboard },
@@ -38,32 +39,12 @@ function getInitials(name: string) {
     return initials || 'N'
 }
 
-type BusinessMineResponse = {
-    business?: { name?: unknown; logoUrl?: unknown } | null
-}
-
 export function DashboardNav() {
     const pathname = usePathname()
     const router = useRouter()
-    const authUser = useAuthStore((state) => state.user)
+    const queryClient = useQueryClient()
     const clearUser = useAuthStore((state) => state.clearUser)
-    const businessQueryKey = [
-        'business',
-        'mine',
-        authUser?.id ?? 'anonymous',
-        authUser?.businessId ?? 'none',
-    ] as const
-    const businessQuery = useQuery({
-        queryKey: businessQueryKey,
-        queryFn: async () => {
-            const { data } = await apiClient.get<BusinessMineResponse>('/businesses/mine', {
-                withCredentials: true,
-            })
-            return data.business ?? null
-        },
-        enabled: Boolean(authUser?.id),
-        staleTime: 10 * 60 * 1000,
-    })
+    const businessQuery = useCurrentBusiness()
     const [accountMenuOpen, setAccountMenuOpen] = useState(false)
     const [isLoggingOut, setIsLoggingOut] = useState(false)
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 })
@@ -112,6 +93,7 @@ export function DashboardNav() {
         setIsLoggingOut(true)
         try {
             await apiClient.post('/auth/logout', undefined, { withCredentials: true })
+            queryClient.clear()
             clearUser()
             router.replace('/auth/login')
         } catch {
@@ -123,7 +105,8 @@ export function DashboardNav() {
         }
     }
 
-    const business = businessQuery.data
+    const business =
+        businessQuery.isSuccess && !businessQuery.isFetching ? businessQuery.data : null
     const businessName = typeof business?.name === 'string' ? business.name.trim() : ''
     const businessLogoUrl = typeof business?.logoUrl === 'string' ? business.logoUrl.trim() : ''
     const displayedBusinessName = businessName || 'Tu negocio'

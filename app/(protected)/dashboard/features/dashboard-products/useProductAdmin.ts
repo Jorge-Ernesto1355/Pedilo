@@ -1,6 +1,6 @@
 'use client'
 
-import { keepPreviousData, useQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { useAuthStore } from '@/store/authStore'
 import { getMenus } from '@/app/(protected)/create-menu/features/category-management/menuApi'
 import {
@@ -22,7 +22,6 @@ export function useProductCatalog(params: ProductListParams) {
         queryFn: () => getProductsPaged(businessId as string, params),
         enabled: Boolean(businessId),
         staleTime: 5 * 60 * 1000,
-        placeholderData: keepPreviousData,
     })
 }
 

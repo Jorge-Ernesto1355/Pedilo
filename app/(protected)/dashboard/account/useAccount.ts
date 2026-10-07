@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { friendlyNotificationError, notify } from '@/src/lib/notifications/notify'
 import { normalizeApiError, type ApiError } from '@/app/auth/lib/client/api-error'
+import { useAuthStore } from '@/store/authStore'
 import {
     changeAccountPassword,
     deleteAccount,
@@ -12,12 +13,14 @@ import {
     updateAccountName,
 } from './accountApi'
 
-export const accountQueryKey = ['account'] as const
+export const accountQueryKey = (userId: string) => ['account', userId] as const
 
 export function useAccount() {
+    const userId = useAuthStore((state) => state.user?.id)
     return useQuery({
-        queryKey: accountQueryKey,
+        queryKey: accountQueryKey(userId ?? 'anonymous'),
         queryFn: getAccount,
+        enabled: Boolean(userId),
         staleTime: 5 * 60 * 1000,
     })
 }
@@ -38,7 +41,9 @@ function readableError(error: unknown, fallback: string) {
 
 export function useAccountMutations() {
     const queryClient = useQueryClient()
-    const invalidate = () => void queryClient.invalidateQueries({ queryKey: accountQueryKey })
+    const userId = useAuthStore((state) => state.user?.id)
+    const invalidate = () =>
+        void queryClient.invalidateQueries({ queryKey: accountQueryKey(userId ?? 'anonymous') })
 
     const updateName = useMutation({
         mutationFn: updateAccountName,

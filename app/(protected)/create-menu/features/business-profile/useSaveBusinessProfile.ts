@@ -5,6 +5,7 @@ import { friendlyNotificationError, notify } from '@/src/lib/notifications/notif
 import { apiClient } from '@/src/lib/api/client'
 import { normalizeApiError } from '@/app/auth/lib/client/api-error'
 import { useAuthStore } from '@/store/authStore'
+import { currentBusinessQueryKey } from './useCurrentBusiness'
 import type { BusinessProfileValues } from './businessProfile.schema'
 
 type BusinessResponse = {
@@ -64,12 +65,14 @@ export function useSaveBusinessProfile() {
             values,
             logoFile,
             coverFile,
+            businessId: knownBusinessId,
         }: {
             values: BusinessProfileValues
             logoFile?: File | null
             coverFile?: File | null
+            businessId?: string | null
         }): Promise<BusinessResponse> => {
-            const businessId = useAuthStore.getState().user?.businessId
+            const businessId = knownBusinessId ?? null
             const formData = toBusinessFormData(values, logoFile, coverFile)
 
             try {
@@ -101,24 +104,25 @@ export function useSaveBusinessProfile() {
 
                 const createdBusinessId = business?.id
                 const currentUser = useAuthStore.getState().user
-                if (createdBusinessId && currentUser && !currentUser.businessId) {
+                if (
+                    createdBusinessId &&
+                    currentUser &&
+                    currentUser.businessId !== createdBusinessId
+                ) {
                     useAuthStore
                         .getState()
                         .setUser({ ...currentUser, businessId: createdBusinessId })
                 }
                 if (business) {
                     queryClient.setQueryData(
-                        [
-                            'business',
-                            'mine',
-                            currentUser?.id ?? 'anonymous',
-                            createdBusinessId ?? businessId ?? 'none',
-                        ],
+                        currentBusinessQueryKey(currentUser?.id ?? 'anonymous'),
                         (previous: BusinessResponse['business'] | undefined) =>
                             previous ? { ...previous, ...business } : business,
                     )
                 }
-                void queryClient.invalidateQueries({ queryKey: ['business', 'mine'] })
+                void queryClient.invalidateQueries({
+                    queryKey: currentBusinessQueryKey(currentUser?.id ?? 'anonymous'),
+                })
 
                 if (!businessId) {
                     notify.success({

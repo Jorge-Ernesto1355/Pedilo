@@ -1,5 +1,5 @@
 'use client'
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/store/authStore'
 import {
     createCustomer,
@@ -17,14 +17,14 @@ export function useCustomers(params: { page: number; limit: number; search?: str
         queryFn: () => getCustomers(businessId as string, params),
         enabled: Boolean(businessId),
         staleTime: 5 * 60 * 1000,
-        placeholderData: keepPreviousData,
     })
 }
 export function useCustomer(id: string | null) {
+    const user = useAuthStore((state) => state.user)
     return useQuery({
-        queryKey: ['customer', id],
+        queryKey: ['customer', user?.id ?? 'anonymous', user?.businessId ?? 'none', id],
         queryFn: () => getCustomer(id as string),
-        enabled: Boolean(id),
+        enabled: Boolean(id && user?.businessId),
         staleTime: 5 * 60 * 1000,
     })
 }

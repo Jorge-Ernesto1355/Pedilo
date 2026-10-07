@@ -1,5 +1,7 @@
 import { cookies } from 'next/headers'
 import { cache } from 'react'
+import { redirect } from 'next/navigation'
+import { RedirectedUrls } from '@/src/lib/RedirectUrls'
 
 const BACKEND_URL = process.env.BACKEND_URL ?? 'http://localhost:3001'
 const API_URL = BACKEND_URL.endsWith('/api/v1')
@@ -53,3 +55,13 @@ export const getCurrentBusiness = cache(async () => {
         return { business: null, exists: true, unavailable: true }
     }
 })
+
+export async function requireCurrentBusiness() {
+    const currentBusiness = await getCurrentBusiness()
+
+    if (!currentBusiness.exists && !currentBusiness.unavailable) {
+        redirect(`${RedirectedUrls.createMenu}?notice=business-required`)
+    }
+
+    return currentBusiness
+}

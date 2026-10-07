@@ -1,7 +1,7 @@
 'use client'
 
 import { FormProvider, useWatch } from 'react-hook-form'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ChevronRight, Store } from 'lucide-react'
 import { BusinessProfileForm } from './features/business-profile/BusinessProfileForm'
@@ -24,45 +24,15 @@ import {
     getUserFriendlyFieldError,
 } from '@/src/lib/errors/user-friendly-error'
 import { notify } from '@/src/lib/notifications/notify'
-import { apiClient } from '@/src/lib/api/client'
 import { locationCoordinatesSchema } from './features/business-location/location.schema'
-import { useAuthStore } from '@/store/authStore'
 import { BusinessSettingsModal } from './features/business-settings/BusinessSettingsModal'
 import { BusinessPreviewSkeleton } from './components/CreateMenuStates'
 import Link from 'next/link'
-
-type BusinessScheduleDay = {
-    key?: unknown
-    label?: unknown
-    enabled?: unknown
-}
-
-type BusinessDetails = {
-    name?: unknown
-    slug?: unknown
-    description?: unknown
-    ubication?: unknown
-    ubicationMaps?: unknown
-    logoUrl?: unknown
-    logoBlurUrl?: unknown
-    coverUrl?: unknown
-    coverBlurUrl?: unknown
-    businessSchedule?:
-        | {
-              days?: unknown
-              openTime?: unknown
-              closeTime?: unknown
-          }
-        | BusinessScheduleDay[]
-        | null
-    schedule?: {
-        days?: unknown
-        openTime?: unknown
-        closeTime?: unknown
-    } | null
-}
-
-type BusinessMineResponse = { business?: BusinessDetails }
+import { CreateMenuErrorState } from './components/CreateMenuStates'
+import {
+    useCurrentBusiness,
+    type CurrentBusiness,
+} from './features/business-profile/useCurrentBusiness'
 
 const apiDayKeys: Record<string, BusinessProfileValues['businessHours']['days'][number]['key']> = {
     mon: 'mon',
@@ -86,7 +56,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function businessValuesFromResponse(
-    business: BusinessDetails,
+    business: CurrentBusiness,
     current: BusinessProfileValues,
 ): BusinessProfileValues {
     const schedule = isRecord(business.businessSchedule)
@@ -154,7 +124,9 @@ export default function BusinessSetupScreen({
     const categories = useCategoryManagement()
     const saveProfile = useSaveBusinessProfile()
     const location = useBusinessLocation(profile.coordinates ?? null)
-    const businessId = useAuthStore((state) => state.user?.businessId)
+    const businessQuery = useCurrentBusiness()
+    const businessConfirmed = businessQuery.isSuccess && !businessQuery.isFetching
+    const hydratedBusinessId = useRef<string | null>(null)
     const { getValues, reset } = form
     const { saveLocation } = location
     const sharing = useBusinessShareLink(profile.slug)
@@ -165,7 +137,6 @@ export default function BusinessSetupScreen({
     const [logoFile, setLogoFile] = useState<File | null>(null)
     const [coverFile, setCoverFile] = useState<File | null>(null)
     const [businessSettingsOpen, setBusinessSettingsOpen] = useState(false)
-    const [businessLoading, setBusinessLoading] = useState(false)
 
     useEffect(() => {
         if (!businessRequiredNotice) return
@@ -178,58 +149,30 @@ export default function BusinessSetupScreen({
     }, [businessRequiredNotice, router])
 
     useEffect(() => {
-        if (!businessId) return
+        if (!businessConfirmed || !businessQuery.data) return
+        if (hydratedBusinessId.current === businessQuery.data.id) return
 
-        // Keep the form in its loading shape while the saved business values arrive.
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setBusinessLoading(true)
-
-        let cancelled = false
-
-        async function loadBusiness() {
-            try {
-                const { data } = await apiClient.get<BusinessMineResponse>('/businesses/mine', {
-                    withCredentials: true,
-                })
-                if (cancelled || !data.business) return
-
-                const values = businessValuesFromResponse(data.business, getValues())
-                reset(values)
-                if (values.coordinates) saveLocation(values.coordinates)
-                setLogoPreview(
-                    typeof data.business.logoUrl === 'string' ? data.business.logoUrl : null,
-                )
-                setLogoBlurPreview(
-                    typeof data.business.logoBlurUrl === 'string'
-                        ? data.business.logoBlurUrl
-                        : null,
-                )
-                setCoverPreview(
-                    typeof data.business.coverUrl === 'string' ? data.business.coverUrl : null,
-                )
-                setCoverBlurPreview(
-                    typeof data.business.coverBlurUrl === 'string'
-                        ? data.business.coverBlurUrl
-                        : null,
-                )
-            } catch {
-                if (!cancelled) {
-                    setBusinessLoading(false)
-                    notify.error({
-                        title: 'No pudimos cargar tu negocio',
-                        description: 'Inténtalo de nuevo en unos momentos.',
-                    })
-                }
-            } finally {
-                if (!cancelled) setBusinessLoading(false)
-            }
-        }
-
-        void loadBusiness()
-        return () => {
-            cancelled = true
-        }
-    }, [businessId, getValues, reset, saveLocation])
+        hydratedBusinessId.current = businessQuery.data.id
+        const values = businessValuesFromResponse(businessQuery.data, getValues())
+        reset(values)
+        if (values.coordinates) saveLocation(values.coordinates)
+        setLogoPreview(
+            typeof businessQuery.data.logoUrl === 'string' ? businessQuery.data.logoUrl : null,
+        )
+        setLogoBlurPreview(
+            typeof businessQuery.data.logoBlurUrl === 'string'
+                ? businessQuery.data.logoBlurUrl
+                : null,
+        )
+        setCoverPreview(
+            typeof businessQuery.data.coverUrl === 'string' ? businessQuery.data.coverUrl : null,
+        )
+        setCoverBlurPreview(
+            typeof businessQuery.data.coverBlurUrl === 'string'
+                ? businessQuery.data.coverBlurUrl
+                : null,
+        )
+    }, [businessConfirmed, businessQuery.data, getValues, reset, saveLocation])
 
     useEffect(
         () => () => {
@@ -268,7 +211,7 @@ export default function BusinessSetupScreen({
 
     function handleProfileSubmit(values: BusinessProfileValues) {
         saveProfile.mutate(
-            { values, logoFile, coverFile },
+            { values, logoFile, coverFile, businessId: businessQuery.data?.id ?? null },
             {
                 onSuccess: (response) => {
                     const business = response.business
@@ -310,6 +253,20 @@ export default function BusinessSetupScreen({
         )
     }
 
+    if (businessQuery.isError) {
+        return (
+            <main className="mx-auto min-h-[calc(100vh-72px)] max-w-3xl px-5 py-12 sm:px-8">
+                <CreateMenuErrorState
+                    title="No pudimos verificar tu negocio"
+                    description="No mostraremos el formulario de creación hasta confirmar si ya tienes un negocio. Inténtalo de nuevo."
+                    onRetry={async () => {
+                        await businessQuery.refetch()
+                    }}
+                />
+            </main>
+        )
+    }
+
     return (
         <FormProvider {...form}>
             <main className="min-h-screen bg-[#F5F8FC] text-[#12234A]">
@@ -327,8 +284,8 @@ export default function BusinessSetupScreen({
                                 onOpenLocationPicker={location.open}
                                 onSubmit={form.handleSubmit(handleProfileSubmit)}
                                 isSaving={saveProfile.isPending}
-                                isCreating={!businessId}
-                                isLoading={businessLoading}
+                                isCreating={businessConfirmed && !businessQuery.data}
+                                isLoading={!businessConfirmed}
                                 saveState={
                                     saveProfile.isSuccess
                                         ? 'success'
@@ -410,7 +367,7 @@ export default function BusinessSetupScreen({
                                     <span>Crear menú</span>
                                 </button>
                             </div>
-                            {businessLoading ? (
+                            {!businessConfirmed ? (
                                 <BusinessPreviewSkeleton />
                             ) : (
                                 <BusinessPreviewCard

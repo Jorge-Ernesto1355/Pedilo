@@ -7,6 +7,7 @@ import type { CreateRestaurantOrderPayload } from '@/src/lib/api/order-types'
 
 export function useCreateRestaurantOrder() {
     const client = useQueryClient()
+    const userId = useAuthStore((state) => state.user?.id)
     const businessId = useAuthStore((state) => state.user?.businessId)
 
     return useMutation({
@@ -19,7 +20,10 @@ export function useCreateRestaurantOrder() {
             void client.invalidateQueries({ queryKey: ['dashboard'] })
             void client.invalidateQueries({ queryKey: ['product-analytics'] })
             void client.invalidateQueries({ queryKey: ['customers'] })
-            client.setQueryData(['order', order.id], order)
+            client.setQueryData(
+                ['order', userId ?? 'anonymous', businessId ?? 'none', order.id],
+                order,
+            )
         },
     })
 }

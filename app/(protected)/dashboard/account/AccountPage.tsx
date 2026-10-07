@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
@@ -126,6 +127,7 @@ function PasswordInput({
 
 export default function AccountPage() {
     const router = useRouter()
+    const queryClient = useQueryClient()
     const clearUser = useAuthStore((state) => state.clearUser)
     const account = useAccount()
     const mutations = useAccountMutations()
@@ -523,6 +525,7 @@ export default function AccountPage() {
                     if (mutations.removeAccount.isPending) return
                     mutations.removeAccount.mutate(undefined, {
                         onSuccess: () => {
+                            queryClient.clear()
                             clearUser()
                             router.replace('/auth/login')
                         },
