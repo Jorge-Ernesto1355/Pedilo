@@ -286,9 +286,15 @@ describe('Productos · casos límite del catálogo', () => {
         submitProduct('Precio muy grande', '10000000.01')
         cy.wait('@createProduct')
         cy.contains('No se pudo guardar el producto').should('be.visible')
-        cy.contains(
-            'Algunos datos no son válidos. Revisa los campos marcados e inténtalo nuevamente.',
-        ).should('be.visible')
+        cy.get('#product-price')
+            .parents('div')
+            .eq(1)
+            .find('[role="alert"]')
+            .should('be.visible')
+            .and(
+                'contain',
+                'El precio no puede superar $10,000,000.00. Ingresa un valor menor o igual a ese límite.',
+            )
         cy.contains('Price must be less').should('not.exist')
         closeProductModal()
     })
