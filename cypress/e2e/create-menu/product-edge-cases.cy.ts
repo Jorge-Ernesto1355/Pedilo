@@ -335,6 +335,31 @@ describe('Productos · casos límite del catálogo', () => {
         cy.contains('Coca-Cola').should('not.exist')
     })
 
+    it('limpia la imagen seleccionada al crear un segundo producto', () => {
+        const state: CatalogState = {
+            products: [],
+            nextProductId: 1,
+            createRequests: 0,
+            rejectLargePrice: false,
+            deleteError: false,
+        }
+        installBusinessApi(state)
+        openCatalog()
+
+        openProductModal()
+        cy.get('#product-name').type('Producto con imagen')
+        cy.get('#product-price').type('40')
+        cy.get('#product-image').selectFile('public/logoPediloSinfondo.png', { force: true })
+        cy.get('[role="dialog"] img[alt="Vista previa del producto"]').should('be.visible')
+        cy.get('[role="dialog"] button[type="submit"]').contains('Crear producto').click()
+        cy.wait('@createProduct')
+        closeProductModal()
+
+        openProductModal()
+        cy.get('[role="dialog"] img[alt="Vista previa del producto"]').should('not.exist')
+        cy.get('[role="dialog"]').contains('Seleccionar imagen').should('be.visible')
+    })
+
     it('no muestra controles de producto sin menú o sin categoría', () => {
         cy.intercept('GET', '**/api/v1/businesses/mine', {
             statusCode: 200,
