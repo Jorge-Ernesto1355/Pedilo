@@ -1,8 +1,7 @@
 import axios from 'axios'
+import { getBackendUrl } from '@/lib/auth/config'
 
-const configuredBackendUrl =
-    process.env.BACKEND_URL ??
-    (process.env.NODE_ENV === 'production' ? 'https://api.pedilo.mx' : 'http://localhost:3001')
+const configuredBackendUrl = getBackendUrl()
 
 const apiBaseUrl = configuredBackendUrl.endsWith('/api/v1')
     ? configuredBackendUrl
