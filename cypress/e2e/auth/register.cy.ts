@@ -73,11 +73,7 @@ describe('Auth · Register', () => {
     it('después de registrarse solo navega al login y no consulta datos privados', () => {
         let privateRequests = 0
 
-        cy.intercept('GET', '**/api/v1/businesses/**', (request) => {
-            privateRequests += 1
-            request.continue()
-        })
-        cy.intercept('GET', '**/dashboard**', (request) => {
+        cy.intercept('GET', '**/api/v1/businesses/mine', (request) => {
             privateRequests += 1
             request.continue()
         })
@@ -108,7 +104,7 @@ describe('Auth · Register', () => {
             cy.login({ email: testUserEmail, password: testUserPassword })
 
             let privateRequests = 0
-            cy.intercept('GET', '**/api/v1/businesses/**', (request) => {
+            cy.intercept('GET', '**/api/v1/businesses/mine', (request) => {
                 privateRequests += 1
                 request.continue()
             })

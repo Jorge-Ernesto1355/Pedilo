@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { loginSchema } from '@/app/auth/lib/validation'
+import { appendBackendCookies, clearAuthCookies } from '../session-cookies'
 
 const AUTH_API_URL =
     process.env.BACKEND_URL ??
@@ -8,30 +9,6 @@ const LOGIN_TIMEOUT_MS = 8_000
 
 interface RateLimitBody {
     message?: unknown
-}
-
-function adaptSetCookieForApp(setCookie: string, requestUrl: string): string {
-    let cookie = setCookie.replace(/;\s*Domain=[^;]*/gi, '')
-
-    cookie = /;\s*Path=/i.test(cookie)
-        ? cookie.replace(/;\s*Path=[^;]*/i, '; Path=/')
-        : `${cookie}; Path=/`
-
-    const url = new URL(requestUrl)
-    const isPediloProductionHost =
-        url.hostname === 'pedilo.mx' || url.hostname.endsWith('.pedilo.mx')
-
-    if (isPediloProductionHost && !/;\s*Domain=/i.test(cookie)) {
-        cookie += '; Domain=pedilo.mx'
-    }
-
-    if (url.protocol === 'https:') {
-        if (!/;\s*Secure/i.test(cookie)) cookie += '; Secure'
-    } else {
-        cookie = cookie.replace(/;\s*Secure/gi, '')
-    }
-
-    return cookie
 }
 
 function getRateLimitMessage(body: unknown): string {
@@ -85,11 +62,10 @@ export async function POST(request: Request) {
 
         if (backendResponse.status === 200 || backendResponse.status === 201) {
             const response = NextResponse.json({ success: true }, { status: 200 })
-
-            for (const setCookie of backendResponse.headers.getSetCookie()) {
-                response.headers.append('set-cookie', adaptSetCookieForApp(setCookie, request.url))
+            if ((request.headers.get('cookie') ?? '').includes('better-auth.session_token')) {
+                clearAuthCookies(response, request.url)
             }
-
+            appendBackendCookies(response, backendResponse, request.url)
             return response
         }
 
@@ -125,7 +101,7 @@ export async function POST(request: Request) {
             { error: 'No se pudo iniciar sesión. Intenta de nuevo.' },
             { status: 502 },
         )
-    } catch (error: unknown) {
+    } catch {
         if (timedOut) {
             return NextResponse.json(
                 { error: 'El servidor tardó demasiado. Intenta de nuevo.' },

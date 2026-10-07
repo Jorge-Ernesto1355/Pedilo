@@ -15,7 +15,6 @@ import {
 } from 'lucide-react'
 import { notify } from '@/src/lib/notifications/notify'
 import { usePathname, useRouter } from 'next/navigation'
-import { apiClient } from '@/src/lib/api/client'
 import { useAuthStore } from '@/store/authStore'
 import { useCurrentBusiness } from '@/app/(protected)/create-menu/features/business-profile/useCurrentBusiness'
 
@@ -92,10 +91,13 @@ export function DashboardNav() {
 
         setIsLoggingOut(true)
         try {
-            await apiClient.post('/auth/logout', undefined, { withCredentials: true })
+            await fetch('/api/auth/logout', {
+                method: 'POST',
+                credentials: 'same-origin',
+            })
             queryClient.clear()
             clearUser()
-            router.replace('/auth/login')
+            window.location.replace('/auth/login')
         } catch {
             notify.error({
                 title: 'No pudimos cerrar sesión',
