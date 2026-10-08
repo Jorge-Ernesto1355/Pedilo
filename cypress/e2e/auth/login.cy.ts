@@ -109,7 +109,7 @@ describe('Auth · Login', () => {
             cy.login({ email: testUserEmail, password: testUserPassword })
             cy.location('pathname').should('eq', '/dashboard')
 
-            cy.intercept('POST', '**/api/v1/auth/logout').as('logout')
+            cy.intercept('POST', '/api/auth/logout').as('logout')
             cy.get('button[aria-label^="Abrir menú de "]').click()
             cy.get('[role="menu"] [role="menuitem"]')
                 .contains('Cerrar sesión')

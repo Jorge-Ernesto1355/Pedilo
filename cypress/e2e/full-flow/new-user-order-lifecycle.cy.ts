@@ -124,7 +124,7 @@ describe('Flujo completo · usuario nuevo hasta orden lista', () => {
             cy.intercept('POST', '**/api/v1/businesses/*/products').as('createProduct')
             cy.intercept('POST', '**/businesses/*/orders').as('createOrder')
             cy.intercept('PATCH', '**/businesses/orders/*/status').as('updateOrderStatus')
-            cy.intercept('POST', '**/api/v1/auth/logout').as('logout')
+            cy.intercept('POST', '/api/auth/logout').as('logout')
 
             // Usuario nuevo → crear cuenta → logout → login.
             registerAndLogin(credentials)
