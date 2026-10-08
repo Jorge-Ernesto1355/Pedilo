@@ -198,7 +198,9 @@ describe('Productos · historial y cambios concurrentes', () => {
     it('confirma el carrito con el precio vigente de $150 después de cambiarlo desde $100', () => {
         visitPublicCatalog()
         addProductToCart()
-        serverPrice = 150
+        cy.then(() => {
+            serverPrice = 150
+        })
 
         cy.intercept('POST', '**/api/v1/businesses/*/orders', (request) => {
             expect(request.body).not.to.have.property('price')
@@ -224,7 +226,9 @@ describe('Productos · historial y cambios concurrentes', () => {
             .should('contain', '$100 c/u')
             .and('be.visible')
 
-        serverPrice = 150
+        cy.then(() => {
+            serverPrice = 150
+        })
         cy.intercept('POST', '**/api/v1/businesses/*/orders', (request) => {
             expect(request.body).not.to.have.property('price')
             request.reply({ statusCode: 201, body: { order: { total: 150 } } })
@@ -297,13 +301,15 @@ describe('Productos · historial y cambios concurrentes', () => {
         visitPublicCatalog()
         cy.get('article').should('have.length', 1).and('contain.text', 'Bebida fría.')
 
-        serverDescription = 'Bebida fría de 355 ml.'
+        cy.then(() => {
+            serverDescription = 'Bebida fría de 355 ml.'
+        })
         cy.intercept('PATCH', productPath, (request) => {
             serverDescription = String(request.body.description)
             request.reply({ statusCode: 200, body: { product } })
         }).as('updateProduct')
         fetchFromApp('PATCH', `/api/v1/businesses/products/${productId}`, {
-            description: serverDescription,
+            description: 'Bebida fría de 355 ml.',
         })
         cy.wait('@updateProduct')
 
