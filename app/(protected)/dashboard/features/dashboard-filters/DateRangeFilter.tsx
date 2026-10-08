@@ -22,6 +22,8 @@ export function DateRangeFilter({ value, onChange }: DateRangeFilterProps) {
                 <button
                     key={option.value}
                     type="button"
+                    data-period={option.value}
+                    aria-label={`Periodo ${option.label}`}
                     aria-pressed={value === option.value}
                     onClick={() => onChange(option.value)}
                     className={`whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2451C5]/25 ${value === option.value ? 'bg-[#2451C5] text-white shadow-[0_6px_16px_rgb(36_81_197_/_0.2)]' : 'text-[#65738A] hover:bg-[#EAF0FF] hover:text-[#1E40AF]'}`}

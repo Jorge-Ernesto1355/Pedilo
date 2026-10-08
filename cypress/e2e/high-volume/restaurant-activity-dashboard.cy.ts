@@ -272,8 +272,8 @@ describe('High volume · restaurante con actividad real y métricas', () => {
             cy.contains('Cómo va tu negocio').should('be.visible')
             cy.contains('Lo más vendido').should('be.visible')
             cy.contains('Pedidos recientes').should('be.visible')
-            cy.get('[aria-label="Periodo de ventas"] button').each(($button) => {
-                cy.wrap($button).click()
+            ;['7d', '30d', 'thisMonth', 'today'].forEach((period) => {
+                cy.get(`[aria-label="Periodo de ventas"] button[data-period="${period}"]`).click()
                 cy.get('[aria-label="Resumen del negocio"]').should('be.visible')
             })
 
@@ -288,9 +288,9 @@ describe('High volume · restaurante con actividad real y métricas', () => {
             cy.get('[aria-label="Métricas de ventas"]').should('be.visible')
             cy.get('[aria-label^="Gráfica de ventas"]').should('be.visible')
             cy.get('table caption').should('contain', 'Ventas y órdenes por periodo')
-            cy.get('[aria-label="Periodo de ventas"] button').each(($button) => {
-                cy.wrap($button).click()
-                cy.get('[aria-busy="true"], [aria-busy="false"]').should('exist')
+            ;['7d', '30d', 'thisMonth', 'today'].forEach((period) => {
+                cy.get(`[aria-label="Periodo de ventas"] button[data-period="${period}"]`).click()
+                cy.get('[aria-label="Métricas de ventas"]').should('be.visible')
             })
 
             cy.log(`Pedidos creados: ${createdOrders.length}`)

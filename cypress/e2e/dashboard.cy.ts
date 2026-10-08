@@ -44,9 +44,20 @@ describe('Dashboard · escenario E2E persistente', () => {
         cy.get('[aria-label="Métricas de ventas"]').should('be.visible')
         cy.get('[aria-label^="Gráfica de ventas"]').should('be.visible')
         cy.get('table caption').should('contain', 'Ventas y órdenes por periodo')
-        cy.get('[aria-label="Periodo de ventas"] button').each(($button) => {
-            cy.wrap($button).click()
-            cy.get('[aria-busy="true"], [aria-busy="false"]').should('exist')
+        const periods = [
+            { value: '7d', label: '7 días' },
+            { value: '30d', label: '30 días' },
+            { value: 'thisMonth', label: 'Este mes' },
+            { value: 'today', label: 'Hoy' },
+        ]
+        periods.forEach(({ value, label }) => {
+            cy.get(`[aria-label="Periodo de ventas"] button[data-period="${value}"]`)
+                .should('contain', label)
+                .click()
+            cy.wait('@getDashboardSales').then(({ request }) => {
+                expect(new URL(request.url).searchParams.get('period')).to.eq(value)
+            })
+            cy.get('[aria-label="Métricas de ventas"]').should('be.visible')
         })
         cy.get('@unexpectedOrderCreation.all').should('have.length', 0)
     })
