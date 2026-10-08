@@ -218,11 +218,6 @@ export function OrderDrawer({
                                         {phoneError}
                                     </p>
                                 )}
-                                {orderError && (
-                                    <p role="alert" className="mt-2 text-xs text-[#B42318]">
-                                        {orderError}
-                                    </p>
-                                )}
                                 <label
                                     htmlFor="order-notes"
                                     className="mb-2 mt-3 block text-sm font-bold text-[#243556]"
@@ -276,6 +271,15 @@ export function OrderDrawer({
                                     {isSubmitting ? 'Enviando pedido…' : 'Confirmar pedido'}{' '}
                                     <span>${total.toLocaleString('es-MX')}</span>
                                 </button>
+                                {orderError && (
+                                    <p
+                                        role="alert"
+                                        data-testid="order-error"
+                                        className="mt-3 rounded-xl border border-[#F4C7C3] bg-[#FFF5F4] px-3 py-2.5 text-center text-xs font-semibold leading-5 text-[#B42318]"
+                                    >
+                                        {orderError}
+                                    </p>
+                                )}
                                 <p className="mt-2 text-center text-[11px] leading-4 text-[#8996A9]">
                                     El teléfono se usará para identificar y contactar tu pedido.
                                 </p>

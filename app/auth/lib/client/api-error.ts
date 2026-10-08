@@ -76,11 +76,25 @@ function readFieldErrors(value: unknown): ApiFieldErrors {
 }
 
 function getBody(error: unknown): BackendErrorBody | undefined {
-    if (!isAxiosError(error) || !error.response?.data || typeof error.response.data !== 'object') {
+    if (!isAxiosError(error) || !error.response?.data) {
         return undefined
     }
 
-    const rawBody = error.response.data as BackendErrorBody
+    const responseData = error.response.data
+    let rawBody: BackendErrorBody
+    if (typeof responseData === 'string') {
+        try {
+            const parsed: unknown = JSON.parse(responseData)
+            if (!parsed || typeof parsed !== 'object') return undefined
+            rawBody = parsed as BackendErrorBody
+        } catch {
+            return undefined
+        }
+    } else if (typeof responseData === 'object') {
+        rawBody = responseData as BackendErrorBody
+    } else {
+        return undefined
+    }
     const nestedResult = rawBody.response?.result
 
     if (typeof nestedResult === 'string') {
@@ -111,7 +125,13 @@ export function normalizeApiError(error: unknown): ApiError {
     const objectValues = objectPayload as Record<string, unknown> | undefined
     const code = objectValues
         ? asString(objectValues.code)
-        : (asString(body?.code) ?? (typeof payload === 'string' ? asString(payload) : undefined))
+        : (asString(body?.code) ??
+          (typeof payload === 'string' && /^[A-Z][A-Z0-9_]+$/.test(payload.trim())
+              ? asString(payload)
+              : undefined) ??
+          (typeof body?.message === 'string' && /^[A-Z][A-Z0-9_]+$/.test(body.message.trim())
+              ? asString(body.message)
+              : undefined))
     const fieldErrors = objectValues
         ? readFieldErrors(objectValues.fieldErrors ?? objectValues.fields ?? objectValues.details)
         : Array.isArray(payload)

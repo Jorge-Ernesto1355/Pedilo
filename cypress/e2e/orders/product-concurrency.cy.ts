@@ -190,9 +190,9 @@ describe('Productos · historial y cambios concurrentes', () => {
         openCheckout()
         cy.contains('button', 'Confirmar pedido').click()
         cy.wait('@createOrder')
-        cy.contains('Uno de los productos seleccionados ya no está disponible.').should(
-            'be.visible',
-        )
+        cy.get('[data-testid="order-error"]')
+            .should('be.visible')
+            .and('contain', 'Uno de los productos seleccionados ya no está disponible.')
     })
 
     it('confirma el carrito con el precio vigente de $150 después de cambiarlo desde $100', () => {
@@ -328,9 +328,9 @@ describe('Productos · historial y cambios concurrentes', () => {
         openCheckout()
         cy.contains('button', 'Confirmar pedido').click()
         cy.wait('@createOrder')
-        cy.contains('Uno de los productos seleccionados ya no está disponible.').should(
-            'be.visible',
-        )
+        cy.get('[data-testid="order-error"]')
+            .should('be.visible')
+            .and('contain', 'Uno de los productos seleccionados ya no está disponible.')
     })
 
     it('rechaza el pedido si el producto se desactiva durante el checkout', () => {
@@ -349,9 +349,9 @@ describe('Productos · historial y cambios concurrentes', () => {
         cy.wait('@disableProduct')
         cy.contains('button', 'Confirmar pedido').click()
         cy.wait('@createOrder')
-        cy.contains('Uno de los productos seleccionados ya no está disponible.').should(
-            'be.visible',
-        )
+        cy.get('[data-testid="order-error"]')
+            .should('be.visible')
+            .and('contain', 'Uno de los productos seleccionados ya no está disponible.')
     })
 
     it('mantiene abierto el detalle aunque el producto se elimine y rechaza el pedido', () => {
@@ -375,9 +375,9 @@ describe('Productos · historial y cambios concurrentes', () => {
         openCheckout()
         cy.contains('button', 'Confirmar pedido').click()
         cy.wait('@createOrder')
-        cy.contains('Uno de los productos seleccionados ya no está disponible.').should(
-            'be.visible',
-        )
+        cy.get('[data-testid="order-error"]')
+            .should('be.visible')
+            .and('contain', 'Uno de los productos seleccionados ya no está disponible.')
     })
 
     it('permite crear otro producto con el mismo nombre después de eliminar uno sin pedidos', () => {

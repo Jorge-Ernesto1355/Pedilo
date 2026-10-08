@@ -384,6 +384,9 @@ export function getUserFriendlyError(
 ): UserFriendlyError {
     const parts = getErrorParts(error)
 
+    const mapped = parts.code ? knownErrors[parts.code.toUpperCase()] : undefined
+    if (mapped) return mapped
+
     // Backend messages that are already safe, localized Spanish copy should
     // remain useful to the user even when the backend also sends a generic
     // status code such as INTERNAL_ERROR or CONFLICT.
@@ -393,9 +396,6 @@ export function getUserFriendlyError(
             description: parts.message,
         }
     }
-
-    const mapped = parts.code ? knownErrors[parts.code] : undefined
-    if (mapped) return mapped
 
     const statusMessage = byStatus(parts.status)
     if (statusMessage) return statusMessage

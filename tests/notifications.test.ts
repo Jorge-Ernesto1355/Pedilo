@@ -102,6 +102,21 @@ describe('Pedilo notifications', () => {
         })
     })
 
+    it('prioritizes the specific order code over a generic Spanish backend message', () => {
+        expect(
+            getUserFriendlyError(
+                new ApiError({
+                    status: 400,
+                    code: 'ORDER_PRODUCT_NOT_AVAILABLE',
+                    message: 'No se pudo completar la solicitud.',
+                }),
+            ),
+        ).toEqual({
+            title: 'Producto no disponible',
+            description: expect.stringContaining('ya no está disponible'),
+        })
+    })
+
     it('handles network, unknown, English, Spanish and field errors safely', () => {
         expect(getUserFriendlyError(new TypeError('Network Error')).title).toBe(
             'Sin conexión con Pedilo',

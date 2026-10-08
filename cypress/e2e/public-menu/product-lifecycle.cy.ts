@@ -132,9 +132,9 @@ describe('Catálogo público · cambios de disponibilidad y precio', () => {
         openOrder()
         cy.contains('button', 'Confirmar pedido').click()
         cy.wait('@createOrder')
-        cy.contains('Uno de los productos seleccionados ya no está disponible.').should(
-            'be.visible',
-        )
+        cy.get('[data-testid="order-error"]')
+            .should('be.visible')
+            .and('contain', 'Uno de los productos seleccionados ya no está disponible.')
         cy.contains('ORDER_PRODUCT_NOT_AVAILABLE').should('not.exist')
         cy.contains('Product is not available').should('not.exist')
     })
