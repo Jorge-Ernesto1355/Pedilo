@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { AxiosError, AxiosHeaders } from 'axios'
 
 const sileoMock = vi.hoisted(() => ({
     success: vi.fn(() => 'success-id'),
@@ -9,7 +10,7 @@ const sileoMock = vi.hoisted(() => ({
 
 vi.mock('sileo', () => ({ sileo: sileoMock }))
 
-import { ApiError } from '@/app/auth/lib/client/api-error'
+import { ApiError, normalizeApiError } from '@/app/auth/lib/client/api-error'
 import {
     friendlyNotificationError,
     notify,
@@ -77,6 +78,28 @@ describe('Pedilo notifications', () => {
                 'Inténtalo nuevamente.',
             ),
         ).toContain('Inicia sesión nuevamente')
+    })
+
+    it('maps a backend error code returned as a string', () => {
+        const config = { headers: new AxiosHeaders() }
+        const error = new AxiosError(
+            'Request failed with status code 400',
+            'ERR_BAD_REQUEST',
+            config,
+            undefined,
+            {
+                status: 400,
+                statusText: 'Bad Request',
+                headers: {},
+                config,
+                data: { success: false, error: 'ORDER_PRODUCT_NOT_AVAILABLE' },
+            },
+        )
+
+        expect(getUserFriendlyError(normalizeApiError(error))).toEqual({
+            title: 'Producto no disponible',
+            description: expect.stringContaining('ya no está disponible'),
+        })
     })
 
     it('handles network, unknown, English, Spanish and field errors safely', () => {
