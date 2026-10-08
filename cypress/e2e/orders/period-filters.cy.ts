@@ -80,11 +80,12 @@ describe('Filtros de periodo de órdenes', () => {
             { value: 'lastMonth', label: 'Último mes' },
         ]
 
-        const periodFilter = () => cy.get('select[aria-label="Filtrar pedidos por periodo"]')
+        const periodSelector = 'select[aria-label="Filtrar pedidos por periodo"]'
 
         periods.forEach(({ value, label }) => {
-            periodFilter().find(`option[value="${value}"]`).should('contain', label)
-            periodFilter().select(value).should('have.value', value)
+            cy.get(periodSelector).find(`option[value="${value}"]`).should('contain', label)
+            cy.get(periodSelector).select(value)
+            cy.get(periodSelector).should('have.value', value)
             cy.wait('@filteredOrders').its('request.url').should('include', `period=${value}`)
         })
 

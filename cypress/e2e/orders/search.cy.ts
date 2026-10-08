@@ -230,9 +230,8 @@ describe('Búsqueda de órdenes', () => {
         const periods = ['today', '7d', '30d', 'lastMonth']
 
         periods.forEach((period) => {
-            cy.get('select[aria-label="Filtrar pedidos por periodo"]')
-                .select(period)
-                .should('have.value', period)
+            cy.get('select[aria-label="Filtrar pedidos por periodo"]').select(period)
+            cy.get('select[aria-label="Filtrar pedidos por periodo"]').should('have.value', period)
             cy.wait('@periodOrders').its('request.url').should('include', `period=${period}`)
         })
 

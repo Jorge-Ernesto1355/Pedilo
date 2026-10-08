@@ -176,7 +176,10 @@ describe('Flujo completo · usuario nuevo hasta orden lista', () => {
             cy.get('input[aria-label="Buscar pedidos por número, nombre o teléfono"]')
                 .clear()
                 .type('1')
-                .should('have.value', '1')
+            cy.get('input[aria-label="Buscar pedidos por número, nombre o teléfono"]').should(
+                'have.value',
+                '1',
+            )
             cy.wait('@searchOrders').then(({ request, response }) => {
                 expect(response?.statusCode).to.eq(200)
                 expect(new URL(request.url).searchParams.get('search')).to.eq('1')
