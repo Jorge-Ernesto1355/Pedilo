@@ -137,7 +137,7 @@ describe('Clientes · gestión completa', () => {
     })
 
     it('busca en backend y conserva el contrato de búsqueda', () => {
-        cy.get('input[aria-label="Buscar customers por nombre o teléfono"]').type('Luis')
+        cy.get('input[aria-label="Buscar clientes por nombre o teléfono"]').type('Luis')
         cy.wait('@listCustomers').then(({ request, response }) => {
             expect(request.url).to.include('search=Luis')
             expect(request.url).to.include('page=1')
@@ -159,7 +159,7 @@ describe('Clientes · gestión completa', () => {
     })
 
     it('valida y crea un cliente con nombre y teléfono', () => {
-        cy.contains('button', 'Nuevo customer').click()
+        cy.contains('button', 'Nuevo cliente').click()
         cy.get('button[type="submit"]').click()
         cy.contains('El nombre es obligatorio').should('be.visible')
         cy.get('input[placeholder="Nombre"]').type('Cliente inválido')
@@ -173,9 +173,7 @@ describe('Clientes · gestión completa', () => {
             expect(request.body).to.deep.equal({ name: 'Cliente inválido', phone: '6629876543' })
         })
         cy.wait('@listCustomers')
-        cy.get('input[aria-label="Buscar customers por nombre o teléfono"]').type(
-            'Cliente inválido',
-        )
+        cy.get('input[aria-label="Buscar clientes por nombre o teléfono"]').type('Cliente inválido')
         cy.wait('@listCustomers')
         cy.contains('Cliente inválido').should('be.visible')
     })
@@ -183,7 +181,7 @@ describe('Clientes · gestión completa', () => {
     it('abre el detalle y muestra los pedidos del cliente', () => {
         cy.contains('button', 'Ana García').click()
         cy.wait('@getCustomer')
-        cy.contains('h2', 'Detalle del customer').should('be.visible')
+        cy.contains('h2', 'Detalle del cliente').should('be.visible')
         cy.contains('Pedidos: 2').should('be.visible')
         cy.contains('Cargar pedidos').click()
         cy.contains('Pedido #1 · READY').should('be.visible')
