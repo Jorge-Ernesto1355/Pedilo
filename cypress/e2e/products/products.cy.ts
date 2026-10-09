@@ -335,7 +335,7 @@ describe('Productos · catálogo, métricas y analytics', () => {
             cy.contains('button', 'Guardar cambios').click()
         })
         cy.wait('@updateProduct')
-        cy.get('[role="dialog"] button[aria-label="Cerrar"]').click()
+        cy.get('[role="dialog"]').contains('button', 'Cancelar').click()
 
         cy.contains('button', 'Activo').click()
         cy.wait('@toggleProduct').its('request.body.active').should('eq', false)
@@ -349,7 +349,7 @@ describe('Productos · catálogo, métricas y analytics', () => {
         })
         cy.wait('@createProduct')
         cy.get('[role="dialog"]').should('contain', 'Editar producto')
-        cy.get('[role="dialog"] button[aria-label="Cerrar"]').click()
+        cy.get('[role="dialog"]').contains('button', 'Cancelar').click()
         cy.contains('Producto creado E2E').should('be.visible')
 
         cy.on('window:confirm', () => true)
