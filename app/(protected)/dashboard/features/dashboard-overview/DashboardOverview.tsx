@@ -92,11 +92,10 @@ export function DashboardOverview() {
         <main className="mx-auto max-w-[1440px] space-y-7 px-5 py-8 sm:px-8 lg:px-10 lg:py-10">
             <header className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
                 <div>
-                    <p className="text-sm font-medium text-[#65738A]">
-                        Aquí tienes el resumen de tu negocio
-                    </p>
+                    <p className="text-sm font-medium text-[#65738A]">Resumen de tu negocio</p>
                     <h1 className="mt-2 font-display text-3xl tracking-[-.06em] text-[#12234A] sm:text-4xl">
-                        Buenos días, Jorge 👋
+                        Todo lo que necesitas saber sobre tus ventas, pedidos y rendimiento, en un
+                        solo lugar.
                     </h1>
                 </div>
                 <DateRangeFilter value={range} onChange={setRange} />
