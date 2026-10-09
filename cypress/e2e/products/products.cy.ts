@@ -301,7 +301,6 @@ describe('Productos · catálogo, métricas y analytics', () => {
         cy.contains('Coca Cola').should('be.visible')
 
         cy.get('input[placeholder="Buscar por nombre…"]').clear()
-        cy.wait('@productList')
         cy.contains('span', 'Estado').parent().find('select').select('false')
         cy.wait('@productList').its('request.url').should('include', 'active=false')
         cy.contains('Torta especial').should('be.visible')
