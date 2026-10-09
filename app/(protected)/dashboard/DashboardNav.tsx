@@ -232,7 +232,7 @@ export function DashboardNav() {
                 </div>
             </header>
             <nav
-                className="fixed inset-x-0 bottom-0 z-40 border-t border-[#DCE5F3] bg-white/95 px-2 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_24px_rgb(18_35_74_/_0.08)] backdrop-blur md:hidden"
+                className="fixed !bottom-0 left-0 right-0 z-[100] border-t border-[#DCE5F3] bg-white/95 px-2 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_24px_rgb(18_35_74_/_0.08)] backdrop-blur md:hidden"
                 aria-label="Navegación móvil"
             >
                 <div className="mx-auto grid h-[76px] max-w-md grid-cols-5 items-stretch">

@@ -104,7 +104,7 @@ h6 {
 .dashboard-shell {
     position: relative;
     isolation: isolate;
-    overflow: hidden;
+    overflow-x: clip;
     color: var(--pedilo-ink);
     background-color: var(--pedilo-blue-pale);
     background-image:
