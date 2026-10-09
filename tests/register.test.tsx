@@ -51,7 +51,7 @@ describe('Register frontend', () => {
 
         expect(socialSignInMock).toHaveBeenCalledWith({
             provider: 'google',
-            callbackURL: `${window.location.origin}/dashboard`,
+            callbackURL: `${window.location.origin}/auth/login`,
         })
     })
 

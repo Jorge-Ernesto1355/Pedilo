@@ -94,7 +94,7 @@ export default function RegisterPage() {
         try {
             await authClient.signIn.social({
                 provider: 'google',
-                callbackURL: `${window.location.origin}/dashboard`,
+                callbackURL: `${window.location.origin}/auth/login`,
             })
         } catch {
             setAuthError('No pudimos iniciar sesión con Google. Intenta de nuevo.')
