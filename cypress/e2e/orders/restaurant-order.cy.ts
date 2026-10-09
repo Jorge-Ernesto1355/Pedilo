@@ -110,7 +110,7 @@ describe('Nueva orden desde el dashboard', () => {
         cy.intercept('POST', '**/businesses/*/orders/restaurant', (request) => {
             expect(request.body).to.deep.equal({
                 customerName: 'Juan',
-                customerPhone: '668-123-4567',
+                customerPhone: '6681234567',
                 notes: 'Sin cebolla',
                 items: [
                     {
