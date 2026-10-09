@@ -3,7 +3,7 @@ describe('Auth · Register', () => {
 
     function fillRegistration(email = `cypress-${Date.now()}@example.test`) {
         cy.get('[data-testid="register-name"]').type('Cypress Test User')
-        cy.get('[data-testid="register-email"]').type(email)
+        cy.get('[data-testid="register-email"]').type(email) 
         cy.get('[data-testid="register-password"]').type('Strong-pass-123')
         cy.get('[data-testid="register-confirm-password"]').type('Strong-pass-123')
         cy.get('[data-testid="register-terms"]').check()
