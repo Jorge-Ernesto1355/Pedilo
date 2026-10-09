@@ -130,7 +130,8 @@ h6 {
     transform: rotate(18deg);
 }
 
-.dashboard-shell > * {
+.dashboard-shell > header,
+.dashboard-shell > #main-content {
     position: relative;
     z-index: 1;
 }

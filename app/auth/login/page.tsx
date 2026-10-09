@@ -152,7 +152,7 @@ export default function LoginPage() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.6 }}
-                className="relative isolate flex min-h-[auto] flex-col justify-between overflow-hidden bg-[#1E40AF] p-8 text-white sm:p-12 md:min-h-screen lg:p-16"
+                className="relative order-2 isolate flex min-h-[auto] flex-col justify-between overflow-hidden bg-[#1E40AF] p-8 text-white sm:p-12 md:order-none md:min-h-screen lg:p-16"
             >
                 {/* imagen de fondo */}
                 <div className="absolute inset-0 -z-20 opacity-[.28]">
@@ -238,7 +238,7 @@ export default function LoginPage() {
             </motion.section>
 
             {/* ============ DERECHA: panel blanco ============ */}
-            <div className="flex flex-col justify-center bg-white px-6 py-10 sm:px-10 sm:py-14 lg:px-16 lg:py-18">
+            <div className="order-1 flex flex-col justify-center bg-white px-6 py-8 sm:px-10 sm:py-14 md:order-none lg:px-16 lg:py-18">
                 <motion.div
                     initial={{ opacity: 0, x: 24 }}
                     animate={{ opacity: 1, x: 0 }}
@@ -507,7 +507,9 @@ export default function LoginPage() {
                     </motion.section>
                 </motion.div>
             </div>
-            <SiteFooter />
+            <div className="order-3 md:contents">
+                <SiteFooter />
+            </div>
         </main>
     )
 }
