@@ -206,7 +206,7 @@ describe('Pedido público visible en el dashboard', () => {
                 cy.contains('h2', `Pedido #${orderNumber}`).should('be.visible')
                 cy.contains('Cliente').should('be.visible')
                 cy.contains('María López').should('be.visible')
-                cy.contains('669-555-1234').should('be.visible')
+                cy.contains('6695551234').should('be.visible')
                 cy.contains('Hamburguesa de la casa').should('be.visible')
                 cy.contains('1 × Hamburguesa de la casa').should('be.visible')
                 cy.contains('$149.00').should('be.visible')

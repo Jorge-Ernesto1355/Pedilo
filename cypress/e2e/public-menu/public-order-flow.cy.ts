@@ -230,9 +230,9 @@ describe('Crear pedido desde el catálogo público', () => {
 
                 cy.get('#customer-name').type('Jorge Pérez')
                 cy.get('#customer-phone').type('123')
-                cy.contains('Usa 10 números, por ejemplo 669-123-4567. No uses +52.').should(
-                    'be.visible',
-                )
+                cy.contains(
+                    'Usa 9 o 10 números juntos, por ejemplo 698119319. No uses +52 ni guiones.',
+                ).should('be.visible')
                 cy.contains('button', 'Confirmar pedido').should('be.disabled')
 
                 cy.get('#customer-phone').clear().type('669-123-4567')
@@ -242,7 +242,7 @@ describe('Crear pedido desde el catálogo público', () => {
 
         cy.wait('@createPublicOrder').then(({ request }) => {
             expect(request.body).to.deep.equal({
-                customer: { name: 'Jorge Pérez', phone: '669-123-4567' },
+                customer: { name: 'Jorge Pérez', phone: '6691234567' },
                 items: [
                     {
                         productId: tacoId,
