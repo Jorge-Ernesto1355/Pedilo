@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
 import {
     ArrowRight,
@@ -130,6 +130,7 @@ export default function OrdersPage() {
     const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null)
     const [mutationErrorOrderId, setMutationErrorOrderId] = useState<string | null>(null)
     const [limit] = useState(20)
+    const refetchAfterClear = useRef(false)
     useEffect(() => {
         const timer = window.setTimeout(() => {
             setPage(1)
@@ -145,6 +146,12 @@ export default function OrdersPage() {
         search: debouncedSearch || undefined,
         period,
     })
+    const refetchOrders = query.refetch
+    useEffect(() => {
+        if (!refetchAfterClear.current || debouncedSearch !== '') return
+        refetchAfterClear.current = false
+        void refetchOrders()
+    }, [debouncedSearch, refetchOrders])
     const detail = useOrder(selectedId)
     const mutation = useOrderStatusMutation()
     const settings = useBusinessSettings(true)
@@ -171,6 +178,7 @@ export default function OrdersPage() {
     }
 
     function clearSearch() {
+        refetchAfterClear.current = true
         setSearch('')
         setDebouncedSearch('')
         setPage(1)
