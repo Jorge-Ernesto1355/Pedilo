@@ -8,8 +8,12 @@ import { ApiError } from '@/app/auth/lib/client/api-error'
 
 const registerUserMock = vi.hoisted(() => vi.fn())
 const routerPushMock = vi.hoisted(() => vi.fn())
+const socialSignInMock = vi.hoisted(() => vi.fn())
 
 vi.mock('@/app/auth/lib/client/register', () => ({ registerUser: registerUserMock }))
+vi.mock('@/authClient', () => ({
+    authClient: { signIn: { social: socialSignInMock } },
+}))
 vi.mock('next/navigation', () => ({
     useRouter: () => ({ push: routerPushMock }),
 }))
@@ -35,6 +39,20 @@ describe('Register frontend', () => {
     beforeEach(() => {
         registerUserMock.mockReset()
         routerPushMock.mockReset()
+        socialSignInMock.mockReset()
+        socialSignInMock.mockResolvedValue(undefined)
+    })
+
+    it('starts Google signup with the dashboard callback', async () => {
+        const user = userEvent.setup()
+        renderRegisterPage()
+
+        await user.click(screen.getByRole('button', { name: /continuar con google/i }))
+
+        expect(socialSignInMock).toHaveBeenCalledWith({
+            provider: 'google',
+            callbackURL: `${window.location.origin}/dashboard`,
+        })
     })
 
     it('renders accessible fields and submits without password confirmation', async () => {
