@@ -1,5 +1,5 @@
 export function sanitizePhoneInput(value: string) {
-    return value.replace(/[^\d\s()-]/g, '').slice(0, 20)
+    return value.replace(/\D/g, '').slice(0, 10)
 }
 
 export function normalizePhone(value: string) {
@@ -7,5 +7,5 @@ export function normalizePhone(value: string) {
 }
 
 export function isValidPhone(value: string) {
-    return /^[\d\s()-]+$/.test(value.trim()) && normalizePhone(value).length === 10
+    return /^\d{9,10}$/.test(value.trim())
 }

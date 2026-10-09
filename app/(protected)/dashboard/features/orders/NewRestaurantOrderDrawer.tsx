@@ -576,6 +576,7 @@ function CustomerStep({
                         <input
                             value={customerName}
                             onChange={(event) => onNameChange(event.target.value)}
+                            placeholder="Ej. Jorge Pérez"
                             maxLength={CUSTOMER_NAME_MAX_LENGTH}
                             aria-invalid={!nameValid}
                             autoComplete="name"
@@ -596,7 +597,8 @@ function CustomerStep({
                             onChange={(event) =>
                                 onPhoneChange(sanitizePhoneInput(event.target.value))
                             }
-                            maxLength={20}
+                            placeholder="Ej. 698119319"
+                            maxLength={10}
                             aria-invalid={Boolean(customerPhone) && !phoneValid}
                             inputMode="tel"
                             autoComplete="tel"
@@ -604,7 +606,8 @@ function CustomerStep({
                         />
                         {customerPhone && !phoneValid && (
                             <span className="mt-1.5 block text-xs font-normal text-[#B42318]">
-                                Usa 10 números, por ejemplo 668-123-4567.
+                                Usa 9 o 10 números juntos, por ejemplo 698119319. No uses +52 ni
+                                guiones.
                             </span>
                         )}
                     </label>
@@ -613,6 +616,7 @@ function CustomerStep({
                         <textarea
                             value={notes}
                             onChange={(event) => onNotesChange(event.target.value)}
+                            placeholder="Ej. Sin cebolla"
                             maxLength={CUSTOMER_NOTES_MAX_LENGTH}
                             aria-invalid={!notesValid}
                             rows={4}

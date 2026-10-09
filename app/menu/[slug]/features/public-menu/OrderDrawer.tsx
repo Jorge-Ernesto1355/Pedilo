@@ -187,7 +187,7 @@ export function OrderDrawer({
                                     autoComplete="name"
                                     value={customerName}
                                     onChange={(event) => setCustomerName(event.target.value)}
-                                    placeholder="Ej. Jorge"
+                                    placeholder="Ej. Jorge Pérez"
                                     className="w-full rounded-xl border border-[#D7E1EF] px-3.5 py-3 text-sm text-[#12234A] outline-none transition placeholder:text-[#A0ACBD] focus:border-[#2451C5] focus:ring-4 focus:ring-[#2451C5]/10"
                                 />
                                 <label
@@ -204,13 +204,14 @@ export function OrderDrawer({
                                     onChange={(event) =>
                                         setCustomerPhone(sanitizePhoneInput(event.target.value))
                                     }
-                                    placeholder="Ej. 669-123-4567"
+                                    placeholder="Ej. 698119319"
                                     inputMode="tel"
                                     className="w-full rounded-xl border border-[#D7E1EF] px-3.5 py-3 text-sm text-[#12234A] outline-none transition placeholder:text-[#A0ACBD] focus:border-[#2451C5] focus:ring-4 focus:ring-[#2451C5]/10"
                                 />
                                 {customerPhone.length > 0 && !phoneIsValid && (
                                     <p className="mt-1.5 text-xs text-[#B42318]">
-                                        Usa 10 números, por ejemplo 669-123-4567. No uses +52.
+                                        Usa 9 o 10 números juntos, por ejemplo 698119319. No uses
+                                        +52 ni guiones.
                                     </p>
                                 )}
                                 {phoneError && (

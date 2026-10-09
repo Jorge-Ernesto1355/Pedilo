@@ -256,7 +256,7 @@ export default function CustomersPage() {
                             />
                             <p className="-mt-2 text-xs text-[#8996A9]">
                                 El teléfono es opcional y se usa para contactar al cliente. Si lo
-                                agregas, escribe exactamente 10 números.
+                                agregas, escribe 9 o 10 números juntos.
                             </p>
                             <input
                                 value={form.phone}
