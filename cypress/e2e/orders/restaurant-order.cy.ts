@@ -68,9 +68,21 @@ function installRestaurantOrderApi() {
     cy.intercept('GET', '**/businesses/mine', {
         body: { business: { slug: 'restaurante-order-e2e' } },
     }).as('mineBusiness')
-    cy.intercept('GET', '**/public/businesses/restaurante-order-e2e/catalog', {
-        body: catalog,
-    }).as('restaurantCatalog')
+    // El drawer de órdenes internas construye el catálogo con los endpoints
+    // autenticados de menús y productos; no consume el catálogo público.
+    cy.intercept('GET', '**/businesses/mine/menus', {
+        statusCode: 200,
+        body: catalog.menus,
+    }).as('restaurantMenus')
+    cy.intercept('GET', '**/businesses/*/products*', {
+        statusCode: 200,
+        body: {
+            products: [product],
+            page: 1,
+            limit: 100,
+            total: 1,
+        },
+    }).as('restaurantProducts')
 }
 
 describe('Nueva orden desde el dashboard', () => {
@@ -84,6 +96,8 @@ describe('Nueva orden desde el dashboard', () => {
     it('abre el flujo, agrega un producto y permite continuar sin datos de cliente', () => {
         cy.contains('button', '+ Nueva orden').click()
         cy.contains('[role="dialog"]', 'Nueva orden').should('be.visible')
+        cy.wait('@restaurantMenus')
+        cy.wait('@restaurantProducts')
         cy.contains('Hamburguesa de la casa').should('be.visible')
         cy.contains('button', 'Agregar al carrito').click()
         cy.contains('[role="dialog"]', 'Tu orden').should('contain', '1 producto')
@@ -128,6 +142,8 @@ describe('Nueva orden desde el dashboard', () => {
         }).as('createRestaurantOrder')
 
         cy.contains('button', '+ Nueva orden').click()
+        cy.wait('@restaurantMenus')
+        cy.wait('@restaurantProducts')
         cy.contains('button', 'Agregar al carrito').click()
         cy.get('button[aria-label="Agregar una unidad de Hamburguesa de la casa"]').click()
         cy.contains('button', 'Continuar').click()
