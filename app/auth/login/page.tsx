@@ -7,6 +7,7 @@ import { Inter, Source_Serif_4 } from 'next/font/google'
 import { loginSchema } from '@/app/auth/lib/validation'
 import { networkAuthError, safeAuthError } from '@/app/auth/lib/client/error-message'
 import Link from 'next/link'
+import { authClient } from '@/authClient'
 import { SiteFooter } from '@/app/components/SiteFooter'
 
 // ---------------------------------------------------------------------------
@@ -70,6 +71,7 @@ export default function LoginPage() {
     const [authError, setAuthError] = useState('')
     const [remember, setRemember] = useState(false)
     const [loading, setLoading] = useState(false)
+    const [googleLoading, setGoogleLoading] = useState(false)
     const [success, setSuccess] = useState(false)
 
     async function handleSubmit(e: FormEvent<HTMLFormElement>) {
@@ -122,6 +124,21 @@ export default function LoginPage() {
             setAuthError(networkAuthError)
         } finally {
             setLoading(false)
+        }
+    }
+
+    async function handleGoogleLogin() {
+        if (loading || googleLoading) return
+        setGoogleLoading(true)
+        setAuthError('')
+        try {
+            await authClient.signIn.social({
+                provider: 'google',
+                callbackURL: `${window.location.origin}/dashboard`,
+            })
+        } catch {
+            setAuthError('No pudimos iniciar sesión con Google. Intenta de nuevo.')
+            setGoogleLoading(false)
         }
     }
 
@@ -453,14 +470,15 @@ export default function LoginPage() {
 
                             {/* botón Google */}
                             <motion.button
-                                disabled
+                                onClick={() => void handleGoogleLogin()}
                                 type="button"
+                                disabled={loading || googleLoading}
                                 whileHover={{ y: -1 }}
                                 whileTap={{ scale: 0.985 }}
-                                className="flex w-full items-center justify-center gap-[11px] rounded-[11px] border-[1.5px] border-[#DCE0EA] bg-white py-3.5 font-[var(--font-inter)] text-[15px] font-bold text-[#1A202C] transition-colors hover:border-[#B9C0D0] hover:bg-[#FAFBFD] active:scale-[.985]"
+                                className="flex w-full items-center justify-center gap-[11px] rounded-[11px] border-[1.5px] border-[#DCE0EA] bg-white py-3.5 font-[var(--font-inter)] text-[15px] font-bold text-[#1A202C] transition-colors hover:border-[#B9C0D0] hover:bg-[#FAFBFD] active:scale-[.985] disabled:cursor-wait disabled:opacity-60"
                             >
-                                <GoogleIcon aria-hidden="true" className="opacity-45" />
-                                Google estará disponible próximamente
+                                <GoogleIcon />
+                                {googleLoading ? 'Conectando con Google…' : 'Continuar con Google'}
                             </motion.button>
                         </form>
                     </section>

@@ -8,6 +8,7 @@ import { getRegisterError } from '@/app/auth/lib/client/error-message'
 import { registerUser } from '@/app/auth/lib/client/register'
 import { useMutation } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
+import { authClient } from '@/authClient'
 import { SiteFooter } from '@/app/components/SiteFooter'
 
 type FieldErrors = {
@@ -72,6 +73,7 @@ export default function RegisterPage() {
     const [errors, setErrors] = useState<FieldErrors>({})
     const [authError, setAuthError] = useState('')
     const [success, setSuccess] = useState(false)
+    const [googleLoading, setGoogleLoading] = useState(false)
 
     const registerMutation = useMutation({
         mutationFn: registerUser,
@@ -81,9 +83,24 @@ export default function RegisterPage() {
         },
     })
     const router = useRouter()
-    const loading = registerMutation.isPending
+    const loading = registerMutation.isPending || googleLoading
 
     const strength = getStrength(password)
+
+    async function handleGoogleClick() {
+        if (loading) return
+        setGoogleLoading(true)
+        setAuthError('')
+        try {
+            await authClient.signIn.social({
+                provider: 'google',
+                callbackURL: `${window.location.origin}/dashboard`,
+            })
+        } catch {
+            setAuthError('No pudimos iniciar sesión con Google. Intenta de nuevo.')
+            setGoogleLoading(false)
+        }
+    }
 
     function handleSubmit(e: FormEvent) {
         e.preventDefault()
@@ -177,6 +194,7 @@ export default function RegisterPage() {
 
                             <motion.button
                                 type="button"
+                                onClick={() => void handleGoogleClick()}
                                 disabled={loading}
                                 whileHover={{ y: -2, boxShadow: '0 8px 20px rgba(15,23,42,0.1)' }}
                                 whileTap={{ scale: 0.98, y: 0 }}
@@ -201,7 +219,7 @@ export default function RegisterPage() {
                                         d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.1-4.1 5.6l6.2 5.2C41 35.4 44 30.2 44 24c0-1.3-.1-2.3-.4-3.5z"
                                     />
                                 </svg>
-                                Google estará disponible próximamente
+                                {googleLoading ? 'Conectando con Google…' : 'Continuar con Google'}
                             </motion.button>
 
                             <div className="my-[22px] flex items-center gap-[14px] text-[13px] uppercase tracking-[0.1em] text-slate-500">

@@ -32,7 +32,7 @@ describe("Login frontend", () => {
 
     expect(socialSignInMock).toHaveBeenCalledWith({
       provider: "google",
-      callbackURL: `${window.location.origin}/create-menu`,
+      callbackURL: `${window.location.origin}/dashboard`,
     });
   });
 
