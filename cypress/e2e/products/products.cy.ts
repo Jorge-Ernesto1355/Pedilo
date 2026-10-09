@@ -13,6 +13,7 @@ type Product = {
 }
 
 const categoryId = 'category-products-dashboard-e2e'
+const foodCategoryId = 'category-products-dashboard-e2e-food'
 
 const initialProducts: Product[] = [
     {
@@ -43,7 +44,7 @@ const initialProducts: Product[] = [
     },
     {
         id: 'product-torta-e2e',
-        categoryId,
+        categoryId: foodCategoryId,
         categoryName: 'Comida',
         name: 'Torta especial',
         description: 'Torta con aguacate',
@@ -109,6 +110,12 @@ function installProductApi(state: ProductApiState) {
                         name: 'Bebidas',
                         products: [],
                     },
+                    {
+                        id: foodCategoryId,
+                        menuId: 'menu-products-dashboard-e2e',
+                        name: 'Comida',
+                        products: [],
+                    },
                 ],
             },
         ],
@@ -123,13 +130,13 @@ function installProductApi(state: ProductApiState) {
         const path = url.pathname
 
         if (path.includes('/analytics/')) {
+            if (path.endsWith('/best-selling')) request.alias = 'bestSelling'
+            if (path.endsWith('/most-requested')) request.alias = 'mostRequested'
+            if (path.endsWith('/summary')) request.alias = 'productSummary'
             if (state.failAnalytics) {
                 request.reply({ statusCode: 500, body: { message: 'analytics unavailable' } })
                 return
             }
-            if (path.endsWith('/best-selling')) request.alias = 'bestSelling'
-            if (path.endsWith('/most-requested')) request.alias = 'mostRequested'
-            if (path.endsWith('/summary')) request.alias = 'productSummary'
             if (path.endsWith('/summary'))
                 request.reply({ statusCode: 200, body: statsFor(state.products) })
             else {
@@ -263,6 +270,39 @@ function cardValue(label: string) {
     return cy.contains('p', label).parent().find('p').last()
 }
 
+function assertQueryParams(requestUrl: string, expected: Record<string, string | undefined>) {
+    const params = new URL(requestUrl).searchParams
+    Object.entries(expected).forEach(([key, value]) => {
+        if (value === undefined) expect(params.has(key), `${key} should be omitted`).to.be.false
+        else expect(params.get(key), key).to.eq(value)
+    })
+}
+
+function waitForProductList(expected: Record<string, string | undefined>) {
+    cy.wait('@productList').then(({ request }) => assertQueryParams(request.url, expected))
+}
+
+function waitForAnalytics(expected: Record<string, string | undefined>) {
+    const aliases: Array<`@${string}`> = ['@bestSelling', '@mostRequested', '@productSummary']
+    aliases.forEach((alias) => {
+        waitForAnalyticsRequest(alias, expected)
+    })
+}
+
+function waitForAnalyticsRequest(
+    alias: `@${string}`,
+    expected: Record<string, string | undefined>,
+) {
+    cy.wait(alias).then(({ request }) => {
+        const params = new URL(request.url).searchParams
+        const matches = Object.entries(expected).every(([key, value]) =>
+            value === undefined ? !params.has(key) : params.get(key) === value,
+        )
+        if (matches) assertQueryParams(request.url, expected)
+        else waitForAnalyticsRequest(alias, expected)
+    })
+}
+
 describe('Productos · catálogo, métricas y analytics', () => {
     it('muestra total, activos, inactivos, categorías y rankings', () => {
         const state: ProductApiState = {
@@ -277,7 +317,7 @@ describe('Productos · catálogo, métricas y analytics', () => {
         cardValue('Activos').should('contain', '2')
         cardValue('Inactivos').should('contain', '1')
         cardValue('Sin categoría').should('contain', '0')
-        cardValue('Categorías con productos').should('contain', '1')
+        cardValue('Categorías con productos').should('contain', '2')
         cy.contains('h2', 'Todos tus productos').should('be.visible')
         cy.contains('Café de olla').should('be.visible')
         cy.contains('Torta especial').should('be.visible')
@@ -295,23 +335,57 @@ describe('Productos · catálogo, métricas y analytics', () => {
         }
         visitProducts(state)
 
+        const catalog = () => cy.contains('h2', 'Todos tus productos').closest('section')
+
         cy.get('input[placeholder="Buscar por nombre…"]').type('C')
-        cy.wait('@productList').its('request.url').should('include', 'search=C')
-        cy.contains('Café de olla').should('be.visible')
-        cy.contains('Coca Cola').should('be.visible')
+        waitForProductList({
+            search: 'C',
+            categoryId: undefined,
+            active: undefined,
+            sortBy: 'createdAt',
+            sortOrder: 'desc',
+        })
+        catalog().contains('Café de olla').should('be.visible')
+        catalog().contains('Coca Cola').should('be.visible')
 
         cy.get('input[placeholder="Buscar por nombre…"]').clear()
         cy.contains('span', 'Estado').parent().find('select').select('false')
-        cy.wait('@productList').its('request.url').should('include', 'active=false')
-        cy.contains('Torta especial').should('be.visible')
-        cy.contains('Café de olla').should('not.exist')
+        waitForProductList({
+            search: undefined,
+            categoryId: undefined,
+            active: 'false',
+            sortBy: 'createdAt',
+            sortOrder: 'desc',
+        })
+        catalog().contains('Torta especial').should('be.visible')
+        catalog().contains('Café de olla').should('not.exist')
 
-        cy.contains('span', 'Categoría').parent().find('select').select(categoryId)
-        cy.wait('@productList').its('request.url').should('include', `categoryId=${categoryId}`)
+        cy.contains('span', 'Categoría').first().parent().find('select').select(foodCategoryId)
+        waitForProductList({
+            search: undefined,
+            categoryId: foodCategoryId,
+            active: 'false',
+            sortBy: 'createdAt',
+            sortOrder: 'desc',
+        })
+        catalog().contains('Torta especial').should('be.visible')
+
         cy.contains('span', 'Ordenar por').parent().find('select').select('price')
-        cy.wait('@productList').its('request.url').should('include', 'sortBy=price')
-        cy.contains('span', 'Ordenar por').parent().find('button').click()
-        cy.wait('@productList').its('request.url').should('include', 'sortOrder=asc')
+        waitForProductList({
+            search: undefined,
+            categoryId: foodCategoryId,
+            active: 'false',
+            sortBy: 'price',
+            sortOrder: 'desc',
+        })
+        cy.contains('span', 'Ordenar por').closest('div.flex').find('button').click()
+        waitForProductList({
+            search: undefined,
+            categoryId: foodCategoryId,
+            active: 'false',
+            sortBy: 'price',
+            sortOrder: 'asc',
+        })
     })
 
     it('permite ver detalle, crear, editar, activar y eliminar un producto', () => {
@@ -335,7 +409,7 @@ describe('Productos · catálogo, métricas y analytics', () => {
             cy.contains('button', 'Guardar cambios').click()
         })
         cy.wait('@updateProduct')
-        cy.get('[role="dialog"]').contains('button', 'Cancelar').click()
+        cy.get('[role="dialog"]').should('not.exist')
 
         cy.contains('button', 'Activo').click()
         cy.wait('@toggleProduct').its('request.body.active').should('eq', false)
@@ -367,16 +441,53 @@ describe('Productos · catálogo, métricas y analytics', () => {
         }
         visitProducts(state)
 
-        cy.contains('span', 'Desde').parent().find('input').type('2026-10-01')
-        cy.wait('@bestSelling').its('request.url').should('include', 'from=2026-10-01')
-        cy.contains('span', 'Hasta').parent().find('input').type('2026-10-31')
-        cy.wait('@mostRequested').its('request.url').should('include', 'to=2026-10-31')
-        cy.contains('span', 'Límite').parent().find('select').select('10')
-        cy.wait('@productSummary').its('request.url').should('include', 'limit=10')
+        const analyticsSection = () =>
+            cy.contains('h2', 'Qué están pidiendo tus clientes').closest('section')
+
+        analyticsSection().contains('span', 'Desde').parent().find('input').type('2026-10-01')
+        waitForAnalytics({
+            from: '2026-10-01',
+            to: undefined,
+            categoryId: undefined,
+            limit: '5',
+        })
+
+        analyticsSection().contains('span', 'Hasta').parent().find('input').type('2026-10-31')
+        waitForAnalytics({
+            from: '2026-10-01',
+            to: '2026-10-31',
+            categoryId: undefined,
+            limit: '5',
+        })
+
+        analyticsSection()
+            .contains('span', 'Categoría')
+            .parent()
+            .find('select')
+            .select(foodCategoryId)
+        waitForAnalytics({
+            from: '2026-10-01',
+            to: '2026-10-31',
+            categoryId: foodCategoryId,
+            limit: '5',
+        })
+
+        analyticsSection().contains('span', 'Límite').parent().find('select').select('10')
+        waitForAnalytics({
+            from: '2026-10-01',
+            to: '2026-10-31',
+            categoryId: foodCategoryId,
+            limit: '10',
+        })
 
         state.failAnalytics = true
-        cy.contains('span', 'Límite').parent().find('select').select('20')
-        cy.wait('@bestSelling')
+        analyticsSection().contains('span', 'Límite').parent().find('select').select('20')
+        waitForAnalytics({
+            from: '2026-10-01',
+            to: '2026-10-31',
+            categoryId: foodCategoryId,
+            limit: '20',
+        })
         cy.contains('No pudimos cargar los analytics de productos.').should('be.visible')
     })
 
