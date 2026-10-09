@@ -199,6 +199,15 @@ export function DashboardNav() {
                                         style={{ top: menuPosition.top, left: menuPosition.left }}
                                     >
                                         <Link
+                                            href="/create-menu"
+                                            role="menuitem"
+                                            onClick={() => setAccountMenuOpen(false)}
+                                            className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm font-semibold text-[#243556] transition hover:bg-[#F5F8FC] hover:text-[#1E40AF] sm:hidden"
+                                        >
+                                            <Menu className="size-4" />
+                                            Crear menú
+                                        </Link>
+                                        <Link
                                             href="/dashboard/account"
                                             role="menuitem"
                                             onClick={() => setAccountMenuOpen(false)}
@@ -226,13 +235,14 @@ export function DashboardNav() {
                 className="fixed inset-x-0 bottom-0 z-40 border-t border-[#DCE5F3] bg-white/95 px-2 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_24px_rgb(18_35_74_/_0.08)] backdrop-blur md:hidden"
                 aria-label="Navegación móvil"
             >
-                <div className="mx-auto grid h-[68px] max-w-md grid-cols-5 items-stretch">
+                <div className="mx-auto grid h-[76px] max-w-md grid-cols-5 items-stretch">
                     {links.map((link) => {
                         const Icon = link.icon
                         const active =
                             link.href === '/dashboard'
                                 ? pathname === link.href
                                 : pathname.startsWith(link.href)
+                        const isOrders = link.href === '/dashboard/orders'
 
                         return (
                             <Link
@@ -240,14 +250,19 @@ export function DashboardNav() {
                                 href={link.href}
                                 onMouseEnter={() => router.prefetch(link.href)}
                                 aria-current={active ? 'page' : undefined}
-                                className={`flex min-w-0 flex-col items-center justify-center gap-1 rounded-lg text-[10px] font-semibold transition-colors ${active ? 'text-[#1E40AF]' : 'text-[#8996A9] hover:text-[#1E40AF]'}`}
+                                className={`flex min-w-0 flex-col items-center justify-center rounded-lg text-[10px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1E40AF] focus-visible:ring-offset-2 ${isOrders ? '-translate-y-2 gap-1' : 'gap-1'} ${active ? 'text-[#1E40AF]' : 'text-[#8996A9] hover:text-[#1E40AF]'}`}
                             >
                                 <span
-                                    className={`grid size-8 place-items-center rounded-xl transition-colors ${active ? 'bg-[#EAF0FF]' : ''}`}
+                                    className={`grid place-items-center transition-colors ${isOrders ? `size-12 rounded-2xl shadow-[0_8px_18px_rgb(30_64_175_/_0.28)] ${active ? 'bg-[#1E40AF] text-white' : 'bg-[#EAF0FF] text-[#2451C5]'}` : `size-8 rounded-xl ${active ? 'bg-[#EAF0FF]' : ''}`}`}
                                 >
-                                    <Icon className="size-[18px]" strokeWidth={active ? 2.4 : 2} />
+                                    <Icon
+                                        className={isOrders ? 'size-[22px]' : 'size-[18px]'}
+                                        strokeWidth={active || isOrders ? 2.4 : 2}
+                                    />
                                 </span>
-                                <span className="truncate px-1">{link.label}</span>
+                                <span className={`truncate px-1 ${isOrders ? 'font-bold' : ''}`}>
+                                    {link.label}
+                                </span>
                             </Link>
                         )
                     })}

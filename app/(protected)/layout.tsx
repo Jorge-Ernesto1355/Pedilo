@@ -18,7 +18,7 @@ export default async function ProtectedLayout({ children }: { children: ReactNod
         <AuthHydration user={user}>
             <div className="dashboard-shell min-h-screen">
                 <DashboardNav />
-                <div id="main-content" tabIndex={-1} className="pb-24 md:pb-0">
+                <div id="main-content" tabIndex={-1} className="pb-28 md:pb-0">
                     {children}
                 </div>
             </div>
