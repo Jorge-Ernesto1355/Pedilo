@@ -2,10 +2,12 @@
 
 import { Check, ImagePlus, LoaderCircle } from 'lucide-react'
 import { useFormContext } from 'react-hook-form'
+import { useState } from 'react'
 import type { BusinessProfileValues } from './businessProfile.schema'
 import { BusinessHoursField } from './BusinessHoursField'
 import { ViewOnMapsButton } from '../business-location/ViewOnMapsButton'
 import type { LocationCoordinates } from '../business-location/location.schema'
+import { useNominatimSearch, type NominatimResult } from '../business-location/useNominatimSearch'
 import { MapPinned } from 'lucide-react'
 import type { FormEventHandler } from 'react'
 import { ProgressiveImage } from './ProgressiveImage'
@@ -19,6 +21,7 @@ type BusinessProfileFormProps = {
     onLogoSelect: (file: File | undefined) => void
     onCoverSelect: (file: File | undefined) => void
     onOpenLocationPicker: () => void
+    onLocationSelect: (location: string, coordinates: LocationCoordinates) => void
     onSubmit: FormEventHandler<HTMLFormElement>
     isSaving: boolean
     isCreating: boolean
@@ -39,6 +42,7 @@ export function BusinessProfileForm({
     onLogoSelect,
     onCoverSelect,
     onOpenLocationPicker,
+    onLocationSelect,
     onSubmit,
     isSaving,
     isCreating,
@@ -48,8 +52,23 @@ export function BusinessProfileForm({
 }: BusinessProfileFormProps) {
     const {
         register,
+        setValue,
         formState: { errors },
     } = useFormContext<BusinessProfileValues>()
+    const [locationFocused, setLocationFocused] = useState(false)
+    const { setQuery: setLocationQuery, results, isSearching, searchError } = useNominatimSearch()
+    const locationRegister = register('location')
+
+    function selectLocation(result: NominatimResult) {
+        const location = formatLocationResult(result)
+        setValue('location', location, { shouldDirty: true, shouldValidate: true })
+        setLocationQuery('')
+        setLocationFocused(false)
+        onLocationSelect(location, {
+            latitude: Number(result.lat),
+            longitude: Number(result.lon),
+        })
+    }
 
     if (isLoading) return <BusinessProfileSkeleton />
 
@@ -71,7 +90,7 @@ export function BusinessProfileForm({
             </div>
 
             <div className="space-y-5">
-                <div>
+                <div className="relative">
                     <label
                         htmlFor="businessName"
                         className="mb-2 block text-sm font-semibold text-[#243556]"
@@ -96,8 +115,8 @@ export function BusinessProfileForm({
                         URL del negocio
                     </label>
                     <span className="mt-4 max-w-md text-sm leading-7 text-[#65738A]">
-                        Crea una URL sencilla y fácil de recordar para que tus clientes accedan a tu
-                        menú. Ejemplo: /la-esquina
+                        Crea tu URL personalizada. Solo minúsculas, sin espacios. Ejemplo:
+                        /la-esquina
                     </span>
                     <input
                         id="slug"
@@ -124,8 +143,39 @@ export function BusinessProfileForm({
                         autoComplete="address-level2"
                         placeholder="Ej. Culiacán, Sinaloa"
                         className={inputClass}
-                        {...register('location')}
+                        {...locationRegister}
+                        onFocus={() => setLocationFocused(true)}
+                        onBlur={() => window.setTimeout(() => setLocationFocused(false), 150)}
+                        onChange={(event) => {
+                            locationRegister.onChange(event)
+                            setLocationQuery(event.target.value)
+                        }}
                     />
+                    {locationFocused && (isSearching || searchError || results.length > 0) ? (
+                        <div className="absolute inset-x-0 top-[calc(100%+4px)] z-20 overflow-hidden rounded-xl border border-[#D7E1EF] bg-white shadow-[0_12px_30px_rgb(18_35_74_/_0.14)]">
+                            {isSearching ? (
+                                <p className="px-4 py-3 text-sm text-[#8996A9]">
+                                    Buscando lugares…
+                                </p>
+                            ) : searchError ? (
+                                <p role="alert" className="px-4 py-3 text-sm text-[#A33A32]">
+                                    No pudimos buscar esa ubicación. Intenta de nuevo.
+                                </p>
+                            ) : (
+                                results.map((result) => (
+                                    <button
+                                        key={result.place_id}
+                                        type="button"
+                                        onMouseDown={(event) => event.preventDefault()}
+                                        onClick={() => selectLocation(result)}
+                                        className="block w-full border-b border-[#EEF2F7] px-4 py-3 text-left text-sm text-[#26344A] transition last:border-0 hover:bg-[#F3F6FB]"
+                                    >
+                                        {formatLocationResult(result)}
+                                    </button>
+                                ))
+                            )}
+                        </div>
+                    ) : null}
                     {errors.location && (
                         <p className="mt-1.5 text-xs text-[#B42318]" role="alert">
                             {errors.location.message}
@@ -285,4 +335,22 @@ export function BusinessProfileForm({
             </div>
         </form>
     )
+}
+
+function formatLocationResult(result: NominatimResult) {
+    const address = result.address
+    const locality =
+        address?.city ??
+        address?.town ??
+        address?.village ??
+        address?.hamlet ??
+        address?.city_district
+    const municipality =
+        address?.municipality ?? address?.county ?? address?.state_district ?? address?.region
+    const state = address?.state
+    const parts = [locality, municipality, state].filter(
+        (part, index, values): part is string => Boolean(part) && values.indexOf(part) === index,
+    )
+
+    return parts.length > 0 ? parts.join(', ') : result.display_name
 }

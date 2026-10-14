@@ -1,7 +1,7 @@
 'use client'
 
 import { zodResolver } from '@hookform/resolvers/zod'
-import { GripVertical, LoaderCircle, Pencil, Plus, Trash2, X } from 'lucide-react'
+import { CircleHelp, GripVertical, LoaderCircle, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
@@ -693,6 +693,7 @@ export function OptionGroupsEditor({
     const mutations = useOptionManagement()
     const [groupModal, setGroupModal] = useState<OptionGroup | null | undefined>(undefined)
     const [draggedId, setDraggedId] = useState<string | null>(null)
+    const [showExample, setShowExample] = useState(false)
     const groups = query.data?.length ? query.data : (initialGroups ?? [])
     const saveGroup = (group: OptionGroup, id: string, isEdit: boolean) => {
         if (mutations.createGroup.isPending || mutations.updateGroup.isPending) return
@@ -743,9 +744,21 @@ export function OptionGroupsEditor({
     }
     return (
         <section className="mt-5 rounded-xl border border-[#DCE5F3] bg-[#F8FAFE] p-4">
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <h4 className="font-display text-base text-[#12234A]">Opciones y extras</h4>
+                    <div className="flex items-center gap-2">
+                        <h4 className="font-display text-base text-[#12234A]">Opciones y extras</h4>
+                        <button
+                            type="button"
+                            onClick={() => setShowExample((current) => !current)}
+                            aria-expanded={showExample}
+                            aria-controls="option-group-example"
+                            aria-label="Ver ejemplo de extras"
+                            className="grid size-6 place-items-center rounded-full text-[#1E40AF] transition-colors hover:bg-[#E5EDFF] focus:outline-none focus:ring-4 focus:ring-[#2451C5]/10"
+                        >
+                            <CircleHelp className="size-4" />
+                        </button>
+                    </div>
                     <p className="mt-1 text-xs text-[#65738A]">
                         Personaliza las elecciones disponibles para este producto.
                     </p>
@@ -754,12 +767,32 @@ export function OptionGroupsEditor({
                     type="button"
                     onClick={() => setGroupModal(null)}
                     disabled={mutations.createGroup.isPending || mutations.updateGroup.isPending}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-[#E5EDFF] px-3 py-2 text-xs font-bold text-[#1E40AF] disabled:cursor-wait disabled:opacity-50"
+                    className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-[#E5EDFF] px-3 py-2.5 text-xs font-bold text-[#1E40AF] disabled:cursor-wait disabled:opacity-50 sm:w-auto sm:py-2"
                 >
                     <Plus className="size-3.5" />
-                    Crear grupo
+                    <span className="sm:hidden">Añadir grupo</span>
+                    <span className="hidden sm:inline">Crear grupo</span>
                 </button>
             </div>
+            {showExample && (
+                <div
+                    id="option-group-example"
+                    role="note"
+                    className="mt-3 rounded-xl border border-[#CFE0FF] bg-[#EEF4FF] px-3.5 py-3 text-sm text-[#243556]"
+                >
+                    <p className="font-bold text-[#1E40AF]">Ejemplo para una hamburguesa</p>
+                    <p className="mt-1 text-xs text-[#65738A]">
+                        Nombre del grupo:{' '}
+                        <span className="font-semibold text-[#243556]">Extras</span>
+                    </p>
+                    <ul className="mt-2 space-y-1 text-xs text-[#243556]">
+                        <li>• Queso extra — $15</li>
+                        <li>• Tocino — $20</li>
+                        <li>• Aguacate — $15</li>
+                        <li>• Carne extra — $35</li>
+                    </ul>
+                </div>
+            )}
             {query.isLoading && groups.length === 0 ? (
                 <p className="mt-4 text-sm text-[#65738A]">Cargando grupos…</p>
             ) : query.isError && groups.length === 0 ? (

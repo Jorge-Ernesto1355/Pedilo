@@ -209,6 +209,11 @@ export default function BusinessSetupScreen({
         location.saveLocation(coordinates)
     }
 
+    function handleLocationSelect(locationText: string, coordinates: LocationCoordinates) {
+        form.setValue('location', locationText, { shouldDirty: true, shouldValidate: true })
+        handleLocationSave(coordinates)
+    }
+
     function handleProfileSubmit(values: BusinessProfileValues) {
         saveProfile.mutate(
             { values, logoFile, coverFile, businessId: businessQuery.data?.id ?? null },
@@ -282,6 +287,7 @@ export default function BusinessSetupScreen({
                                 onLogoSelect={selectLogo}
                                 onCoverSelect={selectCover}
                                 onOpenLocationPicker={location.open}
+                                onLocationSelect={handleLocationSelect}
                                 onSubmit={form.handleSubmit(handleProfileSubmit)}
                                 isSaving={saveProfile.isPending}
                                 isCreating={businessConfirmed && !businessQuery.data}
@@ -380,15 +386,21 @@ export default function BusinessSetupScreen({
                                 />
                             )}
                             <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-[#DCE5F3] bg-[#FBFCFE] p-3">
-                                <p className="mr-auto px-1 text-xs font-semibold text-[#8996A9]">
+                                <p className="w-full px-1 text-xs font-semibold text-[#8996A9] sm:mr-auto sm:w-auto">
                                     Comparte tu menú con tus clientes
                                 </p>
-                                <ShareLinkButton
-                                    shareUrl={sharing.shareUrl}
-                                    copied={sharing.copied}
-                                    onCopy={sharing.copyLink}
-                                />
-                                <QrCodeButton shareUrl={sharing.shareUrl} />
+                                <div className="flex w-full min-w-0 gap-2 sm:w-auto">
+                                    <ShareLinkButton
+                                        shareUrl={sharing.shareUrl}
+                                        copied={sharing.copied}
+                                        onCopy={sharing.copyLink}
+                                        className="flex-1 sm:flex-none"
+                                    />
+                                    <QrCodeButton
+                                        shareUrl={sharing.shareUrl}
+                                        className="flex-1 sm:flex-none"
+                                    />
+                                </div>
                             </div>
                             <MenuManagementPanel management={categories} />
                             <div className="flex items-center justify-between gap-4 rounded-xl border border-transparent px-1 py-2 text-xs text-[#8996A9]">

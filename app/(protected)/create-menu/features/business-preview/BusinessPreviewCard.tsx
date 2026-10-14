@@ -61,9 +61,6 @@ export function BusinessPreviewCard({
                         <Settings2 className="size-3.5" />
                         <span className="hidden sm:inline">Configurar negocio</span>
                     </button>
-                    <span className="rounded-full bg-[#EEF8F2] px-2.5 py-1 text-[11px] font-semibold text-[#23814C]">
-                        En vivo
-                    </span>
                 </div>
             </div>
             <div className="p-5 sm:p-7">
