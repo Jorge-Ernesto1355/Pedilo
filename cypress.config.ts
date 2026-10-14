@@ -23,6 +23,7 @@ const e2eSeedPassword = process.env.E2E_SEED_PASSWORD ?? 'Strong-pass-123'
 const e2eSeedSlug = process.env.E2E_SEED_SLUG ?? 'e2e-dashboard-restaurante'
 
 export default defineConfig({
+  projectId: 'enkwtw',
     e2e: {
         baseUrl: cypressBaseUrl,
         specPattern: 'cypress/e2e/**/*.cy.ts',

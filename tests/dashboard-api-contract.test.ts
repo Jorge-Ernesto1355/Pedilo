@@ -8,6 +8,7 @@ vi.mock('@/src/lib/api/client', () => ({
 }))
 
 import { getDashboardSales } from '@/app/(protected)/dashboard/features/dashboard-sales/dashboardSales'
+import { getAverageTicket } from '@/app/(protected)/dashboard/features/dashboard-sales/averageTicketApi'
 import {
     getBestSellingProducts,
     getMostRequestedProducts,
@@ -40,6 +41,52 @@ describe('dashboard frontend API contracts', () => {
         expect(apiGet).toHaveBeenCalledWith(
             '/dashboard/sales',
             expect.objectContaining({ params: { period: 'today' } }),
+        )
+    })
+
+    it('requests average ticket without a business id and preserves the analytics contract', async () => {
+        const response = {
+            data: {
+                metric: 'average_ticket',
+                period: 'this_month',
+                currency: 'MXN',
+                current: {
+                    total_sales: '100.00',
+                    orders_count: 1,
+                    average_ticket: '100.00',
+                    start_at: '2026-10-01T00:00:00.000Z',
+                    end_at: '2026-10-11T12:00:00.000Z',
+                },
+                previous: {
+                    total_sales: '0.00',
+                    orders_count: 0,
+                    average_ticket: null,
+                    start_at: '2026-09-01T00:00:00.000Z',
+                    end_at: '2026-09-11T12:00:00.000Z',
+                },
+                global: {
+                    total_sales: '100.00',
+                    orders_count: 1,
+                    average_ticket: '100.00',
+                },
+                comparison: {
+                    difference: null,
+                    percentage_change: null,
+                    direction: 'up',
+                    has_previous_data: false,
+                },
+                meta: {
+                    timezone: 'America/Mazatlan',
+                    generated_at: '2026-10-11T12:00:00.000Z',
+                },
+            },
+        }
+        apiGet.mockResolvedValueOnce({ data: response })
+
+        await expect(getAverageTicket('this_month')).resolves.toEqual(response)
+        expect(apiGet).toHaveBeenCalledWith(
+            '/analytics/average-ticket',
+            expect.objectContaining({ params: { period: 'this_month' } }),
         )
     })
 
