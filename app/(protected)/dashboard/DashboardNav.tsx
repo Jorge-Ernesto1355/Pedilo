@@ -232,10 +232,10 @@ export function DashboardNav() {
                 </div>
             </header>
             <nav
-                className="fixed !bottom-0 left-0 right-0 z-[100] border-t border-[#DCE5F3] bg-white/95 px-2 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_24px_rgb(18_35_74_/_0.08)] backdrop-blur md:hidden"
+                className="fixed !bottom-0 left-0 right-0 z-[100] border-t border-[#DCE5F3] bg-white/95 px-1 pb-[env(safe-area-inset-bottom)] shadow-[0_-6px_18px_rgb(18_35_74_/_0.08)] backdrop-blur md:hidden"
                 aria-label="Navegación móvil"
             >
-                <div className="mx-auto grid h-[76px] max-w-md grid-cols-5 items-stretch">
+                <div className="mx-auto grid h-[64px] max-w-md grid-cols-5 items-stretch">
                     {links.map((link) => {
                         const Icon = link.icon
                         const active =
@@ -250,17 +250,17 @@ export function DashboardNav() {
                                 href={link.href}
                                 onMouseEnter={() => router.prefetch(link.href)}
                                 aria-current={active ? 'page' : undefined}
-                                className={`flex min-w-0 flex-col items-center justify-center rounded-lg text-[10px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1E40AF] focus-visible:ring-offset-2 ${isOrders ? '-translate-y-2 gap-1' : 'gap-1'} ${active ? 'text-[#1E40AF]' : 'text-[#8996A9] hover:text-[#1E40AF]'}`}
+                                className={`flex min-w-0 flex-col items-center justify-center rounded-lg text-[9px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1E40AF] focus-visible:ring-offset-2 ${isOrders ? '-translate-y-1 gap-0.5' : 'gap-0.5'} ${active ? 'text-[#1E40AF]' : 'text-[#8996A9] hover:text-[#1E40AF]'}`}
                             >
                                 <span
-                                    className={`grid place-items-center transition-colors ${isOrders ? `size-12 rounded-2xl shadow-[0_8px_18px_rgb(30_64_175_/_0.28)] ${active ? 'bg-[#1E40AF] text-white' : 'bg-[#EAF0FF] text-[#2451C5]'}` : `size-8 rounded-xl ${active ? 'bg-[#EAF0FF]' : ''}`}`}
+                                    className={`grid place-items-center transition-colors ${isOrders ? `size-10 rounded-xl shadow-[0_6px_14px_rgb(30_64_175_/_0.22)] ${active ? 'bg-[#1E40AF] text-white' : 'bg-[#EAF0FF] text-[#2451C5]'}` : `size-7 rounded-lg ${active ? 'bg-[#EAF0FF]' : ''}`}`}
                                 >
                                     <Icon
-                                        className={isOrders ? 'size-[22px]' : 'size-[18px]'}
+                                        className={isOrders ? 'size-5' : 'size-4'}
                                         strokeWidth={active || isOrders ? 2.4 : 2}
                                     />
                                 </span>
-                                <span className={`truncate px-1 ${isOrders ? 'font-bold' : ''}`}>
+                                <span className={`truncate px-0.5 ${isOrders ? 'font-bold' : ''}`}>
                                     {link.label}
                                 </span>
                             </Link>

@@ -78,6 +78,7 @@ export function ProductAnalytics({
             <div className="mt-4 grid gap-4 lg:grid-cols-2">
                 <Ranking
                     title="Más vendidos"
+                    description="Unidades que el sistema registra como vendidas y número de órdenes contabilizadas en el periodo."
                     rows={bestSelling}
                     type="selling"
                     isLoading={isLoading}
@@ -85,6 +86,7 @@ export function ProductAnalytics({
                 />
                 <Ranking
                     title="Más solicitados"
+                    description="Unidades incluidas en las órdenes recibidas y cuántas órdenes las contienen; no significa necesariamente que se hayan vendido."
                     rows={mostRequested}
                     type="requested"
                     isLoading={isLoading}
@@ -97,12 +99,14 @@ export function ProductAnalytics({
 
 function Ranking({
     title,
+    description,
     rows,
     type,
     isLoading,
     currency,
 }: {
     title: string
+    description: string
     rows: ProductRanking[]
     type: 'selling' | 'requested'
     isLoading: boolean
@@ -111,6 +115,7 @@ function Ranking({
     return (
         <div className="rounded-xl border border-[#E8EEF6] p-4">
             <h3 className="font-semibold text-[#12234A]">{title}</h3>
+            <p className="mt-1 text-xs leading-5 text-[#65738A]">{description}</p>
             {isLoading ? (
                 <p className="py-8 text-center text-sm text-[#8996A9]">Cargando analytics…</p>
             ) : rows.length === 0 ? (

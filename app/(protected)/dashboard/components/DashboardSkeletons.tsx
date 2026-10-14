@@ -40,40 +40,48 @@ function FilterSkeleton({ withRefresh = false }: { withRefresh?: boolean }) {
     )
 }
 
-function KpiSkeletons({ count = 4 }: { count?: number }) {
+function SalesMetricSkeleton({ primary = false }: { primary?: boolean }) {
     return (
-        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-hidden="true">
-            {Array.from({ length: count }, (_, index) => (
-                <div
-                    key={index}
-                    className="rounded-2xl border border-[#DCE5F3] bg-white p-5 shadow-[0_8px_22px_rgb(20_48_105_/_0.055)]"
-                >
-                    <div className="flex items-center justify-between">
-                        <Block className="size-9 rounded-xl" />
-                        <Block className="h-3 w-14" />
-                    </div>
-                    <Block className="mt-6 h-3 w-24" />
-                    <Block className="mt-2 h-8 w-28" />
-                    <Block className="mt-3 h-3 w-36" />
-                </div>
-            ))}
-        </section>
+        <div
+            className={`rounded-2xl border border-[#DCE5F3] p-5 shadow-[0_8px_22px_rgb(20_48_105_/_0.055)] sm:p-6 ${primary ? 'border-[#B9CBE9] bg-[#F5F8FF] sm:p-7' : 'bg-white'}`}
+            aria-hidden="true"
+        >
+            <div className="flex items-start justify-between">
+                <Block className={`rounded-xl ${primary ? 'size-10 bg-[#D4E0FF]' : 'size-10'}`} />
+                <Block className="h-4 w-20" />
+            </div>
+            <Block className="mt-7 h-4 w-32" />
+            <Block className={`mt-2 ${primary ? 'h-12 w-52' : 'h-9 w-36'}`} />
+            <div className="mt-5 border-t border-[#DCE5F3] pt-4">
+                <Block className="h-8 w-44" />
+            </div>
+        </div>
     )
 }
 
-function ChartSkeleton() {
+function CompactMetricSkeleton() {
+    return (
+        <div
+            className="flex items-center gap-3 rounded-2xl border border-[#DCE5F3] bg-white p-4 shadow-[0_8px_22px_rgb(20_48_105_/_0.055)]"
+            aria-hidden="true"
+        >
+            <Block className="size-9 shrink-0 rounded-xl" />
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
+                <Block className="h-4 w-24" />
+                <Block className="h-7 w-32" />
+            </div>
+            <Block className="size-4 shrink-0 rounded-sm" />
+        </div>
+    )
+}
+
+function ChartSkeleton({ detail = false }: { detail?: boolean }) {
     const bars = [42, 68, 50, 82, 61, 92, 72, 47, 76, 58, 88, 64]
     return (
         <section className="rounded-2xl border border-[#DCE5F3] bg-white p-5 shadow-[0_8px_22px_rgb(20_48_105_/_0.055)] sm:p-6">
-            <div className="flex items-start justify-between gap-4">
-                <div className="space-y-2">
-                    <Block className="h-3 w-20" />
-                    <Block className="h-6 w-32" />
-                    <Block className="h-3 w-52" />
-                </div>
-                <Block className="h-8 w-20 rounded-lg" />
-            </div>
-            <div className="mt-8 flex h-64 items-end gap-2 border-b border-[#E8EEF6] px-2 pb-2">
+            <Block className="h-6 w-40" />
+            <Block className="mt-2 h-4 w-52" />
+            <div className="mt-5 flex h-[260px] items-end gap-2 border-b border-[#E8EEF6] px-2 pb-2">
                 {bars.map((height, index) => (
                     <Block
                         key={index}
@@ -87,6 +95,19 @@ function ChartSkeleton() {
                     <Block key={index} className="h-3 w-10" />
                 ))}
             </div>
+            <div className="mt-5 border-t border-[#E8EEF6] pt-5">
+                <Block className="h-4 w-44" />
+            </div>
+            {detail ? (
+                <div className="mt-5 space-y-3">
+                    {Array.from({ length: 4 }, (_, index) => (
+                        <div key={index} className="flex items-center justify-between gap-4">
+                            <Block className="h-4 w-40" />
+                            <Block className="h-4 w-24" />
+                        </div>
+                    ))}
+                </div>
+            ) : null}
         </section>
     )
 }
@@ -136,11 +157,29 @@ export function OverviewSkeleton() {
             aria-busy="true"
             aria-label="Cargando el resumen del negocio"
         >
-            <PageHeaderSkeleton action={false} />
-            <KpiSkeletons />
+            <header className="flex flex-col justify-between gap-5 border-b border-[#DCE5F3] pb-6 sm:flex-row sm:items-end">
+                <div className="space-y-3">
+                    <Block className="h-4 w-52" />
+                    <Block className="h-12 w-56 sm:w-72" />
+                    <Block className="h-4 w-72" />
+                </div>
+                <Block className="h-11 w-full rounded-xl sm:w-80" />
+            </header>
+            <section className="grid gap-4 lg:grid-cols-[1.35fr_0.65fr]" aria-hidden="true">
+                <SalesMetricSkeleton primary />
+                <SalesMetricSkeleton />
+            </section>
+            <section className="flex flex-col gap-4 sm:flex-row" aria-hidden="true">
+                <div className="min-w-0 flex-1">
+                    <CompactMetricSkeleton />
+                </div>
+                <div className="min-w-0 flex-1">
+                    <CompactMetricSkeleton />
+                </div>
+            </section>
             <ChartSkeleton />
             <div className="grid gap-4 lg:grid-cols-2">
-                {['Productos más pedidos', 'Cómo va tu negocio'].map((title) => (
+                {['Lo más vendido', 'Cómo va tu negocio'].map((title) => (
                     <section
                         key={title}
                         className="rounded-2xl border border-[#DCE5F3] bg-white p-5 sm:p-6"
@@ -165,15 +204,14 @@ export function OverviewSkeleton() {
                 ))}
             </div>
             <section className="rounded-2xl border border-[#DCE5F3] bg-white p-5 sm:p-6">
-                <Block className="h-3 w-32" />
-                <Block className="mt-3 h-6 w-44" />
-                <div className="mt-6 space-y-3">
+                <Block className="h-5 w-44" />
+                <div className="mt-5 space-y-3">
                     {Array.from({ length: 4 }, (_, index) => (
-                        <div
-                            key={index}
-                            className="flex items-center justify-between gap-4 border-b border-[#E8EEF6] pb-3"
-                        >
-                            <Block className="h-4 w-48" />
+                        <div key={index} className="flex items-center justify-between gap-4">
+                            <div className="space-y-2">
+                                <Block className="h-4 w-48" />
+                                <Block className="h-3 w-28" />
+                            </div>
                             <Block className="h-4 w-20" />
                         </div>
                     ))}
@@ -191,9 +229,24 @@ export function SalesSkeleton() {
             aria-label="Cargando las ventas"
         >
             <Block className="h-4 w-32" />
-            <PageHeaderSkeleton action />
-            <KpiSkeletons />
-            <ChartSkeleton />
+            <header className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+                <div className="space-y-3">
+                    <Block className="h-4 w-44" />
+                    <Block className="h-9 w-36" />
+                </div>
+                <Block className="h-11 w-full rounded-xl sm:w-80" />
+            </header>
+            <section className="grid gap-4 xl:grid-cols-4" aria-hidden="true">
+                <div className="xl:col-span-2">
+                    <SalesMetricSkeleton primary />
+                </div>
+                <SalesMetricSkeleton />
+                <SalesMetricSkeleton />
+            </section>
+            <section aria-hidden="true">
+                <CompactMetricSkeleton />
+            </section>
+            <ChartSkeleton detail />
         </main>
     )
 }

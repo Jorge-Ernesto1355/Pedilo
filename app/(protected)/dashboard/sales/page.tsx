@@ -7,23 +7,21 @@ import { useDateRangeFilter } from '../features/dashboard-filters/useDateRangeFi
 import { useSalesData } from '../features/dashboard-sales/useSalesData'
 import { SalesChart } from '../features/dashboard-sales/SalesChart'
 import { SalesKpiCard } from '../features/dashboard-sales/SalesKpiCard'
+import { AverageTicketKpiCard } from '../features/dashboard-sales/AverageTicketKpiCard'
+import { useAverageTicketData } from '../features/dashboard-sales/useAverageTicketData'
+import { TrendKpiCard } from '../features/dashboard-sales/TrendKpiCard'
 import { SalesPointsTable } from '../features/dashboard-sales/SalesPointsTable'
 import { OrdersKpiCard } from '../features/dashboard-orders/OrdersKpiCard'
-import { SummaryKpiCard } from '../features/dashboard-overview/SummaryKpiCard'
-import { Receipt, TrendingUp } from 'lucide-react'
-import { DashboardErrorState } from '../components/DashboardErrorState'
-import { SalesSkeleton } from '../components/DashboardSkeletons'
+import { DashboardCardError } from '../components/DashboardCardError'
 import { useBusinessSettings } from '../../create-menu/features/business-settings/useBusinessSettings'
-import { formatMoney } from '../features/dashboard-data/formatters'
 import { SalesAccountingNotice } from '../features/dashboard-sales/SalesAccountingNotice'
 
 export default function SalesPage() {
     const { range, setRange } = useDateRangeFilter('today')
     const sales = useSalesData(range)
+    const averageTicket = useAverageTicketData(range)
     const settings = useBusinessSettings(true)
     const currency = settings.settings.data?.currency ?? 'MXN'
-
-    if (sales.isLoading) return <SalesSkeleton />
 
     return (
         <main
@@ -46,43 +44,42 @@ export default function SalesPage() {
                 </div>
                 <DateRangeFilter value={range} onChange={setRange} />
             </header>
-            {sales.isError ? (
-                <DashboardErrorState
-                    title="No pudimos cargar tus ventas"
-                    description="No logramos obtener los datos de este periodo. Revisa tu conexión e inténtalo nuevamente."
-                    onRetry={() => void sales.refetch()}
-                />
-            ) : sales.data ? (
-                <>
-                    <section
-                        className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
-                        aria-label="Métricas de ventas"
-                    >
-                        <SalesKpiCard data={sales.data} currency={currency} />
-                        <OrdersKpiCard data={{ total: sales.data.ordersCount, recent: [] }} />
-                        <SummaryKpiCard
-                            label="Ticket promedio"
-                            value={formatMoney(sales.data.averageTicket, currency)}
-                            helper="por pedido"
-                            href="/dashboard/sales"
-                            icon={Receipt}
-                            tone="orange"
+            <>
+                <section className="grid gap-4 xl:grid-cols-4" aria-label="Métricas de ventas">
+                    <div className="xl:col-span-2">
+                        <SalesKpiCard
+                            data={sales.data}
+                            currency={currency}
+                            isLoading={sales.isLoading}
+                            isError={sales.isError}
+                            onRetry={() => void sales.refetch()}
                         />
-                        <SummaryKpiCard
-                            label="Tendencia"
-                            value={`${sales.data.trend > 0 ? '+' : ''}${sales.data.trend}%`}
-                            helper="vs. periodo anterior"
-                            href="/dashboard/sales"
-                            icon={TrendingUp}
-                            tone={
-                                sales.data.trend > 0
-                                    ? 'green'
-                                    : sales.data.trend < 0
-                                      ? 'red'
-                                      : 'blue'
-                            }
-                        />
-                    </section>
+                    </div>
+                    <TrendKpiCard
+                        data={sales.data}
+                        currency={currency}
+                        isLoading={sales.isLoading}
+                        isError={sales.isError}
+                        onRetry={() => void sales.refetch()}
+                    />
+                    <AverageTicketKpiCard
+                        data={averageTicket.data?.data}
+                        currency={averageTicket.data?.data.currency || currency}
+                        isLoading={averageTicket.isLoading}
+                        isError={averageTicket.isError}
+                        onRetry={() => void averageTicket.refetch()}
+                    />
+                </section>
+                <section aria-label="Indicadores secundarios">
+                    <OrdersKpiCard
+                        data={{ total: sales.data?.ordersCount ?? 0, recent: [] }}
+                        compact
+                        isLoading={sales.isLoading}
+                        isError={sales.isError}
+                        onRetry={() => void sales.refetch()}
+                    />
+                </section>
+                {sales.data ? (
                     <section className="relative rounded-2xl border border-[#DCE5F3] bg-white p-5 shadow-[0_8px_22px_rgb(20_48_105_/_0.055)] sm:p-6">
                         <h2 className="font-display text-lg text-[#12234A]">Ventas por periodo</h2>
                         <p className="mt-1 text-sm text-[#65738A]">
@@ -90,20 +87,6 @@ export default function SalesPage() {
                         </p>
                         <div className="relative mt-5">
                             <SalesChart data={sales.data} currency={currency} />
-                            {sales.data.points.every(
-                                (point) => point.sales === 0 && point.orderCount === 0,
-                            ) ? (
-                                <div className="pointer-events-none absolute inset-0 grid place-items-center">
-                                    <div className="pointer-events-auto rounded-xl border border-[#DCE5F3] bg-white/95 px-4 py-3 text-center shadow-sm">
-                                        <p className="text-sm font-semibold text-[#243556]">
-                                            Aún no hay ventas en este periodo.
-                                        </p>
-                                        <p className="mt-1 text-xs text-[#65738A]">
-                                            Cuando recibas pedidos, aparecerán aquí.
-                                        </p>
-                                    </div>
-                                </div>
-                            ) : null}
                         </div>
                         <div className="mt-5">
                             <SalesAccountingNotice />
@@ -115,8 +98,17 @@ export default function SalesPage() {
                             </div>
                         ) : null}
                     </section>
-                </>
-            ) : null}
+                ) : (
+                    <section className="rounded-2xl border border-[#DCE5F3] bg-white p-5 shadow-[0_8px_22px_rgb(20_48_105_/_0.055)] sm:p-6">
+                        <h2 className="font-display text-lg text-[#12234A]">Ventas por periodo</h2>
+                        <DashboardCardError
+                            title="Gráfica de ventas no disponible"
+                            description="No pudimos cargar los datos de este periodo."
+                            onRetry={() => void sales.refetch()}
+                        />
+                    </section>
+                )}
+            </>
         </main>
     )
 }

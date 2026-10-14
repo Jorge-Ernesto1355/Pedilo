@@ -1,6 +1,7 @@
 'use client'
 
 import type { DateRange } from '../dashboard-data/dashboardData.types'
+import RubberSegment from './DateRangeFilterAnimate'
 
 const options: { value: DateRange; label: string }[] = [
     { value: 'today', label: 'Hoy' },
@@ -18,19 +19,25 @@ export function DateRangeFilter({ value, onChange }: DateRangeFilterProps) {
             aria-label="Periodo de ventas"
             role="group"
         >
-            {options.map((option) => (
-                <button
-                    key={option.value}
-                    type="button"
-                    data-period={option.value}
-                    aria-label={`Periodo ${option.label}`}
-                    aria-pressed={value === option.value}
-                    onClick={() => onChange(option.value)}
-                    className={`whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2451C5]/25 ${value === option.value ? 'bg-[#2451C5] text-white shadow-[0_6px_16px_rgb(36_81_197_/_0.2)]' : 'text-[#65738A] hover:bg-[#EAF0FF] hover:text-[#1E40AF]'}`}
-                >
-                    {option.label}
-                </button>
-            ))}
+            <RubberSegment
+                items={options}
+                value={value}
+                onChange={(nextValue) => onChange(nextValue as DateRange)}
+                trackColor="#FFFFFF"
+                thumbColor="#2451C5"
+                textColor="#65738A"
+                activeTextColor="#FFFFFF"
+                size="md"
+                radius={12}
+                inset={3}
+                equalSlots
+                stretch={100}
+                squash={3}
+                speed={1}
+                glide={75}
+                draggable
+                disabled={false}
+            />
         </div>
     )
 }

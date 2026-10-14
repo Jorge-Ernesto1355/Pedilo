@@ -1,11 +1,58 @@
 export type SalesPeriod = 'today' | '7d' | '30d' | 'thisMonth'
 export type DateRange = SalesPeriod
+export type AverageTicketPeriod = 'today' | '7d' | '30d' | 'this_month'
 
 export type SalesPoint = {
     label: string
     start?: string
     sales: number
     orderCount: number
+}
+
+export type SalesSeriesPoint = {
+    label?: string
+    start?: string
+    end?: string
+    date?: string
+    timestamp?: string
+    sales: number | string
+    orders_count?: number
+    orderCount?: number
+}
+
+export type SalesSeries = {
+    current: SalesSeriesPoint[]
+    previous: SalesSeriesPoint[]
+}
+
+export type SalesComparison = {
+    status?: 'OK' | 'NO_BASELINE' | string
+    percentage_change?: number | null
+    difference?: number | string | null
+    current_total?: number | string
+    previous_total?: number | string
+}
+
+export type SalesTooltipPoint = {
+    label?: string
+    date?: string
+    start?: string
+    current?: {
+        sales?: number | string
+        orders_count?: number
+        orderCount?: number
+    }
+    previous?: {
+        sales?: number | string
+        orders_count?: number
+        orderCount?: number
+    }
+    current_sales?: number | string
+    previous_sales?: number | string
+    current_orders_count?: number
+    previous_orders_count?: number
+    difference?: number | string | null
+    percentage_change?: number | null
 }
 
 export type SalesGranularity = 'hour' | 'day'
@@ -15,13 +62,52 @@ export type SalesDashboardResponse = {
     granularity?: SalesGranularity
     timezone?: string
     total: number
+    previousTotal?: number
     ordersCount: number
     trend: number
     averageTicket: number
     points: SalesPoint[]
+    series?: SalesSeries
+    comparison?: SalesComparison
+    tooltip?: SalesTooltipPoint[]
 }
 
 export type SalesData = SalesDashboardResponse
+
+export type AverageTicketPeriodMetrics = {
+    total_sales?: string
+    orders_count: number
+    average_ticket: string | null
+    start_at?: string
+    end_at?: string
+}
+
+export type AverageTicketGlobalMetrics = {
+    total_sales?: string
+    orders_count: number
+    average_ticket: string | null
+}
+
+export type AverageTicketResponse = {
+    data: {
+        metric: 'average_ticket'
+        period: AverageTicketPeriod
+        currency?: string
+        current: AverageTicketPeriodMetrics
+        previous: AverageTicketPeriodMetrics
+        global?: AverageTicketGlobalMetrics
+        comparison: {
+            difference: string | null
+            percentage_change: number | null
+            direction: 'up' | 'down' | 'flat' | 'unchanged'
+            has_previous_data: boolean
+        }
+        meta: {
+            timezone: string
+            generated_at: string
+        }
+    }
+}
 
 export type OrderStatus = 'pending' | 'preparing' | 'ready' | 'cancelled'
 
