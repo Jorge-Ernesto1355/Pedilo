@@ -79,7 +79,7 @@ export default function RegisterPage() {
         mutationFn: registerUser,
         onSuccess: () => {
             setSuccess(true)
-            router.push('/auth/login')
+            router.push('/auth/login?newAccount=1')
         },
     })
     const router = useRouter()
@@ -94,7 +94,7 @@ export default function RegisterPage() {
         try {
             await authClient.signIn.social({
                 provider: 'google',
-                callbackURL: `${window.location.origin}/auth/login`,
+                callbackURL: `${window.location.origin}/auth/login?newAccount=1`,
             })
         } catch {
             setAuthError('No pudimos iniciar sesión con Google. Intenta de nuevo.')

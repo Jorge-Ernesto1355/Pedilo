@@ -8,6 +8,7 @@ import { loginSchema } from '@/app/auth/lib/validation'
 import { networkAuthError, safeAuthError } from '@/app/auth/lib/client/error-message'
 import Link from 'next/link'
 import { authClient } from '@/authClient'
+import { useSearchParams } from 'next/navigation'
 import { SiteFooter } from '@/app/components/SiteFooter'
 
 // ---------------------------------------------------------------------------
@@ -60,6 +61,8 @@ const reveal = {
 }
 
 export default function LoginPage() {
+    const searchParams = useSearchParams()
+    const isNewAccount = searchParams.get('newAccount') === '1'
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [showPassword, setShowPassword] = useState(false)
@@ -118,8 +121,7 @@ export default function LoginPage() {
             setSuccess(true)
             // Force a fresh server render so the previous account's RSC tree
             // cannot be reused after a successful login.
-            // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-            window.location.assign('/dashboard')
+            window.location.assign(isNewAccount ? '/create-menu' : '/dashboard')
         } catch {
             setAuthError(networkAuthError)
         } finally {
@@ -134,7 +136,7 @@ export default function LoginPage() {
         try {
             await authClient.signIn.social({
                 provider: 'google',
-                callbackURL: `${window.location.origin}/dashboard`,
+                callbackURL: `${window.location.origin}${isNewAccount ? '/create-menu' : '/dashboard'}`,
             })
         } catch {
             setAuthError('No pudimos iniciar sesión con Google. Intenta de nuevo.')

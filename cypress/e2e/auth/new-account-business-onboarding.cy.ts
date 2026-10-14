@@ -20,6 +20,7 @@ describe('Auth · acceso condicionado a negocio', () => {
         cy.get('[data-testid="login-password"]').type(password)
         cy.get('[data-testid="login-submit"]').click()
         cy.location('pathname', { timeout: 15_000 }).should('eq', '/create-menu')
+        cy.location('search').should('eq', '')
 
         // Una sesión autenticada sin negocio debe conservar el perfil predeterminado.
         cy.get('button[aria-label="Abrir menú de Tu negocio"]')
