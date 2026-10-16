@@ -369,7 +369,7 @@ export function NewRestaurantOrderDrawer({
                                                         </p>
                                                     )}
                                                 </div>
-                                                <div className="rounded-2xl border border-[#DCE5F3] bg-white px-5">
+                                                <div className="rounded-2xl border border-[#DCE5F3] bg-white px-5 py-5">
                                                     <div className="divide-y divide-[#E8EEF6]">
                                                         {category.products
                                                             .filter(
