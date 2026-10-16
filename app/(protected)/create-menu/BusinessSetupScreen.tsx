@@ -26,6 +26,7 @@ import {
 import { notify } from '@/src/lib/notifications/notify'
 import { locationCoordinatesSchema } from './features/business-location/location.schema'
 import { BusinessSettingsModal } from './features/business-settings/BusinessSettingsModal'
+import { GoogleReviewsModal } from './features/google-reviews/GoogleReviewsModal'
 import { BusinessPreviewSkeleton } from './components/CreateMenuStates'
 import Link from 'next/link'
 import { CreateMenuErrorState } from './components/CreateMenuStates'
@@ -137,6 +138,7 @@ export default function BusinessSetupScreen({
     const [logoFile, setLogoFile] = useState<File | null>(null)
     const [coverFile, setCoverFile] = useState<File | null>(null)
     const [businessSettingsOpen, setBusinessSettingsOpen] = useState(false)
+    const [googleReviewsOpen, setGoogleReviewsOpen] = useState(false)
 
     useEffect(() => {
         if (!businessRequiredNotice) return
@@ -383,6 +385,7 @@ export default function BusinessSetupScreen({
                                     coverPreview={coverPreview}
                                     coverBlurPreview={coverBlurPreview}
                                     onOpenSettings={() => setBusinessSettingsOpen(true)}
+                                    onOpenGoogleReviews={() => setGoogleReviewsOpen(true)}
                                 />
                             )}
                             <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-[#DCE5F3] bg-[#FBFCFE] p-3">
@@ -434,6 +437,10 @@ export default function BusinessSetupScreen({
                 <BusinessSettingsModal
                     open={businessSettingsOpen}
                     onClose={() => setBusinessSettingsOpen(false)}
+                />
+                <GoogleReviewsModal
+                    open={googleReviewsOpen}
+                    onClose={() => setGoogleReviewsOpen(false)}
                 />
             </main>
         </FormProvider>
