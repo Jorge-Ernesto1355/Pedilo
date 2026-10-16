@@ -51,6 +51,7 @@ export type Customer = {
     name: string
     phone: string
     orderCount: number
+    totalSpent: number
     createdAt?: string
     updatedAt?: string
     orders?: Array<{
