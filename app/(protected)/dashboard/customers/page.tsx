@@ -1,7 +1,17 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { LoaderCircle, Pencil, Plus, RefreshCw, Trash2, Users, X } from 'lucide-react'
+import {
+    LoaderCircle,
+    Pencil,
+    Plus,
+    RefreshCw,
+    ShoppingBag,
+    Trash2,
+    Users,
+    Wallet,
+    X,
+} from 'lucide-react'
 import { ApiError } from '@/app/auth/lib/client/api-error'
 import { getUserFriendlyFieldError } from '@/src/lib/errors/user-friendly-error'
 import type { Customer } from '@/src/lib/api/order-types'
@@ -116,18 +126,18 @@ export default function CustomersPage() {
                     Nuevo cliente
                 </button>
             </header>
-            <div className="flex gap-2">
+            <div className="flex gap-2 rounded-2xl border border-[#DCE5F3] bg-white p-2 shadow-[0_8px_24px_rgb(18_35_74/0.04)]">
                 <input
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
                     placeholder="Busca por nombre o teléfono…"
                     aria-label="Buscar clientes por nombre o teléfono"
-                    className="w-full max-w-md rounded-xl border border-[#D7E1EF] bg-white px-4 py-3 text-sm outline-none focus:border-[#2451C5]"
+                    className="min-w-0 flex-1 rounded-xl border border-transparent bg-[#F7F9FD] px-4 py-3 text-sm outline-none transition focus:border-[#2451C5] focus:bg-white"
                 />
                 <button
                     type="button"
                     onClick={() => void query.refetch()}
-                    className="grid size-11 place-items-center rounded-xl border border-[#D7E1EF] bg-white"
+                    className="grid size-11 shrink-0 place-items-center rounded-xl text-[#2451C5] transition hover:bg-[#EEF3FF]"
                     aria-label="Actualizar clientes"
                 >
                     <RefreshCw className="size-4" />
@@ -155,27 +165,53 @@ export default function CustomersPage() {
                     />
                 )
             ) : (
-                <div className="overflow-hidden rounded-2xl border border-[#DCE5F3] bg-white">
+                <div className="overflow-hidden rounded-2xl border border-[#DCE5F3] bg-white shadow-[0_12px_30px_rgb(18_35_74/0.05)]">
                     <div className="divide-y divide-[#E8EEF6]">
                         {query.data?.customers.map((customer) => (
                             <div
                                 key={customer.id}
-                                className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center"
+                                className="flex flex-col gap-4 p-4 transition hover:bg-[#FBFCFF] sm:flex-row sm:items-center sm:px-5"
                             >
                                 <button
                                     type="button"
                                     onClick={() => setSelected(customer)}
                                     className="min-w-0 flex-1 text-left"
                                 >
-                                    <p className="font-bold text-[#12234A]">{customer.name}</p>
-                                    <p className="mt-1 text-sm text-[#65738A]">
+                                    <p className="truncate font-bold text-[#12234A]">
+                                        {customer.name}
+                                    </p>
+                                    <p className="mt-1 truncate text-sm text-[#65738A]">
                                         {customer.phone || 'Sin teléfono registrado'}
                                     </p>
                                 </button>
-                                <span className="text-xs text-[#8996A9]">
-                                    {customer.orderCount} pedidos
-                                </span>
-                                <div className="flex gap-1">
+                                <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
+                                    <div className="flex min-w-0 items-center gap-2 rounded-xl bg-[#F7F9FD] px-3 py-2 sm:min-w-[112px]">
+                                        <ShoppingBag className="size-4 shrink-0 text-[#2451C5]" />
+                                        <div className="min-w-0">
+                                            <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#8996A9]">
+                                                Pedidos
+                                            </p>
+                                            <p className="font-bold text-[#12234A]">
+                                                {customer.orderCount}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex min-w-0 items-center gap-2 rounded-xl bg-[#F0FDF7] px-3 py-2 sm:min-w-[132px]">
+                                        <Wallet className="size-4 shrink-0 text-[#23814C]" />
+                                        <div className="min-w-0">
+                                            <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#6B8A78]">
+                                                Gastado
+                                            </p>
+                                            <p className="truncate font-bold text-[#17643A]">
+                                                $
+                                                {customer.totalSpent.toLocaleString('es-MX', {
+                                                    minimumFractionDigits: 2,
+                                                })}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="flex justify-end gap-1 border-t border-[#EEF2F7] pt-2 sm:border-0 sm:pt-0">
                                     <button
                                         type="button"
                                         onClick={() => openEdit(customer)}
@@ -328,6 +364,15 @@ export default function CustomersPage() {
                                     <p className="text-[#65738A]">{detail.data.phone}</p>
                                     <p className="text-[#65738A]">
                                         Pedidos: {detail.data.orderCount}
+                                    </p>
+                                    <p className="text-[#65738A]">
+                                        Total gastado:{' '}
+                                        <strong className="text-[#17643A]">
+                                            $
+                                            {detail.data.totalSpent.toLocaleString('es-MX', {
+                                                minimumFractionDigits: 2,
+                                            })}
+                                        </strong>
                                     </p>
                                     <button
                                         type="button"
