@@ -4,6 +4,7 @@ type TestCustomer = {
     name: string
     phone: string
     orderCount: number
+    totalSpent: number
     orders?: Array<{
         id: string
         orderNumber: number
@@ -23,6 +24,7 @@ function createCustomers(): TestCustomer[] {
             name: 'Ana García',
             phone: '6681234567',
             orderCount: 2,
+            totalSpent: 240,
             orders: [
                 {
                     id: 'order-1',
@@ -39,6 +41,7 @@ function createCustomers(): TestCustomer[] {
             name: 'Luis Pérez',
             phone: '6697654321',
             orderCount: 0,
+            totalSpent: 0,
             orders: [],
         },
         {
@@ -47,6 +50,7 @@ function createCustomers(): TestCustomer[] {
             name: 'María López',
             phone: '6671112233',
             orderCount: 1,
+            totalSpent: 120,
             orders: [],
         },
     ]
@@ -100,6 +104,7 @@ function installCustomerApi() {
             name: request.body.name,
             phone: request.body.phone,
             orderCount: 0,
+            totalSpent: 0,
             orders: [],
         }
         customers.push(customer)
