@@ -48,7 +48,7 @@ function salesResponse(period: SalesPeriod = 'today') {
         },
         comparison: {
             status: 'OK',
-            percentage_change: 25,
+            percentage_change: 25 as number | null,
             difference: '180.00',
             current_total: '900.00',
             previous_total: '720.00',
@@ -79,7 +79,10 @@ function salesResponse(period: SalesPeriod = 'today') {
     }
 }
 
-function averageTicketResponse({ previousOrders = 2, percentage = 25 } = {}) {
+function averageTicketResponse({
+    previousOrders = 2,
+    percentage = 25,
+}: { previousOrders?: number; percentage?: number | null } = {}) {
     return {
         data: {
             metric: 'average_ticket',
@@ -118,28 +121,42 @@ function setupSalesPage({
     salesStatus = 200,
     averageStatus = 200,
     averageBody = averageTicketResponse(),
+    salesBody,
 }: {
-    salesStatus?: number
-    averageStatus?: number
+    salesStatus?: number | ((attempt: number) => number)
+    averageStatus?: number | ((attempt: number) => number)
     averageBody?: unknown
+    salesBody?: unknown | ((period: SalesPeriod) => unknown)
 } = {}) {
     cy.intercept('GET', '**/api/v1/businesses/settings', {
         statusCode: 200,
         body: settings,
     }).as('businessSettings')
 
+    let salesAttempts = 0
     cy.intercept('GET', '**/api/v1/dashboard/sales*', (request) => {
+        salesAttempts += 1
         const period = String(request.query.period ?? 'today') as SalesPeriod
+        const status = typeof salesStatus === 'function' ? salesStatus(salesAttempts) : salesStatus
         request.reply({
-            statusCode: salesStatus,
-            body: salesStatus === 200 ? salesResponse(period) : { message: 'Sales unavailable' },
+            statusCode: status,
+            body:
+                status === 200
+                    ? typeof salesBody === 'function'
+                        ? salesBody(period)
+                        : (salesBody ?? salesResponse(period))
+                    : { message: 'Sales unavailable' },
         })
     }).as('dashboardSales')
 
+    let averageAttempts = 0
     cy.intercept('GET', '**/api/v1/analytics/average-ticket*', (request) => {
+        averageAttempts += 1
+        const status =
+            typeof averageStatus === 'function' ? averageStatus(averageAttempts) : averageStatus
         request.reply({
-            statusCode: averageStatus,
-            body: averageStatus === 200 ? averageBody : { message: 'Average ticket unavailable' },
+            statusCode: status,
+            body: status === 200 ? averageBody : { message: 'Average ticket unavailable' },
         })
     }).as('averageTicket')
 }
@@ -259,6 +276,214 @@ describe('Ventas · analítica comparativa', () => {
         cy.get('body').then(($body) => {
             expect($body[0].scrollWidth).to.be.at.most(390)
         })
+    })
+
+    it('renderiza cada fila de ventas con su importe y número de órdenes', () => {
+        setupSalesPage()
+        cy.visit('/dashboard/sales')
+        cy.wait('@dashboardSales')
+
+        cy.get('table caption').should('contain', 'Ventas y órdenes por periodo')
+        cy.get('tbody tr').should('have.length', 3)
+        cy.get('tbody').within(() => {
+            cy.contains('09:00').should('be.visible')
+            cy.contains('$300.00').should('be.visible')
+            cy.contains('11:00').should('be.visible')
+            cy.contains('$600.00').should('be.visible')
+        })
+        cy.get('[aria-label="Indicadores secundarios"]').within(() => {
+            cy.contains('3').should('be.visible')
+        })
+    })
+
+    it('explica cómo se calculan ventas, tendencia y ticket promedio', () => {
+        setupSalesPage()
+        cy.visit('/dashboard/sales')
+        cy.wait('@dashboardSales')
+        cy.wait('@averageTicket')
+
+        cy.get('[aria-label="Cómo se compara este porcentaje"]').click()
+        cy.contains('¿Contra qué se compara?').should('be.visible')
+        cy.contains('Hoy: contra el día anterior.').should('be.visible')
+        cy.get('[aria-label="Cómo se compara este porcentaje"]').click()
+        cy.contains('¿Contra qué se compara?').should('not.exist')
+
+        cy.get('[aria-label="Qué significa tendencia"]').click()
+        cy.contains('Es el cambio porcentual de tus ventas').should('be.visible')
+        cy.get('[aria-label="Qué significa tendencia"]').click()
+
+        cy.get('[aria-label="Cómo se mide el ticket promedio"]').click()
+        cy.contains('¿Cómo se mide el ticket promedio?').should('be.visible')
+        cy.contains('Solo considera pedidos PREPARING y READY.').should('be.visible')
+    })
+
+    it('representa correctamente una caída y un ticket promedio menor', () => {
+        const sales = salesResponse()
+        sales.total = 600
+        sales.previousTotal = 900
+        sales.trend = -33
+        sales.averageTicket = 200
+        sales.comparison = {
+            ...sales.comparison,
+            percentage_change: -33,
+            difference: '-300.00',
+            current_total: '600.00',
+            previous_total: '900.00',
+        }
+        const averageTicket = averageTicketResponse()
+        averageTicket.data.current = {
+            total_sales: '600.00',
+            orders_count: 3,
+            average_ticket: '200.00',
+        }
+        averageTicket.data.previous = {
+            total_sales: '900.00',
+            orders_count: 3,
+            average_ticket: '300.00',
+        }
+        averageTicket.data.comparison = {
+            difference: '-100.00',
+            percentage_change: -33,
+            direction: 'down',
+            has_previous_data: true,
+        }
+
+        setupSalesPage({ salesBody: sales, averageBody: averageTicket })
+        cy.visit('/dashboard/sales')
+        cy.wait('@dashboardSales')
+        cy.wait('@averageTicket')
+
+        cy.get('[aria-label="Métricas de ventas"]').within(() => {
+            cy.contains('$600.00').should('be.visible')
+            cy.contains('-33%').should('be.visible')
+            cy.contains('$200.00').should('be.visible')
+            cy.contains('-33% contra el periodo anterior').should('be.visible')
+            cy.contains('$300.00').should('be.visible')
+        })
+    })
+
+    it('distingue una tendencia estable y un ticket sin cambio', () => {
+        const sales = salesResponse()
+        sales.trend = 0
+        sales.comparison = {
+            ...sales.comparison,
+            percentage_change: 0,
+            difference: '0.00',
+        }
+        const averageTicket = averageTicketResponse()
+        averageTicket.data.previous = { ...averageTicket.data.current }
+        averageTicket.data.comparison = {
+            difference: '0.00',
+            percentage_change: 0,
+            direction: 'flat',
+            has_previous_data: true,
+        }
+
+        setupSalesPage({ salesBody: sales, averageBody: averageTicket })
+        cy.visit('/dashboard/sales')
+        cy.wait('@dashboardSales')
+        cy.wait('@averageTicket')
+
+        cy.get('[aria-label="Métricas de ventas"]').within(() => {
+            cy.contains('0%').should('be.visible')
+            cy.contains('0% contra el periodo anterior').should('be.visible')
+        })
+    })
+
+    it('muestra crecimiento nuevo cuando no existe periodo anterior', () => {
+        const sales = salesResponse()
+        sales.previousTotal = 0
+        sales.trend = 0
+        sales.comparison = {
+            ...sales.comparison,
+            status: 'NO_BASELINE',
+            percentage_change: null,
+            difference: '900.00',
+            previous_total: '0.00',
+        }
+        const averageTicket = averageTicketResponse({ previousOrders: 0, percentage: null })
+        averageTicket.data.comparison.direction = 'up'
+        averageTicket.data.comparison.percentage_change = null
+
+        setupSalesPage({ salesBody: sales, averageBody: averageTicket })
+        cy.visit('/dashboard/sales')
+        cy.wait('@dashboardSales')
+        cy.wait('@averageTicket')
+
+        cy.get('[aria-label="Métricas de ventas"]').within(() => {
+            cy.contains('+900%').should('be.visible')
+            cy.contains('Nuevo crecimiento').should('be.visible')
+            cy.contains('Sin periodo anterior comparable').should('be.visible')
+        })
+    })
+
+    it('muestra ceros de forma segura cuando no hay ventas ni pedidos', () => {
+        const sales = salesResponse()
+        sales.total = 0
+        sales.previousTotal = 0
+        sales.ordersCount = 0
+        sales.averageTicket = 0
+        sales.points = sales.points.map((point) => ({ ...point, sales: 0, orderCount: 0 }))
+        sales.comparison = {
+            ...sales.comparison,
+            percentage_change: 0,
+            difference: '0.00',
+            current_total: '0.00',
+            previous_total: '0.00',
+        }
+        const averageTicket = averageTicketResponse({ previousOrders: 0, percentage: 0 })
+        averageTicket.data.current = {
+            total_sales: '0.00',
+            orders_count: 0,
+            average_ticket: '0.00',
+        }
+        averageTicket.data.global.average_ticket = '0.00'
+        averageTicket.data.comparison.direction = 'flat'
+        averageTicket.data.comparison.difference = '0.00'
+
+        setupSalesPage({ salesBody: sales, averageBody: averageTicket })
+        cy.visit('/dashboard/sales')
+        cy.wait('@dashboardSales')
+        cy.wait('@averageTicket')
+
+        cy.contains('$0.00').should('be.visible')
+        cy.contains('NaN').should('not.exist')
+        cy.contains('Infinity').should('not.exist')
+        cy.get('[aria-label="Indicadores secundarios"]').within(() => {
+            cy.contains('0').should('be.visible')
+        })
+    })
+
+    it('permite reintentar ventas y ticket promedio después de un error', () => {
+        setupSalesPage({
+            // React Query retries failed requests three times before exposing the error state.
+            // Keep those attempts failing so the retry button is actually rendered; the manual
+            // retry (attempt five) then succeeds.
+            salesStatus: (attempt) => (attempt <= 4 ? 500 : 200),
+            averageStatus: (attempt) => (attempt <= 4 ? 500 : 200),
+        })
+        cy.visit('/dashboard/sales')
+        cy.wait('@dashboardSales')
+        cy.wait('@averageTicket')
+        cy.contains('Ventas no disponibles', { timeout: 30_000 }).should('be.visible')
+        cy.contains('Ticket promedio no disponible', { timeout: 30_000 }).should('be.visible')
+
+        cy.contains('Ventas no disponibles', { timeout: 30_000 }).parent().find('button').click()
+        cy.wait('@dashboardSales').then(({ response }) => {
+            expect(response?.statusCode).to.eq(200)
+            expect(response?.body.total).to.eq(900)
+        })
+        cy.get('[aria-label="Métricas de ventas"]')
+            .contains('$900.00', { timeout: 30_000 })
+            .should('be.visible')
+        cy.contains('Ticket promedio no disponible', { timeout: 30_000 })
+            .parent()
+            .find('button')
+            .click()
+        cy.wait('@averageTicket')
+        cy.get('[aria-label="Métricas de ventas"]')
+            .contains('$300.00', { timeout: 30_000 })
+            .should('be.visible')
     })
 })
 
