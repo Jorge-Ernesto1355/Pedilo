@@ -1,6 +1,6 @@
 'use client'
 
-import { MapPin, Settings2, Utensils } from 'lucide-react'
+import { MapPin, Settings2, Star, Utensils } from 'lucide-react'
 import type { BusinessProfileValues } from '../business-profile/businessProfile.schema'
 import { ViewOnMapsButton } from '../business-location/ViewOnMapsButton'
 import { ProgressiveImage } from '../business-profile/ProgressiveImage'
@@ -11,6 +11,7 @@ type BusinessPreviewCardProps = BusinessProfileValues & {
     coverPreview: string | null
     coverBlurPreview: string | null
     onOpenSettings: () => void
+    onOpenGoogleReviews: () => void
 }
 
 function formatTime(value: string) {
@@ -39,6 +40,7 @@ export function BusinessPreviewCard({
     coverPreview,
     coverBlurPreview,
     onOpenSettings,
+    onOpenGoogleReviews,
 }: BusinessPreviewCardProps) {
     return (
         <section
@@ -56,10 +58,20 @@ export function BusinessPreviewCard({
                     <button
                         type="button"
                         onClick={onOpenSettings}
+                        aria-label="Configuración del negocio"
                         className="inline-flex items-center gap-1.5 rounded-lg border border-[#C9D7EA] bg-white px-2.5 py-2 text-xs font-bold text-[#2451C5] transition hover:border-[#9EB3D8] hover:bg-[#F4F7FF] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#2451C5]/15"
                     >
                         <Settings2 className="size-3.5" />
-                        <span className="hidden sm:inline">Configurar negocio</span>
+                        <span className="hidden sm:inline">Configuración del negocio</span>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={onOpenGoogleReviews}
+                        aria-label="Google Reviews"
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-[#C9D7EA] bg-white px-2.5 py-2 text-xs font-bold text-[#2451C5] transition hover:border-[#9EB3D8] hover:bg-[#F4F7FF] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#2451C5]/15"
+                    >
+                        <Star className="size-3.5" />
+                        <span className="hidden sm:inline">Google Reviews</span>
                     </button>
                 </div>
             </div>
