@@ -276,8 +276,8 @@ export default function BusinessSetupScreen({
 
     return (
         <FormProvider {...form}>
-            <main className="min-h-screen bg-[#F5F8FC] text-[#12234A]">
-                <div className="mx-auto grid min-h-[calc(100vh-72px)] max-w-[1440px] lg:grid-cols-[minmax(360px,480px)_minmax(0,1fr)]">
+            <main className="-mb-20 min-h-[calc(100dvh-72px)] bg-[#F5F8FC] text-[#12234A] md:mb-0">
+                <div className="mx-auto grid min-h-[calc(100dvh-72px)] max-w-[1440px] lg:grid-cols-[minmax(360px,480px)_minmax(0,1fr)]">
                     <div className="border-b border-[#DCE5F3] bg-white px-5 py-10 sm:px-8 lg:border-b-0 lg:border-r lg:px-12 lg:py-16">
                         <div className="mx-auto max-w-[430px] lg:sticky lg:top-10">
                             <BusinessProfileForm
