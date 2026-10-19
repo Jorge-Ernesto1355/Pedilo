@@ -13,6 +13,9 @@ export function useSalesData(period: SalesPeriod) {
         queryKey: ['dashboard', 'sales', user?.id ?? 'anonymous', businessId ?? 'none', period],
         queryFn: () => getDashboardSales(period),
         enabled: Boolean(user?.id && businessId),
-        staleTime: 2 * 60 * 1000,
+        // Each period selection should ask the API for its current value. This also
+        // makes switching back to a previously selected period observable to the UI.
+        staleTime: 0,
+        retry: 3,
     })
 }

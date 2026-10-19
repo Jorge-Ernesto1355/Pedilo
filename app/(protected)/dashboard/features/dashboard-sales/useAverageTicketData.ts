@@ -27,6 +27,9 @@ export function useAverageTicketData(period: SalesPeriod) {
         ],
         queryFn: () => getAverageTicket(apiPeriod),
         enabled: Boolean(user?.id && businessId),
-        staleTime: 2 * 60 * 1000,
+        // Keep this metric in sync with the selected sales period, including when
+        // the user returns to a period that was loaded earlier.
+        staleTime: 0,
+        retry: 3,
     })
 }
