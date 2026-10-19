@@ -1,8 +1,9 @@
 'use client'
 
 import Link from 'next/link'
-import { ArrowUpRight } from 'lucide-react'
+import { ArrowUpRight, ClipboardList } from 'lucide-react'
 import type { Order, OrdersData } from '../dashboard-data/dashboardData.types'
+import { EmptyState } from '../../components/EmptyState'
 
 const money = new Intl.NumberFormat('es-MX', {
     style: 'currency',
@@ -35,42 +36,50 @@ export function RecentOrdersTable({ data }: { data: OrdersData }) {
                     Ver todos <ArrowUpRight className="size-3.5" />
                 </Link>
             </div>
-            <div className="overflow-x-auto">
-                <table className="w-full min-w-[520px] text-left text-sm">
-                    <thead className="text-xs text-[#8996A9]">
-                        <tr>
-                            <th className="pb-3 font-medium">Pedido</th>
-                            <th className="pb-3 font-medium">Cliente</th>
-                            <th className="pb-3 font-medium">Total</th>
-                            <th className="pb-3 font-medium">Estado</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#EDF2F9]">
-                        {data.recent.map((order) => {
-                            const status = statusCopy[order.status]
-                            return (
-                                <tr key={order.id}>
-                                    <td className="py-3.5 font-semibold text-[#243556]">
-                                        {order.id}
-                                    </td>
-                                    <td className="py-3.5 text-[#65738A]">{order.customer}</td>
-                                    <td className="py-3.5 text-[#243556]">
-                                        {money.format(order.amount)}
-                                    </td>
-                                    <td className="py-3.5">
-                                        <span className="inline-flex items-center gap-2 text-xs text-[#65738A]">
-                                            <span
-                                                className={`size-2 rounded-full ${status.color}`}
-                                            />
-                                            {status.label}
-                                        </span>
-                                    </td>
-                                </tr>
-                            )
-                        })}
-                    </tbody>
-                </table>
-            </div>
+            {data.recent.length === 0 ? (
+                <EmptyState
+                    icon={ClipboardList}
+                    title="Todavía no hay pedidos"
+                    description="Los pedidos nuevos aparecerán aquí cuando tus clientes hagan una compra."
+                />
+            ) : (
+                <div className="overflow-x-auto">
+                    <table className="w-full min-w-[520px] text-left text-sm">
+                        <thead className="text-xs text-[#8996A9]">
+                            <tr>
+                                <th className="pb-3 font-medium">Pedido</th>
+                                <th className="pb-3 font-medium">Cliente</th>
+                                <th className="pb-3 font-medium">Total</th>
+                                <th className="pb-3 font-medium">Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[#EDF2F9]">
+                            {data.recent.map((order) => {
+                                const status = statusCopy[order.status]
+                                return (
+                                    <tr key={order.id}>
+                                        <td className="py-3.5 font-semibold text-[#243556]">
+                                            {order.id}
+                                        </td>
+                                        <td className="py-3.5 text-[#65738A]">{order.customer}</td>
+                                        <td className="py-3.5 text-[#243556]">
+                                            {money.format(order.amount)}
+                                        </td>
+                                        <td className="py-3.5">
+                                            <span className="inline-flex items-center gap-2 text-xs text-[#65738A]">
+                                                <span
+                                                    className={`size-2 rounded-full ${status.color}`}
+                                                />
+                                                {status.label}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                )
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+            )}
         </section>
     )
 }
