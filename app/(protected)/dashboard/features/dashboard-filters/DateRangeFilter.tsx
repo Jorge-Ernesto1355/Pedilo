@@ -10,13 +10,21 @@ const options: { value: DateRange; label: string }[] = [
     { value: 'thisMonth', label: 'Este mes' },
 ]
 
-type DateRangeFilterProps = { value: DateRange; onChange: (value: DateRange) => void }
+type DateRangeFilterProps = {
+    value: DateRange
+    onChange: (value: DateRange) => void
+    label?: string
+}
 
-export function DateRangeFilter({ value, onChange }: DateRangeFilterProps) {
+export function DateRangeFilter({
+    value,
+    onChange,
+    label = 'Periodo de ventas',
+}: DateRangeFilterProps) {
     return (
         <div
             className="flex w-full overflow-x-auto rounded-xl border border-[#C9D7EA] bg-white p-1 shadow-[0_8px_22px_rgb(20_48_105_/_0.08)] sm:w-auto"
-            aria-label="Periodo de ventas"
+            aria-label={label}
             role="group"
         >
             <RubberSegment

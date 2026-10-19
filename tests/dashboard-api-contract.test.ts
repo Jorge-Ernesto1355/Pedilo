@@ -8,6 +8,7 @@ vi.mock('@/src/lib/api/client', () => ({
 }))
 
 import { getDashboardSales } from '@/app/(protected)/dashboard/features/dashboard-sales/dashboardSales'
+import { getGoogleReviewsStats } from '@/app/(protected)/dashboard/features/dashboard-overview/googleReviewsStats'
 import { getAverageTicket } from '@/app/(protected)/dashboard/features/dashboard-sales/averageTicketApi'
 import {
     getBestSellingProducts,
@@ -41,6 +42,32 @@ describe('dashboard frontend API contracts', () => {
         expect(apiGet).toHaveBeenCalledWith(
             '/dashboard/sales',
             expect.objectContaining({ params: { period: 'today' } }),
+        )
+    })
+
+    it('requests Google Reviews QR stats by period and preserves the response envelope and zero days', async () => {
+        const response = {
+            data: {
+                total_scans: 3,
+                unique_visitors_estimated: 2,
+                comparison_percentage: 0,
+                comparison_has_previous_data: false,
+                daily: [
+                    { date: '2026-10-15', scans: 3 },
+                    { date: '2026-10-16', scans: 0 },
+                ],
+                meta: { timezone: 'America/Mazatlan' },
+            },
+        }
+        apiGet.mockResolvedValueOnce({ data: response })
+
+        await expect(getGoogleReviewsStats('30d')).resolves.toEqual(response)
+        expect(apiGet).toHaveBeenCalledWith(
+            '/businesses/google-reviews/stats',
+            expect.objectContaining({
+                params: { period: '30d' },
+                withCredentials: true,
+            }),
         )
     })
 

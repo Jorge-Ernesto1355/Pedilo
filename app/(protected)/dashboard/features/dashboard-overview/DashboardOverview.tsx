@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { CalendarDays, Package } from 'lucide-react'
+import { CalendarDays } from 'lucide-react'
 import { useDateRangeFilter } from '../dashboard-filters/useDateRangeFilter'
 import { DateRangeFilter } from '../dashboard-filters/DateRangeFilter'
 import { useSalesData } from '../dashboard-sales/useSalesData'
@@ -9,11 +9,11 @@ import { SalesChart } from '../dashboard-sales/SalesChart'
 import { SalesKpiCard } from '../dashboard-sales/SalesKpiCard'
 import { AverageTicketKpiCard } from '../dashboard-sales/AverageTicketKpiCard'
 import { useAverageTicketData } from '../dashboard-sales/useAverageTicketData'
-import { OrdersKpiCard } from '../dashboard-orders/OrdersKpiCard'
 import { RecentOrdersTable } from '../dashboard-orders/RecentOrdersTable'
 import { BestSellersCard } from '../dashboard-products/BestSellersCard'
 import { InsightsCard } from '../dashboard-insights/InsightsCard'
-import { SummaryKpiCard } from './SummaryKpiCard'
+import { GoogleReviewsStatsCard } from './GoogleReviewsStatsCard'
+import { MenuVisitsCard } from './MenuVisitsCard'
 import { useOrders } from '../orders/useOrders'
 import { useProductAnalytics, useProductStats } from '../dashboard-products/useProductAdmin'
 import type { OrderStatus } from '@/src/lib/api/order-types'
@@ -75,10 +75,10 @@ export function DashboardOverview() {
                         Ganancias
                     </h1>
                     <p className="mt-2 text-sm text-[#65738A]">
-                        Revisa cuánto vendiste y cómo va tu negocio.
+                        Revisa tus ventas y la actividad de tu negocio.
                     </p>
                 </div>
-                <DateRangeFilter value={range} onChange={setRange} />
+                <DateRangeFilter value={range} onChange={setRange} label="Periodo del dashboard" />
             </header>
             <section
                 className="grid gap-4 lg:grid-cols-[1.35fr_0.65fr]"
@@ -100,35 +100,11 @@ export function DashboardOverview() {
                 />
             </section>
             <section
-                className="flex flex-col gap-4 sm:flex-row"
-                aria-label="Indicadores secundarios"
+                className="grid min-w-0 gap-4 lg:grid-cols-2"
+                aria-label="Actividad del menú y reseñas"
             >
-                <div className="min-w-0 flex-1">
-                    <OrdersKpiCard
-                        data={{
-                            total: sales.data?.ordersCount ?? orders.data?.total ?? 0,
-                            recent: [],
-                        }}
-                        compact
-                        isLoading={orders.isLoading}
-                        isError={orders.isError}
-                        onRetry={() => void orders.refetch()}
-                    />
-                </div>
-                <div className="min-w-0 flex-1">
-                    <SummaryKpiCard
-                        label="Productos"
-                        value={String(products.totalActive)}
-                        helper="activos en tu menú"
-                        href="/dashboard/products"
-                        icon={Package}
-                        tone="blue"
-                        compact
-                        isLoading={productStats.isLoading}
-                        isError={productStats.isError}
-                        onRetry={() => void productStats.refetch()}
-                    />
-                </div>
+                <GoogleReviewsStatsCard period={range} />
+                <MenuVisitsCard period={range} />
             </section>
             <section className="rounded-2xl border border-[#DCE5F3] bg-white p-5 shadow-[0_8px_22px_rgb(20_48_105_/_0.055)] sm:p-6">
                 <div className="mb-1 flex items-start justify-between gap-4">
