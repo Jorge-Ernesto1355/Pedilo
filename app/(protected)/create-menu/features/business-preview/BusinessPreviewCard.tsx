@@ -62,7 +62,7 @@ export function BusinessPreviewCard({
                         className="inline-flex items-center gap-1.5 rounded-lg border border-[#C9D7EA] bg-white px-2.5 py-2 text-xs font-bold text-[#2451C5] transition hover:border-[#9EB3D8] hover:bg-[#F4F7FF] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#2451C5]/15"
                     >
                         <Settings2 className="size-3.5" />
-                        <span className="hidden sm:inline">Configuración del negocio</span>
+                        <span className="hidden sm:inline">Configurar negocio</span>
                     </button>
                     <button
                         type="button"
