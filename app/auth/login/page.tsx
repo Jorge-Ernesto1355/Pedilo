@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, FormEvent } from 'react'
+import { FormEvent, Suspense, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import Image from 'next/image'
 import { Inter, Source_Serif_4 } from 'next/font/google'
@@ -10,6 +10,7 @@ import Link from 'next/link'
 import { authClient } from '@/authClient'
 import { useSearchParams } from 'next/navigation'
 import { SiteFooter } from '@/app/components/SiteFooter'
+import { RedirectedUrls } from '@/src/lib/RedirectUrls'
 
 // ---------------------------------------------------------------------------
 // Fuentes (equivalente a los <link> de Google Fonts del HTML original)
@@ -60,7 +61,7 @@ const reveal = {
     visible: { opacity: 1, y: 0 },
 }
 
-export default function LoginPage() {
+function LoginForm() {
     const searchParams = useSearchParams()
     const isNewAccount = searchParams.get('newAccount') === '1'
     const [email, setEmail] = useState('')
@@ -516,8 +517,14 @@ export default function LoginPage() {
     )
 }
 
-export const RedirectedUrls = {
-    login: '/auth/login',
-    createMenu: '/create-menu',
-    register: '/auth/register',
+export default function LoginPage() {
+    return (
+        <Suspense fallback={<LoginLoading />}>
+            <LoginForm />
+        </Suspense>
+    )
+}
+
+function LoginLoading() {
+    return <main className="min-h-screen bg-[#F5F7FB]" aria-busy="true" />
 }
