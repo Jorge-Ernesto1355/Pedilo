@@ -1,8 +1,8 @@
 'use client'
 
 import { Minus, Plus, ShoppingBag, X } from 'lucide-react'
-import { motion, useReducedMotion } from 'framer-motion'
-import { useState } from 'react'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import type { CartLine } from './types'
 import { isValidPhone, sanitizePhoneInput } from '@/src/lib/validation/phone'
@@ -20,8 +20,6 @@ type OrderDrawerProps = {
     isSubmitting?: boolean
     phoneError?: string | null
     orderError?: string | null
-    cartTargetRef?: React.Ref<HTMLButtonElement>
-    cartPulse?: number
 }
 
 export function OrderDrawer({
@@ -37,49 +35,122 @@ export function OrderDrawer({
     isSubmitting = false,
     phoneError,
     orderError,
-    cartTargetRef,
-    cartPulse = 0,
 }: OrderDrawerProps) {
     const [customerName, setCustomerName] = useState('')
     const [customerPhone, setCustomerPhone] = useState('')
     const [notes, setNotes] = useState('')
+    const [cartPulseKey, setCartPulseKey] = useState(0)
+    const previousTotalItems = useRef(totalItems)
+    const dialogRef = useRef<HTMLElement>(null)
+    const closeButtonRef = useRef<HTMLButtonElement>(null)
+    const onCloseRef = useRef(onClose)
     const reducedMotion = useReducedMotion()
     const phoneIsValid = isValidPhone(customerPhone)
+    const shouldPulse = !reducedMotion && cartPulseKey > 0
+
+    useEffect(() => {
+        onCloseRef.current = onClose
+    }, [onClose])
+
+    useEffect(() => {
+        if (totalItems > previousTotalItems.current) {
+            setCartPulseKey((current) => current + 1)
+        }
+        previousTotalItems.current = totalItems
+    }, [totalItems])
+
+    useEffect(() => {
+        if (!open) return
+
+        const previousOverflow = document.body.style.overflow
+        const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null
+        document.body.style.overflow = 'hidden'
+
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                event.preventDefault()
+                onCloseRef.current()
+                return
+            }
+
+            if (event.key !== 'Tab' || !dialogRef.current) return
+            const focusable = Array.from(
+                dialogRef.current.querySelectorAll<HTMLElement>(
+                    'button:not([disabled]), input:not([disabled]), textarea:not([disabled]), a[href]',
+                ),
+            )
+            if (focusable.length === 0) return
+
+            const first = focusable[0]
+            const last = focusable[focusable.length - 1]
+            if (event.shiftKey && document.activeElement === first) {
+                event.preventDefault()
+                last.focus()
+            } else if (!event.shiftKey && document.activeElement === last) {
+                event.preventDefault()
+                first.focus()
+            }
+        }
+
+        document.addEventListener('keydown', handleKeyDown)
+        closeButtonRef.current?.focus({ preventScroll: true })
+
+        return () => {
+            document.removeEventListener('keydown', handleKeyDown)
+            document.body.style.overflow = previousOverflow
+            previousFocus?.focus({ preventScroll: true })
+        }
+    }, [open])
 
     return (
         <>
             {totalItems > 0 && !open && (
                 <div className="fixed inset-x-0 bottom-0 z-30 px-4 pb-4 sm:px-6">
                     <motion.button
-                        ref={cartTargetRef}
                         type="button"
                         onClick={onOpen}
-                        initial={reducedMotion ? false : { opacity: 0, y: 14, scale: 0.96 }}
-                        animate={reducedMotion ? undefined : { opacity: 1, y: 0, scale: 1 }}
-                        transition={{
-                            duration: reducedMotion ? 0 : 0.34,
-                            ease: [0.22, 1, 0.36, 1],
-                        }}
-                        className="mx-auto flex w-full max-w-2xl items-center justify-between gap-4 rounded-2xl bg-[#1E40AF] px-4 py-3.5 text-left text-white shadow-[0_16px_36px_rgb(30_64_175_/_0.28)] transition hover:bg-[#183991] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#1E40AF]/25"
+                        initial={reducedMotion ? false : { opacity: 0, y: 16, scale: 0.98 }}
+                        animate={
+                            shouldPulse
+                                ? {
+                                      opacity: 1,
+                                      y: 0,
+                                      scale: [1, 1.04, 0.99, 1],
+                                      boxShadow: [
+                                          '0 16px 36px rgb(30 64 175 / 0.28)',
+                                          '0 19px 42px rgb(49 95 232 / 0.38)',
+                                          '0 16px 36px rgb(30 64 175 / 0.28)',
+                                      ],
+                                  }
+                                : { opacity: 1, y: 0, scale: 1 }
+                        }
+                        transition={
+                            shouldPulse
+                                ? { duration: reducedMotion ? 0 : 0.46, ease: [0.22, 1, 0.36, 1] }
+                                : {
+                                      duration: reducedMotion ? 0 : 0.38,
+                                      ease: [0.22, 1, 0.36, 1],
+                                  }
+                        }
+                        className="mx-auto flex w-full max-w-2xl items-center justify-between gap-4 rounded-2xl bg-[#1E40AF] px-4 py-3.5 text-left text-white shadow-[0_16px_36px_rgb(30_64_175_/_0.28)] transition-colors duration-200 hover:bg-[#183991] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#1E40AF]/25"
                     >
                         <span className="flex items-center gap-3">
-                            <motion.span
-                                key={cartPulse}
-                                initial={!reducedMotion && cartPulse > 0 ? { scale: 0.92 } : false}
-                                animate={
-                                    !reducedMotion && cartPulse > 0
-                                        ? { scale: [0.92, 1.08, 1] }
-                                        : undefined
-                                }
-                                transition={{ duration: reducedMotion ? 0 : 0.26, ease: 'easeOut' }}
-                                className="grid size-9 place-items-center rounded-xl bg-white/15"
+                            <span
+                                key={cartPulseKey}
+                                className={`grid size-9 place-items-center rounded-xl bg-white/15 ${shouldPulse ? 'pedilo-cart-icon-pulse' : ''}`}
                             >
                                 <ShoppingBag className="size-4" />
-                            </motion.span>
+                            </span>
                             <span>
                                 <span className="block text-sm font-bold">Ver mi pedido</span>
-                                <span className="block text-xs text-white/70">
-                                    {totalItems} {totalItems === 1 ? 'producto' : 'productos'}
+                                <span className="block text-xs text-white/70" aria-live="polite">
+                                    <span
+                                        key={cartPulseKey}
+                                        className={shouldPulse ? 'pedilo-cart-count-pop inline-block' : undefined}
+                                    >
+                                        {totalItems}
+                                    </span>{' '}
+                                    {totalItems === 1 ? 'producto' : 'productos'}
                                 </span>
                             </span>
                         </span>
@@ -87,21 +158,38 @@ export function OrderDrawer({
                     </motion.button>
                 </div>
             )}
-            {open && (
-                <div
-                    className="fixed inset-0 z-50 bg-[#10224A]/25"
-                    role="presentation"
-                    onMouseDown={(event) => {
-                        if (event.target === event.currentTarget) onClose()
-                    }}
-                >
-                    <aside
+            <AnimatePresence>
+                {open && (
+                    <motion.div
+                        key="order-drawer-overlay"
+                        initial={reducedMotion ? false : { opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: reducedMotion ? 0 : 0.32, ease: [0.22, 1, 0.36, 1] }}
+                        className="fixed inset-0 z-50 bg-[#10224A]/25"
+                        role="presentation"
+                        onMouseDown={(event) => {
+                            if (event.target === event.currentTarget) onClose()
+                        }}
+                    >
+                    <motion.aside
+                        ref={dialogRef}
                         role="dialog"
                         aria-modal="true"
                         aria-labelledby="order-title"
-                        className="absolute inset-x-0 bottom-0 max-h-[90vh] overflow-y-auto rounded-t-[24px] border border-[#DCE5F3] bg-white shadow-[0_24px_80px_-32px_rgba(19,49,117,.45)] sm:inset-y-0 sm:left-auto sm:w-[min(100%,440px)] sm:rounded-none sm:rounded-l-[24px]"
+                        initial={reducedMotion ? false : { opacity: 0, x: '8%', scale: 0.985 }}
+                        animate={{ opacity: 1, x: 0, scale: 1 }}
+                        exit={reducedMotion ? { opacity: 0 } : { opacity: 0, x: '8%', scale: 0.985 }}
+                        transition={{ duration: reducedMotion ? 0 : 0.38, ease: [0.22, 1, 0.36, 1] }}
+                        className="absolute inset-x-0 bottom-0 max-h-[90vh] overflow-y-auto rounded-t-[24px] border border-[#DCE5F3] bg-white shadow-[0_24px_80px_-32px_rgba(19,49,117,.45)] sm:inset-y-0 sm:right-0 sm:left-auto sm:w-[min(100%,440px)] sm:rounded-none sm:rounded-l-[24px]"
                     >
-                        <div className="flex items-start justify-between gap-4 border-b border-[#E8EEF6] px-5 py-4 sm:px-6">
+                        <motion.div
+                            initial={reducedMotion ? false : { opacity: 0, y: 8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 4 }}
+                            transition={{ duration: reducedMotion ? 0 : 0.24, delay: reducedMotion ? 0 : 0.06, ease: [0.22, 1, 0.36, 1] }}
+                            className="flex items-start justify-between gap-4 border-b border-[#E8EEF6] px-5 py-4 sm:px-6"
+                        >
                             <div>
                                 <p className="text-xs font-bold uppercase tracking-[.15em] text-[#2451C5]">
                                     Tu pedido
@@ -116,17 +204,35 @@ export function OrderDrawer({
                             <button
                                 type="button"
                                 onClick={onClose}
+                                ref={closeButtonRef}
                                 aria-label="Cerrar pedido"
                                 className="grid size-9 place-items-center rounded-lg text-[#8996A9] transition hover:bg-[#F5F8FC] hover:text-[#12234A]"
                             >
                                 <X className="size-4" />
                             </button>
-                        </div>
-                        <div className="space-y-5 px-5 py-5 sm:px-6">
+                        </motion.div>
+                        <motion.div
+                            initial={reducedMotion ? false : { opacity: 0, y: 8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 4 }}
+                            transition={{ duration: reducedMotion ? 0 : 0.24, delay: reducedMotion ? 0 : 0.1, ease: [0.22, 1, 0.36, 1] }}
+                            className="space-y-5 px-5 py-5 sm:px-6"
+                        >
                             {lines.length > 0 ? (
                                 <div className="space-y-4">
-                                    {lines.map((line) => (
-                                        <div key={line.key} className="flex gap-3">
+                                    {lines.map((line, index) => (
+                                        <motion.div
+                                            key={line.key}
+                                            initial={reducedMotion ? false : { opacity: 0, y: 8 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            exit={{ opacity: 0, y: 4 }}
+                                            transition={{
+                                                duration: reducedMotion ? 0 : 0.22,
+                                                delay: reducedMotion ? 0 : index * 0.035,
+                                                ease: [0.22, 1, 0.36, 1],
+                                            }}
+                                            className="flex gap-3"
+                                        >
                                             <div className="min-w-0 flex-1">
                                                 <p className="text-sm font-bold text-[#243556]">
                                                     {line.product.name}
@@ -166,7 +272,7 @@ export function OrderDrawer({
                                                     <Plus className="size-3" />
                                                 </button>
                                             </div>
-                                        </div>
+                                        </motion.div>
                                     ))}
                                 </div>
                             ) : (
@@ -285,10 +391,11 @@ export function OrderDrawer({
                                     El teléfono se usará para identificar y contactar tu pedido.
                                 </p>
                             </div>
-                        </div>
-                    </aside>
-                </div>
-            )}
+                        </motion.div>
+                    </motion.aside>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </>
     )
 }
