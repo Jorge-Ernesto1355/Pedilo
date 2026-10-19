@@ -273,6 +273,57 @@ describe('Catálogo público', () => {
             .and('contain', '$109')
     })
 
+    it('agrega productos, cambia cantidades, actualiza el total y elimina el producto', () => {
+        installPublicCatalogApi()
+
+        cy.visit(`/${slug}`)
+        cy.wait('@getPublicCatalog')
+
+        const agua = cy.contains('article', 'Agua fresca')
+        agua.contains('button', 'Agregar al carrito').click()
+        cy.contains('button', 'Ver mi pedido')
+            .should('contain', '1 producto')
+            .and('contain', '$35')
+
+        // The same product is merged into one line instead of duplicated.
+        agua.contains('button', 'Agregar al carrito').click()
+        cy.contains('button', 'Ver mi pedido')
+            .should('contain', '2 productos')
+            .and('contain', '$70')
+            .click()
+
+        cy.get('[role="dialog"][aria-labelledby="order-title"]')
+            .should('be.visible')
+            .within(() => {
+                cy.contains('Agua fresca').should('be.visible')
+                cy.contains('$35 c/u').should('be.visible')
+
+                cy.get('button[aria-label="Agregar una unidad de Agua fresca"]').click()
+                cy.get('button[aria-label="Agregar una unidad de Agua fresca"]')
+                    .prev('span')
+                    .should('contain', '3')
+                cy.contains('button', 'Confirmar pedido').should('contain', '$105')
+
+                cy.get('button[aria-label="Quitar una unidad de Agua fresca"]').click()
+                cy.get('button[aria-label="Quitar una unidad de Agua fresca"]')
+                    .next('span')
+                    .should('contain', '2')
+                cy.contains('button', 'Confirmar pedido').should('contain', '$70')
+
+                cy.get('button[aria-label="Quitar una unidad de Agua fresca"]').click()
+                cy.get('button[aria-label="Quitar una unidad de Agua fresca"]')
+                    .next('span')
+                    .should('contain', '1')
+                cy.contains('button', 'Confirmar pedido').should('contain', '$35')
+
+                cy.get('button[aria-label="Quitar una unidad de Agua fresca"]').click()
+                cy.contains('Tu pedido está vacío').should('be.visible')
+            })
+
+        cy.get('button[aria-label="Cerrar pedido"]').click()
+        cy.contains('button', 'Ver mi pedido').should('not.exist')
+    })
+
     mobileViewports.forEach(({ width, height }) => {
         it(`muestra el catálogo sin cortes en ${width}×${height}`, () => {
             installPublicCatalogApi()
