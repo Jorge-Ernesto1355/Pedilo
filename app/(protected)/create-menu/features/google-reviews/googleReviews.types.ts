@@ -1,6 +1,7 @@
 export type GoogleReviewLink = {
     id: string
     businessId: string
+    qrCode: string
     url: string
     createdAt: string
     updatedAt: string
