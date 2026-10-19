@@ -36,6 +36,15 @@ function LoadingMenu() {
     )
 }
 
+function isMissingBusiness(error: unknown) {
+    return (
+        error instanceof ApiError &&
+        (error.status === 404 ||
+            error.code === 'BUSINESS_NOT_FOUND' ||
+            error.code === 'PUBLIC_BUSINESS_NOT_FOUND')
+    )
+}
+
 export default function PublicMenuPage({ slug }: { slug: string }) {
     const query = useBusinessMenu(slug)
     const cart = useOrderCart()
@@ -61,12 +70,94 @@ export default function PublicMenuPage({ slug }: { slug: string }) {
 
     if (query.isLoading) return <LoadingMenu />
     if (query.isError || !query.data) {
+        const missingBusiness = isMissingBusiness(query.error)
         const friendlyError = getUserFriendlyError(query.error, {
             fallback: {
                 title: 'No pudimos cargar el menú',
                 description: 'Inténtalo nuevamente en unos momentos.',
             },
         })
+
+        if (missingBusiness) {
+            return (
+                <main className="grid min-h-screen place-items-center bg-[#F5F8FC] px-5 py-10 sm:px-6">
+                    <section
+                        aria-labelledby="business-not-found-title"
+                        className="w-full max-w-lg rounded-[28px] border border-[#DCE5F3] bg-white p-7 text-center shadow-[0_22px_60px_rgb(16_34_74_/_0.09)] sm:p-10"
+                    >
+                        <div className="mx-auto flex h-40 w-full max-w-[240px] items-center justify-center text-[#2451C5]">
+                            <svg
+                                aria-hidden="true"
+                                viewBox="0 0 240 160"
+                                className="h-full w-full"
+                                fill="none"
+                            >
+                                <path
+                                    d="M42 137h156"
+                                    stroke="#DCE5F3"
+                                    strokeLinecap="round"
+                                    strokeWidth="4"
+                                />
+                                <path
+                                    d="M58 137V66h124v71"
+                                    fill="#F5F8FC"
+                                    stroke="#2451C5"
+                                    strokeLinejoin="round"
+                                    strokeWidth="4"
+                                />
+                                <path
+                                    d="M50 66h140l-10-27H60L50 66Z"
+                                    fill="#EAF0FF"
+                                    stroke="#2451C5"
+                                    strokeLinejoin="round"
+                                    strokeWidth="4"
+                                />
+                                <path
+                                    d="M50 66c0 9 8 16 18 16s18-7 18-16c0 9 8 16 18 16s18-7 18-16c0 9 8 16 18 16s18-7 18-16c0 9 8 16 18 16s18-7 18-16"
+                                    fill="#DCE8FF"
+                                    stroke="#2451C5"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth="4"
+                                />
+                                <path
+                                    d="M91 137V99c0-5 4-9 9-9h20c5 0 9 4 9 9v38"
+                                    fill="#FFF"
+                                    stroke="#2451C5"
+                                    strokeLinejoin="round"
+                                    strokeWidth="4"
+                                />
+                                <path
+                                    d="M151 99h16M151 112h16"
+                                    stroke="#9EB5E8"
+                                    strokeLinecap="round"
+                                    strokeWidth="4"
+                                />
+                                <path
+                                    d="M174 28c4-5 10-7 16-5M184 15c2-5 7-8 12-8"
+                                    stroke="#A9BDEB"
+                                    strokeLinecap="round"
+                                    strokeWidth="4"
+                                />
+                                <circle cx="184" cy="25" r="3" fill="#A9BDEB" />
+                            </svg>
+                        </div>
+                        <h1
+                            id="business-not-found-title"
+                            className="mt-6 font-display text-3xl leading-tight tracking-[-0.04em] text-[#10224A] sm:text-4xl"
+                        >
+                            Este menú ya no está disponible
+                        </h1>
+                        <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-[#65738A] sm:text-base">
+                            Parece que el enlace cambió o el negocio dejó de publicar su menú en
+                            Pedilo. Ponte en contacto directamente con el negocio para confirmar
+                            su nuevo enlace o disponibilidad.
+                        </p>
+                    </section>
+                </main>
+            )
+        }
+
         return (
             <main className="grid min-h-screen place-items-center bg-[#F5F8FC] p-6 text-center">
                 <div>
