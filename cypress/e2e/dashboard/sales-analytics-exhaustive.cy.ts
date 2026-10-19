@@ -115,6 +115,17 @@ function average(total: number, orders: number) {
 function responseFor(period: Period, scenario: Scenario) {
     const current = distribute(scenario.current.total, 4)
     const previous = distribute(scenario.previous.total, 4)
+
+    // Keep a shared empty interval in both series. The amount is moved to the
+    // first interval so totals remain unchanged while the comparison for the
+    // empty interval correctly has no percentage baseline.
+    const currentEmptyInterval = current[1] ?? 0
+    const previousEmptyInterval = previous[1] ?? 0
+    current[0] += currentEmptyInterval
+    previous[0] += previousEmptyInterval
+    current[1] = 0
+    previous[1] = 0
+
     const difference = scenario.current.total - scenario.previous.total
     const change = percentage(scenario.current.total, scenario.previous.total)
     const noBaseline = scenario.previous.total === 0 && scenario.current.total > 0

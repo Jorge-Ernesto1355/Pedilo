@@ -17,7 +17,9 @@ const testRegisterPassword =
 const diagnosticEmail = process.env.CYPRESS_TEST_EMAIL ?? process.env.CYPRESS_PROD_TEST_EMAIL
 const diagnosticPassword =
     process.env.CYPRESS_TEST_PASSWORD ?? process.env.CYPRESS_PROD_TEST_PASSWORD
-const cypressBaseUrl = process.env.CYPRESS_BASE_URL ?? 'https://pedilo.mx'
+// Local E2E runs should exercise the checked-out app. Set CYPRESS_BASE_URL
+// explicitly when a test is intended to target a deployed environment.
+const cypressBaseUrl = process.env.CYPRESS_BASE_URL ?? 'http://127.0.0.1:3000'
 const e2eSeedEmail = process.env.E2E_SEED_EMAIL ?? 'cypress-dashboard-seed@pedilo.test'
 const e2eSeedPassword = process.env.E2E_SEED_PASSWORD ?? 'Strong-pass-123'
 const e2eSeedSlug = process.env.E2E_SEED_SLUG ?? 'e2e-dashboard-restaurante'
