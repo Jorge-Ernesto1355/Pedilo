@@ -3,7 +3,7 @@
 'use client'
 
 import { Plus, SlidersHorizontal, Utensils } from 'lucide-react'
-import { useRef } from 'react'
+import { useState } from 'react'
 import type { PublicProduct } from './publicCatalog.types'
 import { hasRequiredOptionGroups } from './optionGroupValidation'
 
@@ -14,14 +14,19 @@ export function ProductCard({
 }: {
     product: PublicProduct
     onSelect: () => void
-    onAdd: (source: HTMLElement | null) => void
+    onAdd: () => void
 }) {
     const requiresCustomization = hasRequiredOptionGroups(product)
-    const imageRef = useRef<HTMLDivElement>(null)
+    const [feedbackKey, setFeedbackKey] = useState(0)
+
+    function handleAdd() {
+        onAdd()
+        setFeedbackKey((current) => current + 1)
+    }
+
     return (
         <article className="flex w-full gap-4 border-b border-[#E8EEF6] py-5 text-left last:border-b-0 last:pb-0 first:pt-0 sm:gap-5">
             <div
-                ref={imageRef}
                 data-product-image={product.id}
                 className="grid size-24 shrink-0 place-items-center overflow-hidden rounded-xl bg-[#EEF3FF] text-[#2451C5] sm:size-28"
             >
@@ -56,14 +61,19 @@ export function ProductCard({
                 </div>
                 <button
                     type="button"
-                    onClick={requiresCustomization ? onSelect : () => onAdd(imageRef.current)}
-                    aria-label={`${requiresCustomization ? 'Seleccionar opciones para' : 'Agregar'} ${product.name}${requiresCustomization ? '' : ' al carrito'}`}
-                    className="mt-3 inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-[#EEF3FF] px-3 py-2 text-xs font-bold text-[#2451C5] hover:bg-[#E2EBFF] sm:min-h-8 sm:px-2.5 sm:py-1.5"
+                    onClick={requiresCustomization ? onSelect : handleAdd}
+                    aria-label={`${requiresCustomization ? 'Seleccionar opciones para' : 'Agregar al carrito:'} ${product.name}`}
+                    className="mt-3 inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-[#EEF3FF] px-3 py-2 text-xs font-bold text-[#2451C5] transition-[background-color,box-shadow,transform] duration-200 hover:bg-[#E2EBFF] active:scale-[.98] sm:min-h-8 sm:px-2.5 sm:py-1.5"
                 >
                     {requiresCustomization ? (
                         <SlidersHorizontal className="size-3.5" />
                     ) : (
-                        <Plus className="size-3.5" />
+                        <span
+                            key={feedbackKey}
+                            className={feedbackKey > 0 ? 'pedilo-cart-add-feedback' : undefined}
+                        >
+                            <Plus className="size-3.5" />
+                        </span>
                     )}
                     {requiresCustomization ? 'Seleccionar opciones' : 'Agregar al carrito'}
                 </button>
