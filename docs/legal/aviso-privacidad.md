@@ -1,7 +1,7 @@
 AVISO DE PRIVACIDAD INTEGRAL DE PEDILO
 
 Versión: 1.0
-Fecha de entrada en vigor: [POR COMPLETAR]
+Fecha de entrada en vigor: 15 de septiembre
 
 1. Responsable
 
