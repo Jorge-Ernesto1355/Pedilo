@@ -71,12 +71,8 @@ function fillBusinessProfile(overrides: Partial<Record<string, string>> = {}) {
     cy.get('#description')
         .clear()
         .type(overrides.description ?? 'Tacos, quesadillas y aguas frescas.')
-    cy.get('#open-time')
-        .clear()
-        .type(overrides.openTime ?? '10:30')
-    cy.get('#close-time')
-        .clear()
-        .type(overrides.closeTime ?? '22:30')
+    cy.get('#open-time').should('be.enabled').clear().type(overrides.openTime ?? '10:30')
+    cy.get('#close-time').should('be.enabled').clear().type(overrides.closeTime ?? '22:30')
 }
 
 function businessResponse(overrides: Partial<BusinessApi> = {}): BusinessApi {
@@ -457,7 +453,7 @@ describe('Crear menú · perfil del restaurante', () => {
             .and('contain', 'La URL del negocio ya está en uso.')
 
         cy.get('#slug').clear().type(`slug-libre-${uniqueSuffix()}`)
-        cy.get('#slug').should('have.value.match', /^slug-libre-/)
+        cy.get('#slug').invoke('val').should('match', /^slug-libre-/)
     })
 
     it('muestra error 500 y permite reintentar sin bloquear el formulario', () => {
@@ -479,7 +475,9 @@ describe('Crear menú · perfil del restaurante', () => {
         fillBusinessProfile()
         cy.contains('button', 'Guardar cambios').click()
         cy.wait('@createBusiness')
-        cy.contains('Error temporal del servidor.').should('be.visible')
+        cy.contains(
+            'Ocurrió un problema en el servidor. Inténtalo nuevamente en unos momentos.',
+        ).should('be.visible')
 
         cy.contains('button', 'Guardar cambios').should('not.be.disabled').click()
         cy.wait('@createBusiness')
