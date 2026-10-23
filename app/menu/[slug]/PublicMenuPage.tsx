@@ -45,6 +45,295 @@ function isMissingBusiness(error: unknown) {
     )
 }
 
+function escapeHtml(value: string) {
+    return value.replace(
+        /[&<>'"]/g,
+        (character) =>
+            ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                "'": '&#39;',
+                '"': '&quot;',
+            })[character] ?? character,
+    )
+}
+
+function getWhatsAppRedirectMarkup(whatsappUrl?: string) {
+    const manualUrl = whatsappUrl ? escapeHtml(whatsappUrl) : '#'
+    const manualLinkState = whatsappUrl ? '' : ' hidden aria-disabled="true"'
+
+    return `<style>
+            :root { color-scheme: light; }
+            * { box-sizing: border-box; }
+            html, body { min-height: 100%; }
+            body {
+                margin: 0;
+                background: #F5F8FC;
+                color: #12234A;
+                font-family: "Inter Tight", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            }
+            .redirect-shell {
+                position: relative;
+                isolation: isolate;
+                display: grid;
+                min-height: 100svh;
+                place-items: center;
+                overflow: hidden;
+                padding: 24px;
+            }
+            .redirect-shell::before,
+            .redirect-shell::after {
+                position: absolute;
+                z-index: -1;
+                width: 280px;
+                height: 280px;
+                border: 1px solid #DCE5F3;
+                border-radius: 50%;
+                content: '';
+            }
+            .redirect-shell::before {
+                top: -150px;
+                right: -85px;
+                background: #EAF0FF;
+            }
+            .redirect-shell::after {
+                bottom: -180px;
+                left: -105px;
+                background: #FFFFFF;
+            }
+            .redirect-wrap { width: min(100%, 480px); }
+            .brand {
+                display: inline-flex;
+                align-items: center;
+                gap: 10px;
+                margin-bottom: 22px;
+                color: #12234A;
+                font-size: 19px;
+                font-weight: 800;
+                letter-spacing: -.05em;
+            }
+            .brand-mark {
+                display: grid;
+                width: 34px;
+                height: 34px;
+                place-items: center;
+                border-radius: 11px;
+                background: #1E40AF;
+                color: #FFFFFF;
+                box-shadow: 0 8px 18px rgb(30 64 175 / .18);
+            }
+            .redirect-card {
+                padding: 30px 24px 26px;
+                border: 1px solid #DCE5F3;
+                border-radius: 24px;
+                background: #FFFFFF;
+                box-shadow: 0 24px 62px rgb(18 35 74 / .11);
+                text-align: center;
+            }
+            .route-scene {
+                position: relative;
+                height: 154px;
+                margin-bottom: 20px;
+            }
+            .route-line {
+                position: absolute;
+                top: 77px;
+                right: 19%;
+                left: 19%;
+                height: 2px;
+                overflow: hidden;
+                background: repeating-linear-gradient(90deg, #AFC2E6 0 10px, transparent 10px 18px);
+            }
+            .route-line::after {
+                position: absolute;
+                top: -3px;
+                left: -16%;
+                width: 14px;
+                height: 8px;
+                border-radius: 50%;
+                background: #2451C5;
+                box-shadow: 0 0 0 5px rgb(36 81 197 / .12);
+                content: '';
+                animation: route-dot 1.9s ease-in-out infinite;
+            }
+            .package {
+                position: absolute;
+                top: 40px;
+                left: 14%;
+                display: grid;
+                width: 76px;
+                height: 76px;
+                place-items: center;
+                border: 2px solid #2451C5;
+                border-radius: 21px;
+                background: #EAF0FF;
+                color: #2451C5;
+                box-shadow: 0 14px 26px rgb(30 64 175 / .14);
+                animation: package-bob 3.1s ease-in-out infinite;
+            }
+            .whatsapp {
+                position: absolute;
+                top: 43px;
+                right: 14%;
+                display: grid;
+                width: 70px;
+                height: 70px;
+                place-items: center;
+                border: 6px solid #FFFFFF;
+                border-radius: 50%;
+                background: #25D366;
+                color: #FFFFFF;
+                box-shadow: 0 12px 24px rgb(37 211 102 / .22);
+                animation: whatsapp-breathe 2.3s ease-in-out infinite;
+            }
+            .whatsapp::after {
+                position: absolute;
+                inset: -9px;
+                border: 1px solid rgb(37 211 102 / .3);
+                border-radius: inherit;
+                content: '';
+                animation: whatsapp-ring 2.3s ease-out infinite;
+            }
+            .status {
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                margin: 0 0 12px;
+                color: #16803D;
+                font-size: 12px;
+                font-weight: 800;
+                letter-spacing: .08em;
+                text-transform: uppercase;
+            }
+            .status-dot {
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+                background: #25D366;
+                box-shadow: 0 0 0 4px rgb(37 211 102 / .12);
+            }
+            h1 {
+                margin: 0;
+                color: #10224A;
+                font-size: clamp(28px, 7vw, 38px);
+                letter-spacing: -.055em;
+                line-height: 1.05;
+            }
+            .copy {
+                max-width: 34ch;
+                margin: 13px auto 0;
+                color: #65738A;
+                font-size: 15px;
+                line-height: 1.65;
+            }
+            .progress {
+                position: relative;
+                height: 5px;
+                margin: 25px auto 0;
+                overflow: hidden;
+                border-radius: 999px;
+                background: #E8EEF6;
+            }
+            .progress::after {
+                position: absolute;
+                top: 0;
+                bottom: 0;
+                left: -35%;
+                width: 35%;
+                border-radius: inherit;
+                background: #2451C5;
+                content: '';
+                animation: progress 1.8s ease-in-out infinite;
+            }
+            .manual-link {
+                display: inline-flex;
+                min-height: 44px;
+                align-items: center;
+                justify-content: center;
+                margin-top: 18px;
+                padding: 0 16px;
+                border: 1px solid #C9D6ED;
+                border-radius: 12px;
+                color: #1E40AF;
+                font-size: 14px;
+                font-weight: 800;
+                text-decoration: none;
+            }
+            .manual-link:hover { border-color: #AFC2E6; background: #F8FAFE; }
+            .manual-link[hidden] { display: none; }
+            .footnote { margin: 16px 0 0; color: #8996A9; font-size: 12px; }
+            @keyframes route-dot {
+                0% { transform: translateX(0); opacity: 0; }
+                15%, 75% { opacity: 1; }
+                100% { transform: translateX(700%); opacity: 0; }
+            }
+            @keyframes package-bob {
+                0%, 100% { transform: translateY(2px) rotate(-2deg); }
+                50% { transform: translateY(-7px) rotate(2deg); }
+            }
+            @keyframes whatsapp-breathe {
+                0%, 100% { transform: scale(1); }
+                50% { transform: scale(1.06); }
+            }
+            @keyframes whatsapp-ring {
+                0%, 65%, 100% { opacity: 0; transform: scale(.8); }
+                30% { opacity: 1; transform: scale(1); }
+            }
+            @keyframes progress {
+                0% { transform: translateX(0); }
+                100% { transform: translateX(390%); }
+            }
+            @media (max-width: 420px) {
+                .redirect-shell { padding: 18px; }
+                .redirect-card { padding: 24px 18px 22px; }
+                .route-scene { height: 136px; }
+                .package { left: 8%; width: 68px; height: 68px; }
+                .whatsapp { right: 8%; width: 64px; height: 64px; }
+                .route-line { top: 68px; right: 23%; left: 23%; }
+            }
+            @media (prefers-reduced-motion: reduce) {
+                .route-line::after, .package, .whatsapp, .whatsapp::after, .progress::after { animation: none; }
+            }
+        </style>
+        <main class="redirect-shell" aria-live="polite">
+            <div class="redirect-wrap">
+                <div class="brand" aria-label="Pedilo">
+                    <span class="brand-mark" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" width="17" height="17" fill="none">
+                            <path d="M6 4.5h12l-1.2 4.2H7.2L6 4.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+                            <path d="M7.4 8.7v8.8c0 1.1.9 2 2 2h5.2c1.1 0 2-.9 2-2V8.7M9.5 12.2h5M9.5 15.2h3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                    </span>
+                    pedilo
+                </div>
+                <section class="redirect-card" role="status" aria-label="Preparando la redirección a WhatsApp">
+                    <div class="route-scene" aria-hidden="true">
+                        <div class="route-line"></div>
+                        <div class="package">
+                            <svg viewBox="0 0 48 48" width="42" height="42" fill="none">
+                                <path d="m9 16 15-7 15 7-15 7-15-7Z" fill="#DCE8FF" stroke="currentColor" stroke-width="2.3" stroke-linejoin="round" />
+                                <path d="M9 16v16l15 8 15-8V16M24 23v17M16.5 12.5l15 7" stroke="currentColor" stroke-width="2.3" stroke-linejoin="round" />
+                            </svg>
+                        </div>
+                        <div class="whatsapp">
+                            <svg viewBox="0 0 24 24" width="34" height="34" fill="none">
+                                <path d="M20 11.6a8 8 0 0 1-11.8 7l-3.2 1 1-3.1A8 8 0 1 1 20 11.6Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+                                <path d="M9.2 8.6c.2-.4.4-.4.7-.4h.4c.2 0 .3.1.4.4l.6 1.4c.1.3.1.5-.1.7l-.5.6c.5 1 1.2 1.7 2.2 2.2l.6-.5c.2-.2.4-.2.7-.1l1.4.6c.3.1.4.2.4.4v.4c0 .3 0 .5-.4.7-.4.2-1.3.4-2.1.1-1.2-.4-2.4-1.1-3.3-2-.9-.9-1.6-2.1-2-3.3-.3-.8-.1-1.7.1-2.1Z" fill="currentColor" />
+                            </svg>
+                        </div>
+                    </div>
+                    <p class="status"><span class="status-dot"></span>Pedido listo</p>
+                    <h1>¡Tu pedido va en camino!</h1>
+                    <p class="copy">Abriendo WhatsApp para que continúes con el negocio.</p>
+                    <div class="progress" aria-hidden="true"></div>
+                    <a id="manual-whatsapp-link" class="manual-link" href="${manualUrl}" target="_self"${manualLinkState}>Abrir WhatsApp manualmente</a>
+                    <p class="footnote">Si no se abre automáticamente, usa el botón para continuar.</p>
+                </section>
+            </div>
+        </main>`
+}
+
 export default function PublicMenuPage({ slug }: { slug: string }) {
     const query = useBusinessMenu(slug)
     const cart = useOrderCart()
@@ -55,6 +344,7 @@ export default function PublicMenuPage({ slug }: { slug: string }) {
     const [isSubmittingOrder, setIsSubmittingOrder] = useState(false)
     const [orderError, setOrderError] = useState<string | null>(null)
     const [orderConfirmed, setOrderConfirmed] = useState(false)
+    const [manualWhatsAppUrl, setManualWhatsAppUrl] = useState<string | null>(null)
     const menus = useMemo(
         () => query.data?.menus.filter((menu) => menu.isActive) ?? [],
         [query.data],
@@ -200,181 +490,16 @@ export default function PublicMenuPage({ slug }: { slug: string }) {
 
         // Reserve a blank tab synchronously so the eventual WhatsApp tab is
         // not blocked by the browser after the asynchronous order request.
-        const whatsappWindow = window.open('about:blank', '_blank')
-        if (whatsappWindow?.document) {
-            whatsappWindow.document.title = 'Preparando tu pedido · Pedilo'
-            whatsappWindow.document.body.innerHTML = `
-                <style>
-                    :root { color-scheme: dark; }
-                    * { box-sizing: border-box; }
-                    body {
-                        margin: 0;
-                        min-height: 100vh;
-                        overflow: hidden;
-                        background: #071735;
-                        color: #f8fbff;
-                        font-family: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
-                    }
-                    .order-loading {
-                        min-height: 100vh;
-                        display: grid;
-                        place-items: center;
-                        padding: 24px;
-                        position: relative;
-                        isolation: isolate;
-                    }
-                    .order-loading::before,
-                    .order-loading::after {
-                        content: '';
-                        position: absolute;
-                        width: 360px;
-                        height: 360px;
-                        border-radius: 50%;
-                        filter: blur(8px);
-                        opacity: .36;
-                        z-index: -1;
-                    }
-                    .order-loading::before {
-                        top: -170px;
-                        right: -100px;
-                        background: #2451c5;
-                    }
-                    .order-loading::after {
-                        bottom: -220px;
-                        left: -120px;
-                        background: #0c9f72;
-                    }
-                    .loading-card {
-                        width: min(100%, 440px);
-                        text-align: center;
-                        padding: 42px 28px 34px;
-                        border: 1px solid rgba(190, 215, 255, .18);
-                        border-radius: 28px;
-                        background: rgba(16, 34, 74, .76);
-                        box-shadow: 0 30px 90px rgba(0, 0, 0, .28), inset 0 1px rgba(255,255,255,.08);
-                        backdrop-filter: blur(18px);
-                    }
-                    .stage {
-                        height: 148px;
-                        display: grid;
-                        place-items: center;
-                        position: relative;
-                        margin-bottom: 25px;
-                    }
-                    .orbit {
-                        position: absolute;
-                        width: 132px;
-                        height: 132px;
-                        border: 1px solid rgba(154, 190, 255, .27);
-                        border-radius: 50%;
-                        transform: rotate(-22deg) scaleX(1.55);
-                        animation: orbit 2.5s ease-in-out infinite;
-                    }
-                    .orbit::after {
-                        content: '';
-                        position: absolute;
-                        top: 7px;
-                        left: 50%;
-                        width: 8px;
-                        height: 8px;
-                        border-radius: 50%;
-                        background: #71e8bb;
-                        box-shadow: 0 0 18px #71e8bb;
-                    }
-                    .pulse {
-                        position: absolute;
-                        width: 82px;
-                        height: 82px;
-                        border: 1px solid rgba(113, 232, 187, .45);
-                        border-radius: 24px;
-                        animation: pulse 1.9s ease-out infinite;
-                    }
-                    .envelope {
-                        position: relative;
-                        width: 70px;
-                        height: 52px;
-                        border-radius: 12px;
-                        background: linear-gradient(145deg, #ffffff, #dceaff);
-                        box-shadow: 0 14px 28px rgba(0,0,0,.22);
-                        transform: rotate(-5deg);
-                        animation: float 2.4s ease-in-out infinite;
-                    }
-                    .envelope::before,
-                    .envelope::after {
-                        content: '';
-                        position: absolute;
-                        top: 8px;
-                        width: 43px;
-                        height: 2px;
-                        background: #85a4d7;
-                    }
-                    .envelope::before { left: 2px; transform: rotate(34deg); transform-origin: left; }
-                    .envelope::after { right: 2px; transform: rotate(-34deg); transform-origin: right; }
-                    .check {
-                        position: absolute;
-                        right: -9px;
-                        bottom: -9px;
-                        width: 28px;
-                        height: 28px;
-                        display: grid;
-                        place-items: center;
-                        border: 3px solid #10224a;
-                        border-radius: 50%;
-                        background: #25d366;
-                        color: #06351f;
-                        font-size: 16px;
-                        font-weight: 900;
-                    }
-                    .eyebrow {
-                        margin: 0 0 10px;
-                        color: #71e8bb;
-                        font-size: 11px;
-                        font-weight: 800;
-                        letter-spacing: .18em;
-                        text-transform: uppercase;
-                    }
-                    h1 { margin: 0; font-size: clamp(26px, 6vw, 34px); letter-spacing: -.045em; }
-                    .copy { margin: 12px auto 0; max-width: 31ch; color: #afc0dc; font-size: 14px; line-height: 1.6; }
-                    .progress {
-                        height: 5px;
-                        margin: 27px auto 0;
-                        overflow: hidden;
-                        border-radius: 99px;
-                        background: rgba(255,255,255,.12);
-                    }
-                    .progress span {
-                        display: block;
-                        width: 42%;
-                        height: 100%;
-                        border-radius: inherit;
-                        background: linear-gradient(90deg, #71e8bb, #25d366);
-                        box-shadow: 0 0 15px rgba(113,232,187,.7);
-                        animation: progress 1.7s cubic-bezier(.4,0,.2,1) infinite;
-                    }
-                    .footnote { margin: 15px 0 0; color: #7184a7; font-size: 11px; }
-                    @keyframes orbit { 0%,100% { transform: rotate(-22deg) scaleX(1.55); } 50% { transform: rotate(22deg) scaleX(1.55); } }
-                    @keyframes pulse { 0% { opacity: .7; transform: scale(.78); } 70%,100% { opacity: 0; transform: scale(1.35); } }
-                    @keyframes float { 0%,100% { transform: translateY(3px) rotate(-5deg); } 50% { transform: translateY(-7px) rotate(3deg); } }
-                    @keyframes progress { 0% { transform: translateX(-120%); } 100% { transform: translateX(290%); } }
-                    @media (prefers-reduced-motion: reduce) {
-                        .orbit, .pulse, .envelope, .progress span { animation: none; }
-                    }
-                </style>
-                <main class="order-loading" aria-live="polite">
-                    <section class="loading-card" role="status" aria-label="Preparando tu pedido">
-                        <div class="stage" aria-hidden="true">
-                            <div class="orbit"></div>
-                            <div class="pulse"></div>
-                            <div class="envelope"><span class="check">✓</span></div>
-                        </div>
-                        <p class="eyebrow">Un momento</p>
-                        <h1>Estamos preparando tu pedido</h1>
-                        <p class="copy">Estamos confirmando los detalles para enviarlos al negocio por WhatsApp.</p>
-                        <div class="progress" aria-hidden="true"><span></span></div>
-                        <p class="footnote">No cierres esta ventana</p>
-                    </section>
-                </main>
-            `
+        let whatsappWindow: Window | null = null
+        try {
+            whatsappWindow = window.open('about:blank', '_blank')
+            if (whatsappWindow?.document) {
+                whatsappWindow.document.title = 'Continuando en WhatsApp · Pedilo'
+                whatsappWindow.document.body.innerHTML = getWhatsAppRedirectMarkup()
+            }
+        } catch {
+            whatsappWindow?.close()
+            whatsappWindow = null
         }
 
         try {
@@ -402,13 +527,19 @@ export default function PublicMenuPage({ slug }: { slug: string }) {
             })
             const whatsappUrl = `https://wa.me/${businessWhatsAppNumber}?text=${encodeURIComponent(message)}`
 
-            if (whatsappWindow) {
-                whatsappWindow.location.href = whatsappUrl
-            } else {
-                // If the browser blocks the new tab, keep the customer in the
-                // menu and let the confirmation modal explain what happened.
-                // The order itself was already created successfully.
-                window.open(whatsappUrl, '_blank', 'noopener,noreferrer')
+            let redirected = false
+            if (whatsappWindow?.document?.body) {
+                try {
+                    whatsappWindow.document.body.innerHTML = getWhatsAppRedirectMarkup(whatsappUrl)
+                    whatsappWindow.location.href = whatsappUrl
+                    redirected = true
+                } catch {
+                    whatsappWindow.close()
+                    whatsappWindow = null
+                }
+            }
+            if (!redirected) {
+                setManualWhatsAppUrl(whatsappUrl)
             }
 
             cart.clear()
@@ -420,10 +551,11 @@ export default function PublicMenuPage({ slug }: { slug: string }) {
                 getUserFriendlyError(error, {
                     fallback: {
                         title: 'No pudimos crear tu pedido',
-                        description: 'Inténtalo nuevamente.',
+                        description: 'No pudimos crear tu pedido. Inténtalo nuevamente.',
                     },
                 }).description,
             )
+            setManualWhatsAppUrl(null)
         } finally {
             setIsSubmittingOrder(false)
         }
@@ -533,7 +665,15 @@ export default function PublicMenuPage({ slug }: { slug: string }) {
                     if (product) cart.add(product, selections)
                 }}
             />
-            {orderConfirmed && <OrderConfirmationModal onClose={() => setOrderConfirmed(false)} />}
+            {orderConfirmed && (
+                <OrderConfirmationModal
+                    onClose={() => {
+                        setOrderConfirmed(false)
+                        setManualWhatsAppUrl(null)
+                    }}
+                    whatsappUrl={manualWhatsAppUrl}
+                />
+            )}
         </main>
     )
 }
