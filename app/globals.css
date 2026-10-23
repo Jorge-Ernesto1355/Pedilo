@@ -239,6 +239,48 @@ a {
     }
 }
 
+@media (prefers-reduced-motion: no-preference) {
+    @keyframes pediloNotFoundRoute {
+        to {
+            stroke-dashoffset: -58;
+        }
+    }
+
+    @keyframes pediloNotFoundPackage {
+        0%,
+        100% {
+            transform: rotate(-2deg) translateY(0);
+        }
+        50% {
+            transform: rotate(2deg) translateY(-8px);
+        }
+    }
+
+    @keyframes pediloNotFoundPin {
+        0%,
+        100% {
+            transform: translateY(0);
+        }
+        50% {
+            transform: translateY(-7px);
+        }
+    }
+
+    .not-found-route {
+        animation: pediloNotFoundRoute 2.8s linear infinite;
+    }
+
+    .not-found-package {
+        animation: pediloNotFoundPackage 3.6s ease-in-out infinite;
+        transform-origin: center bottom;
+    }
+
+    .not-found-pin {
+        animation: pediloNotFoundPin 2.4s ease-in-out infinite;
+        transform-origin: 305px 220px;
+    }
+}
+
 /* Pedilo notifications stay dark in both color schemes so they remain distinct
    from the page surface. State color is reserved for the small Sileo badge. */
 [data-sileo-viewport] {
