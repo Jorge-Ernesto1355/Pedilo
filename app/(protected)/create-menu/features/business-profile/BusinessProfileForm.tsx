@@ -1,17 +1,24 @@
 'use client'
 
-import { Check, ImagePlus, LoaderCircle } from 'lucide-react'
-import { useFormContext } from 'react-hook-form'
-import { useState } from 'react'
+import { Check, ImagePlus, LoaderCircle, Search } from 'lucide-react'
+import { useFormContext, useWatch } from 'react-hook-form'
 import type { BusinessProfileValues } from './businessProfile.schema'
 import { BusinessHoursField } from './BusinessHoursField'
 import { ViewOnMapsButton } from '../business-location/ViewOnMapsButton'
 import type { LocationCoordinates } from '../business-location/location.schema'
-import { useNominatimSearch, type NominatimResult } from '../business-location/useNominatimSearch'
+import {
+    formatLocationResult,
+    useNominatimSearch,
+    type NominatimResult,
+} from '../business-location/useNominatimSearch'
 import { MapPinned } from 'lucide-react'
 import type { FormEventHandler } from 'react'
 import { ProgressiveImage } from './ProgressiveImage'
 import { BusinessProfileSkeleton } from '../../components/CreateMenuStates'
+
+const DESCRIPTION_MAX_LENGTH = 180
+const LOCATION_MAX_LENGTH = 100
+
 type BusinessProfileFormProps = {
     logoPreview: string | null
     logoBlurPreview: string | null
@@ -53,17 +60,22 @@ export function BusinessProfileForm({
     const {
         register,
         setValue,
+        control,
         formState: { errors },
     } = useFormContext<BusinessProfileValues>()
-    const [locationFocused, setLocationFocused] = useState(false)
-    const { setQuery: setLocationQuery, results, isSearching, searchError } = useNominatimSearch()
+    const description = useWatch({ control, name: 'description' }) ?? ''
+    const {
+        setQuery: setLocationQuery,
+        results,
+        status: locationSearchStatus,
+    } = useNominatimSearch()
     const locationRegister = register('location')
 
     function selectLocation(result: NominatimResult) {
         const location = formatLocationResult(result)
+        if (!location) return
         setValue('location', location, { shouldDirty: true, shouldValidate: true })
         setLocationQuery('')
-        setLocationFocused(false)
         onLocationSelect(location, {
             latitude: Number(result.lat),
             longitude: Number(result.lon),
@@ -138,44 +150,54 @@ export function BusinessProfileForm({
                     >
                         Ubicación
                     </label>
-                    <input
-                        id="location"
-                        autoComplete="address-level2"
-                        placeholder="Ej. Culiacán, Sinaloa"
-                        className={inputClass}
-                        {...locationRegister}
-                        onFocus={() => setLocationFocused(true)}
-                        onBlur={() => window.setTimeout(() => setLocationFocused(false), 150)}
-                        onChange={(event) => {
-                            locationRegister.onChange(event)
-                            setLocationQuery(event.target.value)
-                        }}
-                    />
-                    {locationFocused && (isSearching || searchError || results.length > 0) ? (
-                        <div className="absolute inset-x-0 top-[calc(100%+4px)] z-20 overflow-hidden rounded-xl border border-[#D7E1EF] bg-white shadow-[0_12px_30px_rgb(18_35_74_/_0.14)]">
-                            {isSearching ? (
-                                <p className="px-4 py-3 text-sm text-[#8996A9]">
-                                    Buscando lugares…
-                                </p>
-                            ) : searchError ? (
-                                <p role="alert" className="px-4 py-3 text-sm text-[#A33A32]">
-                                    No pudimos buscar esa ubicación. Intenta de nuevo.
-                                </p>
-                            ) : (
-                                results.map((result) => (
-                                    <button
-                                        key={result.place_id}
-                                        type="button"
-                                        onMouseDown={(event) => event.preventDefault()}
-                                        onClick={() => selectLocation(result)}
-                                        className="block w-full border-b border-[#EEF2F7] px-4 py-3 text-left text-sm text-[#26344A] transition last:border-0 hover:bg-[#F3F6FB]"
-                                    >
-                                        {formatLocationResult(result)}
-                                    </button>
-                                ))
-                            )}
-                        </div>
-                    ) : null}
+                    <div className="relative">
+                        <Search
+                            aria-hidden="true"
+                            className="pointer-events-none absolute left-3.5 top-1/2 z-10 size-4 -translate-y-1/2 text-[#8996A9]"
+                        />
+                        <input
+                            id="location"
+                            aria-label="Buscar ubicación"
+                            autoComplete="address-level2"
+                            placeholder="Busca una dirección o negocio"
+                            maxLength={LOCATION_MAX_LENGTH}
+                            className={`${inputClass} pl-10`}
+                            {...locationRegister}
+                            onChange={(event) => {
+                                locationRegister.onChange(event)
+                                setLocationQuery(event.target.value)
+                            }}
+                        />
+                        {locationSearchStatus !== 'idle' ? (
+                            <div className="absolute inset-x-0 top-[calc(100%+4px)] z-[1000] overflow-hidden rounded-xl border border-[#D7E1EF] bg-white shadow-[0_12px_30px_rgb(18_35_74_/_0.14)]">
+                                {locationSearchStatus === 'loading' ? (
+                                    <p className="px-4 py-3 text-sm text-[#8996A9]">
+                                        Buscando ubicaciones…
+                                    </p>
+                                ) : locationSearchStatus === 'error' ? (
+                                    <p role="alert" className="px-4 py-3 text-sm text-[#A33A32]">
+                                        No se pudieron cargar las ubicaciones. Intenta nuevamente
+                                    </p>
+                                ) : locationSearchStatus === 'empty' ? (
+                                    <p className="px-4 py-3 text-sm text-[#8996A9]">
+                                        No se encontraron ubicaciones
+                                    </p>
+                                ) : (
+                                    results.map((result) => (
+                                        <button
+                                            key={result.place_id}
+                                            type="button"
+                                            onMouseDown={(event) => event.preventDefault()}
+                                            onClick={() => selectLocation(result)}
+                                            className="block w-full border-b border-[#EEF2F7] px-4 py-3 text-left text-sm text-[#26344A] transition last:border-0 hover:bg-[#F3F6FB]"
+                                        >
+                                            {formatLocationResult(result)}
+                                        </button>
+                                    ))
+                                )}
+                            </div>
+                        ) : null}
+                    </div>
                     {errors.location && (
                         <p className="mt-1.5 text-xs text-[#B42318]" role="alert">
                             {errors.location.message}
@@ -192,6 +214,7 @@ export function BusinessProfileForm({
                     <textarea
                         id="description"
                         rows={4}
+                        maxLength={DESCRIPTION_MAX_LENGTH}
                         placeholder="Cuéntales qué hace especial a tu negocio"
                         className={`${inputClass} resize-none`}
                         {...register('description')}
@@ -200,7 +223,9 @@ export function BusinessProfileForm({
                         <span>
                             {errors.description?.message ?? 'Una frase breve funciona mejor.'}
                         </span>
-                        <span>180 máx.</span>
+                        <span className="shrink-0 tabular-nums">
+                            {description.length}/{DESCRIPTION_MAX_LENGTH}
+                        </span>
                     </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-3 pt-1">
@@ -335,22 +360,4 @@ export function BusinessProfileForm({
             </div>
         </form>
     )
-}
-
-function formatLocationResult(result: NominatimResult) {
-    const address = result.address
-    const locality =
-        address?.city ??
-        address?.town ??
-        address?.village ??
-        address?.hamlet ??
-        address?.city_district
-    const municipality =
-        address?.municipality ?? address?.county ?? address?.state_district ?? address?.region
-    const state = address?.state
-    const parts = [locality, municipality, state].filter(
-        (part, index, values): part is string => Boolean(part) && values.indexOf(part) === index,
-    )
-
-    return parts.length > 0 ? parts.join(', ') : result.display_name
 }
