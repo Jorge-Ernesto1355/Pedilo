@@ -95,7 +95,9 @@ describe('public order flow', () => {
         )
         expect(open).toHaveBeenCalledWith('about:blank', '_blank')
         expect(location.href).toContain('https://wa.me/526681234567?text=')
-        expect(await screen.findByRole('heading', { name: '¡Pedido enviado!' })).toBeInTheDocument()
+        expect(
+            await screen.findByRole('heading', { name: '¡Tu pedido está listo!' }),
+        ).toBeInTheDocument()
 
         open.mockRestore()
     })
@@ -113,7 +115,9 @@ describe('public order flow', () => {
         await user.click(screen.getByRole('button', { name: /confirmar pedido/i }))
 
         expect(await screen.findByRole('alert')).toHaveTextContent(/no pudimos crear tu pedido/i)
-        expect(screen.queryByRole('heading', { name: '¡Pedido enviado!' })).not.toBeInTheDocument()
+        expect(
+            screen.queryByRole('heading', { name: '¡Tu pedido está listo!' }),
+        ).not.toBeInTheDocument()
         fireEvent.click(screen.getByRole('button', { name: /cerrar pedido/i }))
         open.mockRestore()
     })
