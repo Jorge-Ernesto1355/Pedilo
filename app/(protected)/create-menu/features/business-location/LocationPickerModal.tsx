@@ -112,7 +112,10 @@ export function LocationPickerModal({
             latitude: Number(values.latitude),
             longitude: Number(values.longitude),
         })
-        if (parsed.success) onSave(parsed.data)
+        if (parsed.success) {
+            onSave(parsed.data)
+            onClose()
+        }
     }
 
     return (
