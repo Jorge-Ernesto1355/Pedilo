@@ -2,7 +2,6 @@
 
 import { FormEvent, Suspense, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import Image from 'next/image'
 import { Inter, Source_Serif_4 } from 'next/font/google'
 import { loginSchema } from '@/app/auth/lib/validation'
 import { networkAuthError, safeAuthError } from '@/app/auth/lib/client/error-message'
@@ -157,16 +156,6 @@ function LoginForm() {
                 transition={{ duration: 0.6 }}
                 className="relative order-2 isolate flex min-h-[auto] flex-col justify-between overflow-hidden bg-[#1E40AF] p-8 text-white sm:p-12 lg:order-none lg:min-h-[100svh] lg:p-16"
             >
-                {/* imagen de fondo */}
-                <div className="absolute inset-0 -z-20 opacity-[.28]">
-                    <Image
-                        src="/reassurance-bg.jpg"
-                        alt=""
-                        fill
-                        priority
-                        className="object-cover object-center"
-                    />
-                </div>
                 {/* velos de degradado */}
                 <div className="absolute inset-0 -z-20 bg-gradient-to-br from-[#1E40AF]/[.82] to-[#0F1E6E]/[.92]" />
                 <div className="absolute inset-0 -z-10 bg-gradient-to-b from-[#1E40AF]/35 to-[#0F1E5A]/55" />
