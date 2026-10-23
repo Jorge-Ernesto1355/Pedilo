@@ -57,6 +57,21 @@ function requestField(body: unknown, field: string, fallback: string) {
 }
 
 function installCatalogSetupApi(state: CatalogState) {
+    // La pantalla de creación hidrata el businessId desde /businesses/mine.
+    // Si no se intercepta/espera esta llamada, el submit puede ejecutarse
+    // mientras businessId todavía es null y la mutación no hace ninguna
+    // petición POST.
+    cy.intercept('GET', '**/api/v1/businesses/mine', {
+        statusCode: 200,
+        body: {
+            business: {
+                id: businessId,
+                name: 'Restaurante E2E',
+                slug: 'restaurante-order-complete-e2e',
+            },
+        },
+    }).as('currentBusiness')
+
     cy.intercept('GET', '**/businesses/mine/menus', (request) => {
         request.alias = 'listMenus'
         request.reply({ statusCode: 200, body: state.menu ? [state.menu] : [] })
@@ -229,6 +244,7 @@ describe('E2E completo: crear catálogo y ordenar desde Pedidos', () => {
 
         installCatalogSetupApi(state)
         cy.visit('/create-menu')
+        cy.wait('@currentBusiness')
         cy.wait('@listMenus')
 
         cy.contains('button', 'Crear menú').first().click()
