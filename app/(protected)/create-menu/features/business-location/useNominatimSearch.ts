@@ -11,6 +11,7 @@ export type NominatimResult = {
         city?: string
         town?: string
         village?: string
+        locality?: string
         hamlet?: string
         city_district?: string
         municipality?: string
@@ -19,53 +20,65 @@ export type NominatimResult = {
         state?: string
         region?: string
         country?: string
+        country_code?: string
     }
 }
 
-async function searchNominatim(query: string, signal?: AbortSignal) {
-    const params = new URLSearchParams({
-        q: query,
-        format: 'jsonv2',
-        limit: '5',
-        addressdetails: '1',
-        countrycodes: 'mx',
-    })
-    const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?${params.toString()}`,
-        {
-            headers: { Accept: 'application/json', 'Accept-Language': 'es-MX,es;q=0.9' },
-            referrerPolicy: 'origin',
-            signal,
+export function formatLocationResult(result: NominatimResult) {
+    const address = result.address
+    const locality =
+        address?.city ??
+        address?.town ??
+        address?.village ??
+        address?.locality ??
+        address?.hamlet ??
+        address?.city_district
+    const municipality = address?.municipality ?? address?.county ?? address?.state_district
+    const state = address?.state ?? address?.region
+    const parts = [locality, municipality, state].filter(
+        (part, index, values): part is string => {
+            if (!part?.trim()) return false
+            const normalizedPart = part.trim().toLocaleLowerCase()
+            return (
+                values.findIndex(
+                    (value) => value?.trim().toLocaleLowerCase() === normalizedPart,
+                ) === index
+            )
         },
     )
-    if (!response.ok) throw new Error('Nominatim search failed')
-    const results = (await response.json()) as NominatimResult[]
-    if (results.length > 0 || /méxico|mexico/i.test(query)) return results
 
-    const fallbackParams = new URLSearchParams({
-        q: `${query}, México`,
-        format: 'jsonv2',
-        limit: '5',
-        addressdetails: '1',
-        countrycodes: 'mx',
+    return parts.length >= 2 ? parts.join(', ') : null
+}
+
+function normalizeResults(results: NominatimResult[]) {
+    const seen = new Set<string>()
+
+    return results.filter((result) => {
+        const formatted = formatLocationResult(result)
+        if (!formatted) return false
+
+        const key = formatted.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase()
+        if (seen.has(key)) return false
+        seen.add(key)
+        return true
     })
-    const fallbackResponse = await fetch(
-        `https://nominatim.openstreetmap.org/search?${fallbackParams.toString()}`,
-        {
-            headers: { Accept: 'application/json', 'Accept-Language': 'es-MX,es;q=0.9' },
-            referrerPolicy: 'origin',
-            signal,
-        },
-    )
-    if (!fallbackResponse.ok) throw new Error('Nominatim fallback search failed')
-    return fallbackResponse.json() as Promise<NominatimResult[]>
+}
+
+async function searchNominatim(query: string, signal?: AbortSignal) {
+    const response = await fetch(`/api/geocoding/search?q=${encodeURIComponent(query)}`, {
+        headers: { Accept: 'application/json' },
+        signal,
+    })
+    if (!response.ok) throw new Error(`Location search returned ${response.status}`)
+
+    const payload = (await response.json()) as { results?: NominatimResult[] }
+    return normalizeResults(payload.results ?? [])
 }
 
 export function useNominatimSearch() {
     const [query, setQuery] = useState('')
     const [results, setResults] = useState<NominatimResult[]>([])
-    const [isSearching, setIsSearching] = useState(false)
-    const [searchError, setSearchError] = useState(false)
+    const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'empty' | 'error'>('idle')
 
     const geocode = useCallback(async (value: string) => {
         if (!value.trim()) return null
@@ -82,27 +95,28 @@ export function useNominatimSearch() {
         if (normalizedQuery.length < 2) {
             const clearTimer = window.setTimeout(() => {
                 setResults([])
-                setIsSearching(false)
+                setStatus('idle')
             }, 0)
             return () => window.clearTimeout(clearTimer)
         }
 
         const controller = new AbortController()
         const timer = window.setTimeout(() => {
-            setIsSearching(true)
-            setSearchError(false)
+            setStatus('loading')
+            setResults([])
             void searchNominatim(normalizedQuery, controller.signal)
                 .then((matches) => {
                     setResults(matches)
+                    setStatus(matches.length > 0 ? 'success' : 'empty')
                 })
                 .catch((error: unknown) => {
                     if (error instanceof DOMException && error.name === 'AbortError') return
                     if (controller.signal.aborted) return
                     setResults([])
-                    setSearchError(true)
+                    setStatus('error')
                 })
                 .finally(() => {
-                    if (!controller.signal.aborted) setIsSearching(false)
+                    if (controller.signal.aborted) setStatus('idle')
                 })
         }, 600)
 
@@ -112,7 +126,15 @@ export function useNominatimSearch() {
         }
     }, [query])
 
-    return { query, setQuery, results, isSearching, searchError, geocode }
+    return {
+        query,
+        setQuery,
+        results,
+        status,
+        isSearching: status === 'loading',
+        searchError: status === 'error',
+        geocode,
+    }
 }
 
 // Nominatim is intentionally used only for light browser traffic here. Production
