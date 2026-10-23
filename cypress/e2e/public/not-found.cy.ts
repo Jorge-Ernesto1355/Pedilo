@@ -23,4 +23,22 @@ describe('Public · página 404', () => {
         cy.get('[data-testid="not-found-page"]').should('not.exist')
         cy.get('[data-testid="login-submit"]').should('be.visible')
     })
+
+    it('mantiene la composición sin overflow en móvil, tablet y escritorio', () => {
+        for (const viewport of [
+            [390, 844],
+            [768, 1024],
+            [1024, 768],
+            [1440, 900],
+        ]) {
+            cy.viewport(viewport[0], viewport[1])
+            cy.visit('/ruta-inexistente/pedilo-404', { failOnStatusCode: false })
+            cy.get('[data-testid="not-found-page"]').should('be.visible')
+            cy.document().then((document) => {
+                expect(document.documentElement.scrollWidth).to.be.at.most(
+                    document.defaultView?.innerWidth ?? 0,
+                )
+            })
+        }
+    })
 })
