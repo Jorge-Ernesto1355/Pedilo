@@ -3,7 +3,13 @@
 import { Check, MessageCircle, X } from 'lucide-react'
 import { motion, useReducedMotion } from 'framer-motion'
 
-export function OrderConfirmationModal({ onClose }: { onClose: () => void }) {
+export function OrderConfirmationModal({
+    onClose,
+    whatsappUrl,
+}: {
+    onClose: () => void
+    whatsappUrl?: string | null
+}) {
     const reducedMotion = useReducedMotion()
 
     return (
@@ -37,21 +43,33 @@ export function OrderConfirmationModal({ onClose }: { onClose: () => void }) {
                     </span>
                 </div>
                 <p className="mt-6 text-xs font-bold uppercase tracking-[.16em] text-[#16803D]">
-                    Pedido confirmado
+                    Pedido listo
                 </p>
                 <h2
                     id="order-confirmation-title"
                     className="mt-2 font-display text-3xl tracking-[-.05em] text-[#12234A]"
                 >
-                    ¡Pedido enviado!
+                    ¡Tu pedido está listo!
                 </h2>
                 <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-[#65738A]">
-                    Tu pedido fue enviado al negocio. Espera su respuesta por WhatsApp.
+                    Continúa en WhatsApp para enviarlo al negocio y esperar su respuesta.
                 </p>
+                {whatsappUrl && (
+                    <a
+                        href={whatsappUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        data-testid="manual-whatsapp-link"
+                        className="mt-5 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#B8DDC6] bg-[#F3FBF5] px-5 text-sm font-bold text-[#16803D] transition hover:bg-[#EAF8EE] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#25D366]/20"
+                    >
+                        <MessageCircle className="size-4 fill-current" />
+                        Abrir WhatsApp
+                    </a>
+                )}
                 <button
                     type="button"
                     onClick={onClose}
-                    className="mt-7 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#1E40AF] px-5 text-sm font-bold text-white transition hover:bg-[#183991] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#1E40AF]/20"
+                    className={`${whatsappUrl ? 'mt-3' : 'mt-7'} inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#1E40AF] px-5 text-sm font-bold text-white transition hover:bg-[#183991] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#1E40AF]/20`}
                 >
                     Seguir viendo el menú
                 </button>
