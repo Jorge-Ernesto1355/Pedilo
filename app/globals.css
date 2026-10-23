@@ -105,6 +105,7 @@ h6 {
     position: relative;
     isolation: isolate;
     overflow-x: clip;
+    overflow-y: clip;
     color: var(--pedilo-ink);
     background-color: var(--pedilo-blue-pale);
     background-image:
