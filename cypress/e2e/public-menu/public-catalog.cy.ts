@@ -280,7 +280,7 @@ describe('Catálogo público', () => {
         cy.wait('@getPublicCatalog')
 
         const agua = cy.contains('article', 'Agua fresca')
-        agua.find('button[aria-label="Agregar al carrito"]').click()
+        agua.find('button[aria-label="Agregar al carrito: Agua fresca"]').click()
         cy.contains('button', 'Ver mi pedido')
             .should('contain', '1 producto')
             .and('contain', '$35')
