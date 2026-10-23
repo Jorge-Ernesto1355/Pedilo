@@ -150,7 +150,7 @@ export default function RegisterPage() {
         <div className="font-outfit text-[17px] leading-[1.6] text-slate-900 bg-white">
             {/* NAV */}
             <header className="sticky top-0 z-50 border-b border-slate-200 bg-white">
-                <div className="mx-auto flex max-w-[1240px] items-center justify-between px-5 py-4 md:px-16">
+                <div className="mx-auto flex max-w-[1240px] items-center justify-between px-5 py-4 lg:px-16">
                     <Link
                         href="/"
                         className="inline-flex items-center gap-[9px] font-poppins text-[23px] font-black tracking-[-0.02em] text-slate-900 no-underline"
@@ -172,9 +172,9 @@ export default function RegisterPage() {
 
             {/* REGISTER SECTION */}
             <section id="main-content" className="bg-[#F3F7FB]">
-                <div className="grid min-h-[calc(100vh-58px)] grid-cols-1 items-stretch md:grid-cols-[1.05fr_0.95fr]">
+                <div className="grid min-h-[calc(100svh-58px)] grid-cols-1 items-stretch lg:grid-cols-[1.05fr_0.95fr]">
                     {/* FORM PANEL */}
-                    <div className="order-1 flex items-center justify-center bg-white px-6 py-10 sm:px-10 sm:py-16">
+                    <div className="order-1 flex items-center justify-start bg-white px-6 py-10 sm:px-10 sm:py-16 lg:justify-start xl:justify-center">
                         <motion.div
                             initial={{ opacity: 0, y: 28 }}
                             animate={{ opacity: 1, y: 0 }}

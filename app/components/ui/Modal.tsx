@@ -78,7 +78,7 @@ export function Modal({
                         aria-modal="true"
                         aria-labelledby="modal-title"
                         aria-describedby={description ? 'modal-description' : undefined}
-                        className={`flex max-h-[calc(100dvh-0.5rem)] w-full min-h-0 flex-col overflow-hidden rounded-t-[24px] border border-[#DCE5F3] bg-white shadow-[0_28px_90px_-34px_rgba(13,36,87,.4)] sm:max-h-[calc(100dvh-3rem)] sm:rounded-[24px] ${size === 'xl' ? 'max-w-5xl' : size === 'lg' ? 'max-w-2xl' : 'max-w-md'}`}
+                        className={`flex max-h-[calc(100svh-0.5rem)] w-full min-h-0 flex-col overflow-hidden rounded-t-[24px] border border-[#DCE5F3] bg-white shadow-[0_28px_90px_-34px_rgba(13,36,87,.4)] sm:max-h-[calc(100svh-3rem)] sm:rounded-[24px] ${size === 'xl' ? 'max-w-5xl' : size === 'lg' ? 'max-w-2xl' : 'max-w-md'}`}
                         initial={{ opacity: 0, y: 20, scale: 0.98 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 12, scale: 0.98 }}

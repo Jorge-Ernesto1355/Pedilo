@@ -233,7 +233,7 @@ export function NewRestaurantOrderDrawer({
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="new-restaurant-order-title"
-                className="flex max-h-[94vh] w-full flex-col overflow-hidden rounded-t-[24px] border border-[#DCE5F3] bg-[#F8FAFE] shadow-[0_24px_80px_-32px_rgba(19,49,117,.45)] sm:max-w-6xl sm:rounded-[24px]"
+                className="flex max-h-[94svh] w-full flex-col overflow-hidden rounded-t-[24px] border border-[#DCE5F3] bg-[#F8FAFE] shadow-[0_24px_80px_-32px_rgba(19,49,117,.45)] sm:max-w-6xl sm:rounded-[24px]"
             >
                 <header className="flex shrink-0 items-start justify-between gap-4 border-b border-[#E8EEF6] bg-white px-5 py-4 sm:px-7">
                     <div>

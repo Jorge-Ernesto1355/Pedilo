@@ -148,14 +148,14 @@ function LoginForm() {
     return (
         <main
             id="main-content"
-            className={`${inter.variable} ${sourceSerif.variable} grid min-h-screen grid-cols-1 bg-[#F5F7FB] font-[var(--font-space-grotesk)] md:grid-cols-[1fr_1.15fr]`}
+            className={`${inter.variable} ${sourceSerif.variable} grid min-h-[100svh] grid-cols-1 bg-[#F5F7FB] font-[var(--font-space-grotesk)] lg:grid-cols-[1fr_1.15fr]`}
         >
             {/* ============ IZQUIERDA: panel de historia ============ */}
             <motion.section
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.6 }}
-                className="relative order-2 isolate flex min-h-[auto] flex-col justify-between overflow-hidden bg-[#1E40AF] p-8 text-white sm:p-12 md:order-none md:min-h-screen lg:p-16"
+                className="relative order-2 isolate flex min-h-[auto] flex-col justify-between overflow-hidden bg-[#1E40AF] p-8 text-white sm:p-12 lg:order-none lg:min-h-[100svh] lg:p-16"
             >
                 {/* imagen de fondo */}
                 <div className="absolute inset-0 -z-20 opacity-[.28]">
@@ -192,7 +192,7 @@ function LoginForm() {
                     initial="hidden"
                     animate="visible"
                     transition={{ staggerChildren: 0.12, delayChildren: 0.18 }}
-                    className="max-w-none md:max-w-[40ch]"
+                    className="max-w-none lg:max-w-[40ch]"
                 >
                     <motion.p
                         variants={reveal}
@@ -204,14 +204,14 @@ function LoginForm() {
                     <motion.h1
                         variants={reveal}
                         transition={{ duration: 0.55 }}
-                        className="mb-5 font-[var(--font-fraunces)] text-[clamp(2.2rem,10vw,4.8rem)] font-black leading-[.92] tracking-[-.04em] md:text-[clamp(2.8rem,5.2vw,4.9rem)]"
+                        className="mb-5 font-[var(--font-fraunces)] text-[clamp(2.2rem,10vw,4.8rem)] font-black leading-[.92] tracking-[-.04em] lg:text-[clamp(2.8rem,5.2vw,4.9rem)]"
                     >
                         Todo empieza aquí.
                     </motion.h1>
                     <motion.p
                         variants={reveal}
                         transition={{ duration: 0.55 }}
-                        className="max-w-none font-[var(--font-source-serif)] text-[clamp(1.05rem,1.5vw,1.3rem)] leading-[1.6] text-white/90 md:max-w-[34ch]"
+                        className="max-w-none font-[var(--font-source-serif)] text-[clamp(1.05rem,1.5vw,1.3rem)] leading-[1.6] text-white/90 lg:max-w-[34ch]"
                     >
                         Administra pedidos, inventario, ventas e informes desde un solo lugar. Menos
                         complicaciones, más tiempo para hacer crecer tu negocio.
@@ -223,7 +223,7 @@ function LoginForm() {
                     initial={{ opacity: 0, y: 14 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.45, delay: 0.56 }}
-                    className="mt-8 max-w-none md:mt-0 md:max-w-[40ch]"
+                    className="mt-8 max-w-none lg:mt-0 lg:max-w-[40ch]"
                 >
                     <p className="mb-4 border-t border-white/20 pt-5 font-[var(--font-inter)] text-[13px] tracking-[.02em] text-white/75">
                         Organiza tu menú y recibe pedidos con más claridad.
@@ -241,7 +241,7 @@ function LoginForm() {
             </motion.section>
 
             {/* ============ DERECHA: panel blanco ============ */}
-            <div className="order-1 flex flex-col justify-center bg-white px-6 py-8 sm:px-10 sm:py-14 md:order-none lg:px-16 lg:py-18">
+            <div className="order-1 flex flex-col justify-center bg-white px-6 py-8 sm:px-10 sm:py-14 lg:order-none lg:justify-start lg:px-16 lg:py-18 xl:justify-center">
                 <motion.div
                     initial={{ opacity: 0, x: 24 }}
                     animate={{ opacity: 1, x: 0 }}
@@ -510,7 +510,7 @@ function LoginForm() {
                     </motion.section>
                 </motion.div>
             </div>
-            <div className="order-3 md:contents">
+            <div className="order-3 lg:contents">
                 <SiteFooter />
             </div>
         </main>
@@ -526,5 +526,5 @@ export default function LoginPage() {
 }
 
 function LoginLoading() {
-    return <main className="min-h-screen bg-[#F5F7FB]" aria-busy="true" />
+    return <main className="min-h-[100svh] bg-[#F5F7FB]" aria-busy="true" />
 }

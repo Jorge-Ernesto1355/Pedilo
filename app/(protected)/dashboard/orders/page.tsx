@@ -526,7 +526,7 @@ function OrderDetailModal({
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="order-detail-title"
-                className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-[#DCE5F3] bg-white p-5 shadow-[0_25px_80px_rgb(16_34_74_/_0.2)] sm:p-7"
+                className="max-h-[92svh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-[#DCE5F3] bg-white p-5 shadow-[0_25px_80px_rgb(16_34_74_/_0.2)] sm:p-7"
             >
                 <div className="flex items-start justify-between gap-4">
                     <div>
