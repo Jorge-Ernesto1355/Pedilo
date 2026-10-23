@@ -159,7 +159,7 @@ describe('Flujo completo · usuario nuevo hasta orden lista', () => {
             cy.wait('@createOrder').its('response.statusCode').should('be.oneOf', [200, 201])
             cy.get('[role="dialog"][aria-labelledby="order-confirmation-title"]')
                 .should('be.visible')
-                .and('contain', '¡Pedido enviado!')
+                .and('contain', '¡Tu pedido está listo!')
 
             // Volver al dashboard → verificar → buscar la nueva orden.
             cy.intercept('GET', '**/businesses/*/orders*', (request) => {
