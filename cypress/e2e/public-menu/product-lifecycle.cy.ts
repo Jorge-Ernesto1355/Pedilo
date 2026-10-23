@@ -170,7 +170,7 @@ describe('Catálogo público · cambios de disponibilidad y precio', () => {
         cy.wait('@createOrder')
         cy.get('[role="dialog"][aria-labelledby="order-confirmation-title"]')
             .should('be.visible')
-            .and('contain', '¡Pedido enviado!')
+            .and('contain', '¡Tu pedido está listo!')
     })
 })
 
