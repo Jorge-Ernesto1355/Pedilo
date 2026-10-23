@@ -688,7 +688,7 @@ export default function RegisterPage() {
                     className="absolute inset-0 -z-10 bg-cover bg-center"
                     style={{
                         backgroundImage:
-                            'linear-gradient(115deg, rgba(15,23,42,0.94) 0%, rgba(15,23,42,0.78) 46%, rgba(15,23,42,0.4) 100%), url(/reassurance-bg.jpg)',
+                            'linear-gradient(115deg, rgba(15,23,42,0.94) 0%, rgba(15,23,42,0.78) 46%, rgba(15,23,42,0.4) 100%)',
                     }}
                 />
                 <div className="mx-auto max-w-[680px] px-5 py-[clamp(72px,11vw,140px)] md:px-16" />
