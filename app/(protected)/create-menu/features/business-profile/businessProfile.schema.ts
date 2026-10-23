@@ -18,7 +18,7 @@ const businessHoursSchema = z.object({
 export const businessProfileSchema = z.object({
     businessName: z.string().trim().min(1, 'Escribe el nombre de tu negocio.').max(40, 'Usa 40 caracteres o menos.'),
     slug: z.string().trim().min(1, 'Escribe una URL para tu negocio.').max(30, "Usa 30 caracteres o menos"),
-    location: z.string().trim().max(30, 'Usa 100 caracteres o menos.'),
+    location: z.string().trim().max(100, 'Usa 100 caracteres o menos.'),
     description: z.string().trim().max(180, 'Usa 180 caracteres o menos.'),
     businessHours: businessHoursSchema,
     coordinates: locationCoordinatesSchema.nullable(),
