@@ -127,11 +127,11 @@ function placeOrder(slug: string, seed: OrderSeed, index: number) {
     cy.get('section[aria-label="Menús"]').contains('button', menu.name).click()
     cy.contains('h2', menu.category, { timeout: 15_000 }).should('be.visible')
     cy.contains('article', seed.product.name)
-        .find(`button[aria-label="Agregar ${seed.product.name} al carrito"]`)
+        .find(`button[aria-label="Agregar al carrito: ${seed.product.name}"]`)
         .click()
     for (let unit = 1; unit < seed.quantity; unit += 1) {
         cy.contains('article', seed.product.name)
-            .find(`button[aria-label="Agregar ${seed.product.name} al carrito"]`)
+            .find(`button[aria-label="Agregar al carrito: ${seed.product.name}"]`)
             .click()
     }
     cy.contains('button', 'Ver mi pedido').click()
@@ -142,7 +142,7 @@ function placeOrder(slug: string, seed: OrderSeed, index: number) {
     cy.wait('@createHighVolumeOrder').its('response.statusCode').should('be.oneOf', [200, 201])
     cy.get('[role="dialog"][aria-labelledby="order-confirmation-title"]')
         .should('be.visible')
-        .and('contain', '¡Pedido enviado!')
+        .and('contain', '¡Tu pedido está listo!')
     cy.get('button[aria-label="Cerrar confirmación"]').click()
 }
 
