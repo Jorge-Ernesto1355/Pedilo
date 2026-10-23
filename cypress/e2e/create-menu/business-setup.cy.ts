@@ -276,7 +276,7 @@ describe('Crear menú · perfil del restaurante', () => {
             statusCode: 200,
             body: { business: response },
         }).as('getCreatedBusiness')
-        cy.intercept('GET', 'https://nominatim.openstreetmap.org/search**', { body: [] })
+        cy.intercept('GET', '/api/geocoding/search**', { body: { results: [] } })
 
         fillBusinessProfile({
             name: response.name,
@@ -320,7 +320,7 @@ describe('Crear menú · perfil del restaurante', () => {
         cy.contains('Cambios guardados').should('be.visible')
     })
 
-    it('rechaza los límites de nombre, slug, ubicación y descripción antes de enviar', () => {
+    it('limita la longitud de ubicación y descripción antes de enviar', () => {
         let createCalls = 0
         cy.intercept('POST', '**/api/v1/businesses', () => {
             createCalls += 1
@@ -328,15 +328,66 @@ describe('Crear menú · perfil del restaurante', () => {
 
         cy.get('#businessName').clear().type('N'.repeat(41))
         cy.get('#slug').clear().type('s'.repeat(31))
-        cy.get('#location').clear().type('L'.repeat(31))
+        cy.get('#location').clear().type('L'.repeat(101))
         cy.get('#description').clear().type('D'.repeat(181))
+        cy.get('#location').should('have.value', 'L'.repeat(100))
+        cy.get('#description').should('have.value', 'D'.repeat(180))
         cy.contains('button', 'Guardar cambios').click()
 
         cy.contains('Usa 40 caracteres o menos.').should('be.visible')
-        cy.contains('Usa 30 caracteres o menos').should('be.visible')
-        cy.contains('Usa 100 caracteres o menos.').should('be.visible')
-        cy.contains('Usa 180 caracteres o menos.').should('be.visible')
+        cy.contains('Usa 100 caracteres o menos.').should('not.exist')
+        cy.contains('Usa 180 caracteres o menos.').should('not.exist')
         cy.then(() => expect(createCalls).to.eq(0))
+    })
+
+    it('sugiere la localidad, municipio y estado al buscar una ubicación', () => {
+        cy.intercept('GET', '/api/geocoding/search**', {
+            body: {
+                results: [
+                    {
+                        place_id: 123,
+                        display_name: 'Mochicahui, El Fuerte, Sinaloa, México',
+                        lat: '26.7331',
+                        lon: '-108.9332',
+                        address: {
+                            village: 'Mochicahui',
+                            county: 'El Fuerte',
+                            state: 'Sinaloa',
+                            country: 'México',
+                        },
+                    },
+                ],
+            },
+        }).as('searchLocation')
+
+        cy.get('#location').clear().type('Mochicahui')
+        cy.wait('@searchLocation')
+        cy.contains('button', 'Mochicahui, El Fuerte, Sinaloa').click()
+        cy.get('#location').should('have.value', 'Mochicahui, El Fuerte, Sinaloa')
+    })
+
+    it('muestra los estados de carga y ausencia de resultados', () => {
+        cy.intercept('GET', '/api/geocoding/search**', (request) => {
+            request.reply({ delay: 500, body: { results: [] } })
+        }).as('emptyLocationSearch')
+
+        cy.get('#location').type('Lugar inexistente')
+        cy.contains('Buscando ubicaciones…', { timeout: 2_000 }).should('be.visible')
+        cy.wait('@emptyLocationSearch')
+        cy.contains('No se encontraron ubicaciones').should('be.visible')
+    })
+
+    it('muestra un error cuando falla el servicio de ubicaciones', () => {
+        cy.intercept('GET', '/api/geocoding/search**', {
+            statusCode: 502,
+            body: { error: 'No se pudieron cargar las ubicaciones.' },
+        }).as('failedLocationSearch')
+
+        cy.get('#location').type('Mochicahui')
+        cy.wait('@failedLocationSearch')
+        cy.contains('No se pudieron cargar las ubicaciones. Intenta nuevamente').should(
+            'be.visible',
+        )
     })
 
     it('no guarda coordenadas inválidas desde el selector de ubicación', () => {
