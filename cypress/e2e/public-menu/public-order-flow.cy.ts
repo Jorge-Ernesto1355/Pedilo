@@ -173,14 +173,13 @@ describe('Crear pedido desde el catálogo público', () => {
 
         cy.visit(`/${slug}`)
         cy.wait('@getPublicCatalog')
+        const whatsappPopup = {
+            document: { title: '', body: { innerHTML: '' } },
+            location: { href: '' },
+            close: () => undefined,
+        }
         cy.window().then((window) => {
-            cy.stub(window, 'open')
-                .as('openWhatsApp')
-                .returns({
-                    document: { title: '', body: { innerHTML: '' } },
-                    location: { href: '' },
-                    close: () => undefined,
-                })
+            cy.stub(window, 'open').as('openWhatsApp').returns(whatsappPopup)
         })
 
         cy.contains('article', 'Agua fresca').within(() => {
@@ -256,8 +255,13 @@ describe('Crear pedido desde el catálogo público', () => {
 
         cy.get('[role="dialog"][aria-labelledby="order-confirmation-title"]')
             .should('be.visible')
-            .and('contain', '¡Pedido enviado!')
-            .and('contain', 'Tu pedido fue enviado al negocio.')
+            .and('contain', '¡Tu pedido está listo!')
+            .and('contain', 'Continúa en WhatsApp para enviarlo al negocio y esperar su respuesta.')
+        cy.then(() => {
+            expect(whatsappPopup.document.body.innerHTML).to.contain('¡Tu pedido va en camino!')
+            expect(whatsappPopup.document.body.innerHTML).to.contain('Abrir WhatsApp manualmente')
+            expect(whatsappPopup.location.href).to.match(/^https:\/\/wa\.me\//)
+        })
     })
 
     it('evita crear pedidos duplicados al confirmar dos veces', () => {
@@ -289,8 +293,30 @@ describe('Crear pedido desde el catálogo público', () => {
         cy.then(() => expect(requests.orders).to.eq(1))
         cy.get('[role="dialog"][aria-labelledby="order-confirmation-title"]').should(
             'contain',
-            '¡Pedido enviado!',
+            '¡Tu pedido está listo!',
         )
+    })
+
+    it('muestra un enlace manual si el navegador bloquea la ventana de WhatsApp', () => {
+        installOrderApi()
+
+        cy.visit(`/${slug}`)
+        cy.wait('@getPublicCatalog')
+        cy.window().then((window) => {
+            cy.stub(window, 'open').as('blockedWhatsApp').returns(null)
+        })
+
+        addConfiguredTacoAndOpenOrder()
+        cy.get('[role="dialog"][aria-labelledby="order-title"]')
+            .contains('button', 'Confirmar pedido')
+            .click()
+        cy.wait('@createPublicOrder')
+
+        cy.get('[data-testid="manual-whatsapp-link"]')
+            .should('be.visible')
+            .and('contain', 'Abrir WhatsApp')
+            .and('have.attr', 'href')
+            .and('match', /^https:\/\/wa\.me\//)
     })
 
     mobileViewports.forEach(({ width, height }) => {
@@ -343,7 +369,7 @@ describe('Crear pedido desde el catálogo público', () => {
             assertDialogFitsViewport('[role="dialog"][aria-labelledby="order-confirmation-title"]')
             cy.get('[role="dialog"][aria-labelledby="order-confirmation-title"]').should(
                 'contain',
-                '¡Pedido enviado!',
+                '¡Tu pedido está listo!',
             )
             assertPageFitsViewport()
         })
