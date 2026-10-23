@@ -214,7 +214,7 @@ describe('Productos · historial y cambios concurrentes', () => {
         cy.wait('@createOrder')
         cy.get('[role="dialog"][aria-labelledby="order-confirmation-title"]').should(
             'contain',
-            '¡Pedido enviado!',
+            '¡Tu pedido está listo!',
         )
     })
 
