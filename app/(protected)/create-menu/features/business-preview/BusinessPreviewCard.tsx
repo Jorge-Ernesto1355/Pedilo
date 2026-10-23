@@ -117,7 +117,7 @@ export function BusinessPreviewCard({
                         </div>
                     </div>
                 </div>
-                <p className="mt-6 max-w-xl text-[15px] leading-7 text-[#52627B]">
+                <p className="mt-6 w-full min-w-0 max-w-xl text-[15px] leading-7 text-[#52627B] [overflow-wrap:anywhere]">
                     {description ||
                         'Una breve descripción ayudará a tus clientes a conocerte mejor.'}
                 </p>
