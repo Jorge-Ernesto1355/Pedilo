@@ -63,6 +63,8 @@ export type SalesDashboardResponse = {
     timezone?: string
     total: number
     previousTotal?: number
+    historicalSales?: number
+    historicalOrderCount?: number
     ordersCount: number
     trend: number
     averageTicket: number
@@ -73,6 +75,52 @@ export type SalesDashboardResponse = {
 }
 
 export type SalesData = SalesDashboardResponse
+
+export type HistoricalSalesResponse = {
+    historicalSales: number
+    historicalOrderCount: number
+}
+
+export type TrendPoint = {
+    label: string
+    start: string
+    sales: number
+    orderCount: number
+}
+
+export type TrendComparison = {
+    current_total: number
+    previous_total: number
+    difference: number
+    percentage_change: number | null
+    status: 'OK' | 'NO_BASELINE'
+}
+
+export type TrendTooltipPoint = {
+    timestamp: string
+    label: string
+    current_sales: number
+    previous_sales: number
+    difference: number
+    percentage_change: number | null
+    current_orders_count: number
+    previous_orders_count: number
+    status: 'OK' | 'NO_BASELINE'
+}
+
+export type TrendDashboardResponse = {
+    period: SalesPeriod
+    granularity: SalesGranularity
+    timezone: string
+    trend: number
+    points: TrendPoint[]
+    series: {
+        current: TrendPoint[]
+        previous: TrendPoint[]
+    }
+    comparison: TrendComparison
+    tooltip: TrendTooltipPoint[]
+}
 
 export type AverageTicketPeriodMetrics = {
     total_sales?: string
