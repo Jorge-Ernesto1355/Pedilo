@@ -280,13 +280,11 @@ describe('Catálogo público', () => {
         cy.wait('@getPublicCatalog')
 
         const agua = cy.contains('article', 'Agua fresca')
-        agua.find('button[aria-label="Agregar al carrito: Agua fresca"]').click()
-        cy.contains('button', 'Ver mi pedido')
-            .should('contain', '1 producto')
-            .and('contain', '$35')
+        agua.contains('button', 'Agregar al carrito').click()
+        cy.contains('button', 'Ver mi pedido').should('contain', '1 producto').and('contain', '$35')
 
         // The same product is merged into one line instead of duplicated.
-        agua.find('button[aria-label="Agregar al carrito: Agua fresca"]').click()
+        agua.contains('button', 'Agregar al carrito').click()
         cy.contains('button', 'Ver mi pedido')
             .should('contain', '2 productos')
             .and('contain', '$70')
