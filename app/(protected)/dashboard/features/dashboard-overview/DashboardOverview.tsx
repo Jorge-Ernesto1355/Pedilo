@@ -5,6 +5,8 @@ import { CalendarDays } from 'lucide-react'
 import { useDateRangeFilter } from '../dashboard-filters/useDateRangeFilter'
 import { DateRangeFilter } from '../dashboard-filters/DateRangeFilter'
 import { useSalesData } from '../dashboard-sales/useSalesData'
+import { useTrendData } from '../dashboard-sales/useTrendData'
+import { useHistoricalSalesData } from '../dashboard-sales/useHistoricalSalesData'
 import { SalesChart } from '../dashboard-sales/SalesChart'
 import { SalesKpiCard } from '../dashboard-sales/SalesKpiCard'
 import { AverageTicketKpiCard } from '../dashboard-sales/AverageTicketKpiCard'
@@ -26,6 +28,8 @@ import { SalesAccountingNotice } from '../dashboard-sales/SalesAccountingNotice'
 export function DashboardOverview() {
     const { range, setRange } = useDateRangeFilter()
     const sales = useSalesData(range)
+    const trend = useTrendData(range)
+    const historicalSales = useHistoricalSalesData()
     const averageTicket = useAverageTicketData(range)
 
     const orders = useOrders({ page: 1, limit: 5 })
@@ -42,16 +46,16 @@ export function DashboardOverview() {
         productAnalytics.bestSelling.data ?? [],
     )
     const recentOrders = toOrdersData(orders.data?.orders ?? [])
-    const insights = sales.data
+    const insights = trend.data
         ? [
               {
                   label: 'Tendencia',
-                  value: `${sales.data.trend > 0 ? '+' : ''}${sales.data.trend}%`,
+                  value: `${trend.data.trend > 0 ? '+' : ''}${trend.data.trend}%`,
                   detail: 'comparado con el periodo anterior',
               },
               {
                   label: 'Órdenes',
-                  value: String(sales.data.ordersCount),
+                  value: String(sales.data?.ordersCount ?? 0),
                   detail: 'en el periodo seleccionado',
               },
           ]
@@ -90,6 +94,11 @@ export function DashboardOverview() {
                     isLoading={sales.isLoading}
                     isError={sales.isError}
                     onRetry={() => void sales.refetch()}
+                    historicalData={historicalSales.data}
+                    historicalIsLoading={historicalSales.isLoading}
+                    historicalIsError={historicalSales.isError}
+                    historicalIsRetrying={historicalSales.isFetching}
+                    onHistoricalRetry={() => void historicalSales.refetch()}
                 />
                 <AverageTicketKpiCard
                     data={averageTicket.data?.data}
@@ -123,13 +132,13 @@ export function DashboardOverview() {
                         Ver detalle
                     </Link>
                 </div>
-                {sales.data ? (
-                    <SalesChart data={sales.data} currency={currency} />
+                {trend.data ? (
+                    <SalesChart data={trend.data} currency={currency} />
                 ) : (
                     <DashboardCardError
                         title="Ventas no disponibles"
                         description="No pudimos cargar la gráfica de este periodo."
-                        onRetry={() => void sales.refetch()}
+                        onRetry={() => void trend.refetch()}
                     />
                 )}
                 <div className="mt-5">
