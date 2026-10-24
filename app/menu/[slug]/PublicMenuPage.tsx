@@ -18,6 +18,7 @@ import {
     normalizeBusinessWhatsAppNumber,
 } from './features/public-menu/whatsapp'
 import type { PublicProduct } from './features/public-menu/publicCatalog.types'
+import type { CartLine } from './features/public-menu/types'
 
 function LoadingMenu() {
     return (
@@ -365,6 +366,8 @@ export default function PublicMenuPage({ slug }: { slug: string }) {
     const [menuId, setMenuId] = useState('')
     const [activeCategory, setActiveCategory] = useState('')
     const [product, setProduct] = useState<PublicProduct | null>(null)
+    const [editingLineKey, setEditingLineKey] = useState<string | null>(null)
+    const [editingSelections, setEditingSelections] = useState<CartLine['selections']>([])
     const [orderOpen, setOrderOpen] = useState(false)
     const [isSubmittingOrder, setIsSubmittingOrder] = useState(false)
     const [orderError, setOrderError] = useState<string | null>(null)
@@ -465,8 +468,8 @@ export default function PublicMenuPage({ slug }: { slug: string }) {
                         </h1>
                         <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-[#65738A] sm:text-base">
                             Parece que el enlace cambió o el negocio dejó de publicar su menú en
-                            Pedilo. Ponte en contacto directamente con el negocio para confirmar
-                            su nuevo enlace o disponibilidad.
+                            Pedilo. Ponte en contacto directamente con el negocio para confirmar su
+                            nuevo enlace o disponibilidad.
                         </p>
                     </section>
                 </main>
@@ -641,7 +644,11 @@ export default function PublicMenuPage({ slug }: { slug: string }) {
                                                 <ProductCard
                                                     key={item.id}
                                                     product={item}
-                                                    onSelect={() => setProduct(item)}
+                                                    onSelect={() => {
+                                                        setEditingLineKey(null)
+                                                        setEditingSelections([])
+                                                        setProduct(item)
+                                                    }}
                                                     onAdd={() => cart.add(item)}
                                                 />
                                             ))}
@@ -671,6 +678,11 @@ export default function PublicMenuPage({ slug }: { slug: string }) {
                 open={orderOpen}
                 businessName={query.data.business.name}
                 onChangeQuantity={cart.changeQuantity}
+                onEditLine={(line) => {
+                    setEditingLineKey(line.key)
+                    setEditingSelections(line.selections)
+                    setProduct(line.product)
+                }}
                 onOpen={() => setOrderOpen(true)}
                 onClose={() => {
                     setOrderOpen(false)
@@ -683,11 +695,19 @@ export default function PublicMenuPage({ slug }: { slug: string }) {
                 orderError={orderError}
             />
             <ProductCustomizeDialog
-                key={product?.id ?? 'empty'}
+                key={`${product?.id ?? 'empty'}:${editingLineKey ?? 'new'}`}
                 product={product}
-                onClose={() => setProduct(null)}
+                initialSelections={editingSelections}
+                editing={editingLineKey !== null}
+                onClose={() => {
+                    setProduct(null)
+                    setEditingLineKey(null)
+                    setEditingSelections([])
+                }}
                 onAdd={(selections) => {
-                    if (product) cart.add(product, selections)
+                    if (!product) return
+                    if (editingLineKey) cart.edit(editingLineKey, selections)
+                    else cart.add(product, selections)
                 }}
             />
             {orderConfirmed && (
