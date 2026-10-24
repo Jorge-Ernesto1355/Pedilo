@@ -10,6 +10,13 @@ function getUnitPrice(product: PublicMenuProduct, selections: CartSelection[]) {
     )
 }
 
+function getLineKey(product: PublicMenuProduct, selections: CartSelection[]) {
+    return [
+        product.id,
+        ...selections.map((selection) => `${selection.id}:${selection.quantity}`).sort(),
+    ].join(':')
+}
+
 export function useOrderCart() {
     const [lines, setLines] = useState<CartLine[]>([])
     const totalItems = useMemo(
@@ -22,10 +29,7 @@ export function useOrderCart() {
     )
 
     function add(product: PublicMenuProduct, selections: CartSelection[] = []) {
-        const key = [
-            product.id,
-            ...selections.map((selection) => `${selection.id}:${selection.quantity}`).sort(),
-        ].join(':')
+        const key = getLineKey(product, selections)
         const unitPrice = getUnitPrice(product, selections)
         setLines((current) => {
             const existing = current.find((line) => line.key === key)
@@ -34,6 +38,26 @@ export function useOrderCart() {
                     line.key === key ? { ...line, quantity: line.quantity + 1 } : line,
                 )
             return [...current, { key, product, quantity: 1, selections, unitPrice }]
+        })
+    }
+
+    function edit(key: string, selections: CartSelection[]) {
+        setLines((current) => {
+            const line = current.find((item) => item.key === key)
+            if (!line) return current
+            const nextKey = getLineKey(line.product, selections)
+            const nextLine = {
+                ...line,
+                key: nextKey,
+                selections,
+                unitPrice: getUnitPrice(line.product, selections),
+            }
+            const duplicate = current.find((item) => item.key === nextKey && item.key !== key)
+            if (duplicate)
+                return current
+                    .filter((item) => item.key !== key && item.key !== nextKey)
+                    .concat({ ...duplicate, quantity: duplicate.quantity + line.quantity })
+            return current.map((item) => (item.key === key ? nextLine : item))
         })
     }
 
@@ -53,5 +77,5 @@ export function useOrderCart() {
         setLines([])
     }
 
-    return { lines, totalItems, total, add, changeQuantity, clear }
+    return { lines, totalItems, total, add, edit, changeQuantity, clear }
 }
