@@ -10,6 +10,8 @@ import { SalesKpiCard } from '../features/dashboard-sales/SalesKpiCard'
 import { AverageTicketKpiCard } from '../features/dashboard-sales/AverageTicketKpiCard'
 import { useAverageTicketData } from '../features/dashboard-sales/useAverageTicketData'
 import { TrendKpiCard } from '../features/dashboard-sales/TrendKpiCard'
+import { useTrendData } from '../features/dashboard-sales/useTrendData'
+import { useHistoricalSalesData } from '../features/dashboard-sales/useHistoricalSalesData'
 import { SalesPointsTable } from '../features/dashboard-sales/SalesPointsTable'
 import { OrdersKpiCard } from '../features/dashboard-orders/OrdersKpiCard'
 import { DashboardCardError } from '../components/DashboardCardError'
@@ -19,6 +21,8 @@ import { SalesAccountingNotice } from '../features/dashboard-sales/SalesAccounti
 export default function SalesPage() {
     const { range, setRange } = useDateRangeFilter('today')
     const sales = useSalesData(range)
+    const trend = useTrendData(range)
+    const historicalSales = useHistoricalSalesData()
     const averageTicket = useAverageTicketData(range)
     const settings = useBusinessSettings(true)
     const currency = settings.settings.data?.currency ?? 'MXN'
@@ -26,7 +30,7 @@ export default function SalesPage() {
     return (
         <main
             className="mx-auto max-w-[1200px] space-y-6 px-5 py-8 sm:px-8 lg:py-10"
-            aria-busy={sales.isFetching}
+            aria-busy={sales.isFetching || trend.isFetching || averageTicket.isFetching}
         >
             <Link
                 href="/dashboard"
@@ -53,14 +57,20 @@ export default function SalesPage() {
                             isLoading={sales.isLoading}
                             isError={sales.isError}
                             onRetry={() => void sales.refetch()}
+                            historicalData={historicalSales.data}
+                            historicalIsLoading={historicalSales.isLoading}
+                            historicalIsError={historicalSales.isError}
+                            historicalIsRetrying={historicalSales.isFetching}
+                            onHistoricalRetry={() => void historicalSales.refetch()}
                         />
                     </div>
                     <TrendKpiCard
-                        data={sales.data}
+                        data={trend.data}
                         currency={currency}
-                        isLoading={sales.isLoading}
-                        isError={sales.isError}
-                        onRetry={() => void sales.refetch()}
+                        isLoading={trend.isLoading}
+                        isError={trend.isError}
+                        isRetrying={trend.isFetching}
+                        onRetry={() => void trend.refetch()}
                     />
                     <AverageTicketKpiCard
                         data={averageTicket.data?.data}
@@ -79,20 +89,20 @@ export default function SalesPage() {
                         onRetry={() => void sales.refetch()}
                     />
                 </section>
-                {sales.data ? (
+                {trend.data ? (
                     <section className="relative rounded-2xl border border-[#DCE5F3] bg-white p-5 shadow-[0_8px_22px_rgb(20_48_105_/_0.055)] sm:p-6">
                         <h2 className="font-display text-lg text-[#12234A]">Ventas por periodo</h2>
                         <p className="mt-1 text-sm text-[#65738A]">
                             Mira cómo se mueven tus ventas.
                         </p>
                         <div className="relative mt-5">
-                            <SalesChart data={sales.data} currency={currency} />
+                            <SalesChart data={trend.data} currency={currency} />
                         </div>
                         <div className="mt-5">
                             <SalesAccountingNotice />
                         </div>
-                        <SalesPointsTable data={sales.data} currency={currency} />
-                        {sales.isFetching ? (
+                        <SalesPointsTable data={trend.data} currency={currency} />
+                        {trend.isFetching ? (
                             <div className="absolute inset-0 grid place-items-center rounded-2xl bg-white/70 text-sm text-[#65738A]">
                                 Actualizando ventas…
                             </div>
@@ -104,7 +114,7 @@ export default function SalesPage() {
                         <DashboardCardError
                             title="Gráfica de ventas no disponible"
                             description="No pudimos cargar los datos de este periodo."
-                            onRetry={() => void sales.refetch()}
+                            onRetry={() => void trend.refetch()}
                         />
                     </section>
                 )}
