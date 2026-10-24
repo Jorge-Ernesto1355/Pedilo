@@ -249,6 +249,14 @@ async function ensureProducts(business, menuEntries) {
                     }),
                     'product',
                 )
+            } else if (product.isAvailable === false || product.active === false) {
+                product = unwrap(
+                    await request(`/businesses/products/${product.id}/status`, {
+                        method: 'PATCH',
+                        body: { isAvailable: true },
+                    }),
+                    'product',
+                )
             }
             output.push(product)
         }
