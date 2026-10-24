@@ -9,10 +9,16 @@ import {
     XAxis,
     YAxis,
 } from 'recharts'
-import type { SalesData } from '../dashboard-data/dashboardData.types'
+import type { TrendDashboardResponse } from '../dashboard-data/dashboardData.types'
 import { formatMoney } from '../dashboard-data/formatters'
 
-export function SalesChart({ data, currency = 'MXN' }: { data: SalesData; currency?: string }) {
+export function SalesChart({
+    data,
+    currency = 'MXN',
+}: {
+    data: TrendDashboardResponse
+    currency?: string
+}) {
     const labelInterval = data.points.length > 14 ? Math.ceil(data.points.length / 10) - 1 : 0
 
     return (
@@ -59,14 +65,30 @@ export function SalesChart({ data, currency = 'MXN' }: { data: SalesData; curren
     )
 }
 
-function SalesTooltip({ active, payload, label, currency }: { active?: boolean; payload?: Array<{ payload?: { sales?: number; orderCount?: number } }>; label?: string; currency: string }) {
+function SalesTooltip({
+    active,
+    payload,
+    label,
+    currency,
+}: {
+    active?: boolean
+    payload?: Array<{ payload?: { sales?: number; orderCount?: number } }>
+    label?: string
+    currency: string
+}) {
     if (!active || !payload?.length) return null
     const point = payload[0]?.payload
     return (
         <div className="rounded-xl border border-[#DCE5F3] bg-white px-3 py-2.5 text-sm text-[#12234A] shadow-[0_10px_25px_rgb(20_48_105_/_0.12)]">
             <p className="mb-2 font-semibold text-[#65738A]">{label}</p>
-            <p><span className="text-[#65738A]">Ventas</span> <strong>{formatMoney(point?.sales ?? 0, currency)}</strong></p>
-            <p><span className="text-[#65738A]">Órdenes</span> <strong>{point?.orderCount ?? 0}</strong></p>
+            <p>
+                <span className="text-[#65738A]">Ventas</span>{' '}
+                <strong>{formatMoney(point?.sales ?? 0, currency)}</strong>
+            </p>
+            <p>
+                <span className="text-[#65738A]">Órdenes</span>{' '}
+                <strong>{point?.orderCount ?? 0}</strong>
+            </p>
         </div>
     )
 }
