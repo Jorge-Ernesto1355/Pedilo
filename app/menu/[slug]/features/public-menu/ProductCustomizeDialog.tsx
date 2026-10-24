@@ -15,16 +15,22 @@ export function ProductCustomizeDialog({
     product,
     onClose,
     onAdd,
+    initialSelections = [],
+    editing = false,
 }: {
     product: PublicProduct | null
     onClose: () => void
     onAdd: (selections: CartSelection[]) => void
+    initialSelections?: CartSelection[]
+    editing?: boolean
 }) {
     const groups = useMemo(
         () => product?.optionGroups.slice().sort((a, b) => a.sortOrder - b.sortOrder) ?? [],
         [product],
     )
-    const [selected, setSelected] = useState<OptionQuantities>({})
+    const [selected, setSelected] = useState<OptionQuantities>(() =>
+        selectionsToQuantities(initialSelections, product?.optionGroups ?? []),
+    )
     if (!product) return null
     const validation = validateOptionGroups(groups, selected)
     const selectedOptions = groups.flatMap((group) =>
@@ -80,7 +86,7 @@ export function ProductCustomizeDialog({
                 <div className="flex items-start justify-between gap-4 border-b border-[#E8EEF6] px-5 py-4">
                     <div>
                         <p className="text-xs font-bold uppercase tracking-[.15em] text-[#2451C5]">
-                            Personaliza tu pedido
+                            {editing ? 'Edita tu pedido' : 'Personaliza tu pedido'}
                         </p>
                         <h2
                             id="customize-title"
@@ -214,10 +220,28 @@ export function ProductCustomizeDialog({
                         }}
                         className="min-h-11 rounded-xl bg-[#1E40AF] px-4 py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-45"
                     >
-                        Agregar al pedido
+                        {editing ? 'Guardar cambios' : 'Agregar al pedido'}
                     </button>
                 </div>
             </section>
         </div>
     )
+}
+
+function selectionsToQuantities(
+    selections: CartSelection[],
+    groups: PublicProduct['optionGroups'],
+): OptionQuantities {
+    const result: OptionQuantities = {}
+    for (const selection of selections) {
+        const group = groups.find((item) =>
+            item.options.some((option) => option.id === selection.id),
+        )
+        if (!group) continue
+        result[group.id] = {
+            ...(result[group.id] ?? {}),
+            [selection.id]: selection.quantity,
+        }
+    }
+    return result
 }
