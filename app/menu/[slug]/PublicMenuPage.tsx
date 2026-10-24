@@ -285,12 +285,37 @@ function getWhatsAppRedirectMarkup(whatsappUrl?: string) {
                 100% { transform: translateX(390%); }
             }
             @media (max-width: 420px) {
-                .redirect-shell { padding: 18px; }
-                .redirect-card { padding: 24px 18px 22px; }
-                .route-scene { height: 136px; }
-                .package { left: 8%; width: 68px; height: 68px; }
-                .whatsapp { right: 8%; width: 64px; height: 64px; }
-                .route-line { top: 68px; right: 23%; left: 23%; }
+                .redirect-shell {
+                    min-height: 100svh;
+                    padding: max(14px, env(safe-area-inset-top)) 12px max(14px, env(safe-area-inset-bottom));
+                }
+                .redirect-wrap { width: 100%; }
+                .brand { margin-bottom: 18px; }
+                .redirect-card {
+                    padding: 30px 22px 28px;
+                    border-radius: 22px;
+                }
+                .route-scene { height: 174px; margin-bottom: 22px; }
+                .package {
+                    top: 48px;
+                    left: 6%;
+                    width: 82px;
+                    height: 82px;
+                }
+                .package svg { width: 48px; height: 48px; }
+                .whatsapp {
+                    top: 51px;
+                    right: 6%;
+                    width: 78px;
+                    height: 78px;
+                }
+                .whatsapp svg { width: 38px; height: 38px; }
+                .route-line { top: 89px; right: 23%; left: 23%; }
+                h1 { font-size: clamp(30px, 8.8vw, 36px); }
+                .copy { font-size: 16px; line-height: 1.55; }
+                .progress { height: 6px; margin-top: 28px; }
+                .manual-link { width: 100%; min-height: 50px; margin-top: 20px; }
+                .footnote { margin-top: 14px; line-height: 1.5; }
             }
             @media (prefers-reduced-motion: reduce) {
                 .route-line::after, .package, .whatsapp, .whatsapp::after, .progress::after { animation: none; }
