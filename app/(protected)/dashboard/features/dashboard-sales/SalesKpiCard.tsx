@@ -3,8 +3,15 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import Link from 'next/link'
-import { ArrowUpRight, CircleDollarSign, CircleHelp, TrendingDown, TrendingUp } from 'lucide-react'
-import type { SalesData } from '../dashboard-data/dashboardData.types'
+import {
+    ArrowUpRight,
+    CircleDollarSign,
+    CircleHelp,
+    History,
+    TrendingDown,
+    TrendingUp,
+} from 'lucide-react'
+import type { HistoricalSalesResponse, SalesData } from '../dashboard-data/dashboardData.types'
 import { formatMoney } from '../dashboard-data/formatters'
 import { DashboardCardError } from '../../components/DashboardCardError'
 import CountUp from './CountUp'
@@ -15,12 +22,22 @@ export function SalesKpiCard({
     isLoading = false,
     isError = false,
     onRetry,
+    historicalData,
+    historicalIsLoading = false,
+    historicalIsError = false,
+    historicalIsRetrying = false,
+    onHistoricalRetry,
 }: {
     data?: SalesData
     currency?: string
     isLoading?: boolean
     isError?: boolean
     onRetry?: () => void
+    historicalData?: HistoricalSalesResponse
+    historicalIsLoading?: boolean
+    historicalIsError?: boolean
+    historicalIsRetrying?: boolean
+    onHistoricalRetry?: () => void
 }) {
     const [comparisonOpen, setComparisonOpen] = useState(false)
 
@@ -131,13 +148,73 @@ export function SalesKpiCard({
                     </div>
                 </div>
             </div>
+            <HistoricalSalesSummary
+                data={historicalData}
+                currency={currency}
+                isLoading={historicalIsLoading}
+                isError={historicalIsError}
+                isRetrying={historicalIsRetrying}
+                onRetry={onHistoricalRetry}
+            />
         </SalesCardShell>
+    )
+}
+
+function HistoricalSalesSummary({
+    data,
+    currency,
+    isLoading,
+    isError,
+    isRetrying,
+    onRetry,
+}: {
+    data?: HistoricalSalesResponse
+    currency: string
+    isLoading: boolean
+    isError: boolean
+    isRetrying: boolean
+    onRetry?: () => void
+}) {
+    return (
+        <div className="mt-5 border-t border-[#DCE5F3] pt-4" aria-label="Ventas históricas">
+            {isError ? (
+                <DashboardCardError
+                    title="Ventas históricas no disponibles"
+                    description="No pudimos cargar el acumulado histórico. Las demás métricas siguen disponibles."
+                    onRetry={onRetry}
+                    isRetrying={isRetrying}
+                />
+            ) : isLoading || !data ? (
+                <div className="flex items-center gap-3 rounded-xl border border-[#DCE5F3] bg-[#EEF4FF] px-3.5 py-3">
+                    <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-white text-[#315FE8] shadow-[0_3px_8px_rgb(36_81_197_/_0.08)]">
+                        <History className="size-4" aria-hidden="true" />
+                    </span>
+                    <span className="h-4 w-28 animate-pulse rounded bg-[#D5E1F2]" />
+                    <span className="ml-auto h-5 w-24 animate-pulse rounded bg-[#D5E1F2]" />
+                </div>
+            ) : (
+                <div className="flex items-center gap-3 rounded-xl border border-[#D8E4F5] bg-[#EEF4FF] px-3.5 py-3">
+                    <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-white text-[#315FE8] shadow-[0_3px_8px_rgb(36_81_197_/_0.08)]">
+                        <History className="size-4" aria-hidden="true" />
+                    </span>
+                    <div className="min-w-0">
+                        <p className="text-xs font-bold text-[#315FE8]">Ventas históricas</p>
+                        <p className="mt-0.5 truncate text-[11px] text-[#65738A]">
+                            {data.historicalOrderCount.toLocaleString('es-MX')} pedidos acumulados
+                        </p>
+                    </div>
+                    <span className="ml-auto shrink-0 text-base font-bold tabular-nums tracking-[-.02em] text-[#12234A]">
+                        {formatMoney(data.historicalSales, currency)}
+                    </span>
+                </div>
+            )}
+        </div>
     )
 }
 
 function SalesCardShell({ children }: { children: ReactNode }) {
     return (
-        <div className="h-full rounded-2xl border border-[#B9CBE9] bg-[#F5F8FF] p-6 shadow-[0_8px_22px_rgb(20_48_105_/_0.07)] sm:p-7">
+        <div className="h-full rounded-2xl border border-[#DCE5F3] bg-white p-6 shadow-[0_8px_22px_rgb(20_48_105_/_0.055)] sm:p-7">
             {children}
         </div>
     )
