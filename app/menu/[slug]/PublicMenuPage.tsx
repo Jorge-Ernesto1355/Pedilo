@@ -103,7 +103,7 @@ function getWhatsAppRedirectMarkup(whatsappUrl?: string) {
                 left: -105px;
                 background: #FFFFFF;
             }
-            .redirect-wrap { width: min(100%, 480px); }
+            .redirect-wrap { width: min(100%, 560px); }
             .brand {
                 display: inline-flex;
                 align-items: center;
@@ -125,7 +125,7 @@ function getWhatsAppRedirectMarkup(whatsappUrl?: string) {
                 box-shadow: 0 8px 18px rgb(30 64 175 / .18);
             }
             .redirect-card {
-                padding: 30px 24px 26px;
+                padding: 40px 32px 34px;
                 border: 1px solid #DCE5F3;
                 border-radius: 24px;
                 background: #FFFFFF;
@@ -134,12 +134,12 @@ function getWhatsAppRedirectMarkup(whatsappUrl?: string) {
             }
             .route-scene {
                 position: relative;
-                height: 154px;
-                margin-bottom: 20px;
+                height: 180px;
+                margin-bottom: 26px;
             }
             .route-line {
                 position: absolute;
-                top: 77px;
+                top: 90px;
                 right: 19%;
                 left: 19%;
                 height: 2px;
@@ -160,7 +160,7 @@ function getWhatsAppRedirectMarkup(whatsappUrl?: string) {
             }
             .package {
                 position: absolute;
-                top: 40px;
+                top: 48px;
                 left: 14%;
                 display: grid;
                 width: 76px;
@@ -175,7 +175,7 @@ function getWhatsAppRedirectMarkup(whatsappUrl?: string) {
             }
             .whatsapp {
                 position: absolute;
-                top: 43px;
+                top: 51px;
                 right: 14%;
                 display: grid;
                 width: 70px;
@@ -202,7 +202,7 @@ function getWhatsAppRedirectMarkup(whatsappUrl?: string) {
                 gap: 8px;
                 margin: 0 0 12px;
                 color: #16803D;
-                font-size: 12px;
+                font-size: 13px;
                 font-weight: 800;
                 letter-spacing: .08em;
                 text-transform: uppercase;
@@ -225,13 +225,13 @@ function getWhatsAppRedirectMarkup(whatsappUrl?: string) {
                 max-width: 34ch;
                 margin: 13px auto 0;
                 color: #65738A;
-                font-size: 15px;
-                line-height: 1.65;
+                font-size: 17px;
+                line-height: 1.6;
             }
             .progress {
                 position: relative;
                 height: 5px;
-                margin: 25px auto 0;
+                margin: 30px auto 0;
                 overflow: hidden;
                 border-radius: 999px;
                 background: #E8EEF6;
@@ -252,18 +252,19 @@ function getWhatsAppRedirectMarkup(whatsappUrl?: string) {
                 min-height: 44px;
                 align-items: center;
                 justify-content: center;
-                margin-top: 18px;
-                padding: 0 16px;
+                width: 100%;
+                margin-top: 22px;
+                padding: 0 18px;
                 border: 1px solid #C9D6ED;
                 border-radius: 12px;
                 color: #1E40AF;
-                font-size: 14px;
+                font-size: 16px;
                 font-weight: 800;
                 text-decoration: none;
             }
             .manual-link:hover { border-color: #AFC2E6; background: #F8FAFE; }
             .manual-link[hidden] { display: none; }
-            .footnote { margin: 16px 0 0; color: #8996A9; font-size: 12px; }
+            .footnote { margin: 18px 0 0; color: #8996A9; font-size: 13px; line-height: 1.5; }
             @keyframes route-dot {
                 0% { transform: translateX(0); opacity: 0; }
                 15%, 75% { opacity: 1; }
@@ -293,25 +294,25 @@ function getWhatsAppRedirectMarkup(whatsappUrl?: string) {
                 .redirect-wrap { width: 100%; }
                 .brand { margin-bottom: 18px; }
                 .redirect-card {
-                    padding: 30px 22px 28px;
+                    padding: 34px 20px 30px;
                     border-radius: 22px;
                 }
-                .route-scene { height: 174px; margin-bottom: 22px; }
+                .route-scene { height: 190px; margin-bottom: 24px; }
                 .package {
-                    top: 48px;
+                    top: 54px;
                     left: 6%;
                     width: 82px;
                     height: 82px;
                 }
                 .package svg { width: 48px; height: 48px; }
                 .whatsapp {
-                    top: 51px;
+                    top: 57px;
                     right: 6%;
                     width: 78px;
                     height: 78px;
                 }
                 .whatsapp svg { width: 38px; height: 38px; }
-                .route-line { top: 89px; right: 23%; left: 23%; }
+                .route-line { top: 96px; right: 20%; left: 20%; }
                 h1 { font-size: clamp(30px, 8.8vw, 36px); }
                 .copy { font-size: 16px; line-height: 1.55; }
                 .progress { height: 6px; margin-top: 28px; }
