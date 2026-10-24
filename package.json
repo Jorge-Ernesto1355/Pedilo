@@ -16,6 +16,7 @@
         "test:e2e:open": "cypress open",
         "test:e2e:open:local": "CYPRESS_BASE_URL=http://localhost:3000 cypress open --e2e",
         "test:e2e:open:prod": "CYPRESS_BASE_URL=https://pedilo.mx cypress open --e2e",
+        "e2e:seed:dashboard": "node scripts/seed-dashboard-orders.mjs",
         "test:e2e:auth": "cypress run --spec 'cypress/e2e/auth/**/*.cy.ts'",
         "test:e2e:auth:open": "cypress open --e2e --browser electron",
         "test:e2e:create-menu:open": "cypress open --e2e --browser electron --spec 'cypress/e2e/create-menu/business-setup.cy.ts'",
