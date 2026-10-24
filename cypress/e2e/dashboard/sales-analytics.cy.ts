@@ -117,16 +117,66 @@ function averageTicketResponse({
     }
 }
 
+function trendResponseFromSales(period: SalesPeriod, sales: ReturnType<typeof salesResponse>) {
+    return {
+        period,
+        granularity: sales.granularity,
+        timezone: sales.timezone,
+        trend: sales.trend,
+        points: sales.points.map((point) => ({ ...point, start: point.start ?? '' })),
+        series: {
+            current: sales.series.current.map((point) => ({
+                label: point.label,
+                start: '',
+                sales: Number(point.sales),
+                orderCount: point.orders_count,
+            })),
+            previous: sales.series.previous.map((point) => ({
+                label: point.label,
+                start: '',
+                sales: Number(point.sales),
+                orderCount: point.orders_count,
+            })),
+        },
+        comparison: {
+            status: sales.comparison.status,
+            percentage_change: sales.comparison.percentage_change,
+            difference: Number(sales.comparison.difference),
+            current_total: Number(sales.comparison.current_total),
+            previous_total: Number(sales.comparison.previous_total),
+        },
+        tooltip: sales.tooltip.map((point, index) => ({
+            timestamp: sales.points[index]?.start ?? '',
+            label: point.label ?? '',
+            current_sales: Number(point.current?.sales ?? 0),
+            previous_sales: Number(point.previous?.sales ?? 0),
+            difference: Number(point.difference ?? 0),
+            percentage_change: point.percentage_change ?? null,
+            current_orders_count: point.current?.orders_count ?? 0,
+            previous_orders_count: point.previous?.orders_count ?? 0,
+            status: point.previous?.sales === '0.00' ? 'NO_BASELINE' : 'OK',
+        })),
+    }
+}
+
 function setupSalesPage({
     salesStatus = 200,
     averageStatus = 200,
+    trendStatus = 200,
+    historicalStatus = 200,
     averageBody = averageTicketResponse(),
+    historicalBody = { historicalSales: 9876.5, historicalOrderCount: 42 },
     salesBody,
+    trendBody,
 }: {
     salesStatus?: number | ((attempt: number) => number)
     averageStatus?: number | ((attempt: number) => number)
+    trendStatus?: number | ((attempt: number) => number)
+    historicalStatus?: number | ((attempt: number) => number)
     averageBody?: unknown
+    historicalBody?: unknown
     salesBody?: unknown | ((period: SalesPeriod) => unknown)
+    trendBody?: unknown | ((period: SalesPeriod) => unknown)
 } = {}) {
     cy.intercept('GET', '**/api/v1/businesses/settings', {
         statusCode: 200,
@@ -138,16 +188,45 @@ function setupSalesPage({
         salesAttempts += 1
         const period = String(request.query.period ?? 'today') as SalesPeriod
         const status = typeof salesStatus === 'function' ? salesStatus(salesAttempts) : salesStatus
+        const body =
+            typeof salesBody === 'function'
+                ? salesBody(period)
+                : (salesBody ?? salesResponse(period))
+        request.reply({
+            statusCode: status,
+            body: status === 200 ? body : { message: 'Sales unavailable' },
+        })
+    }).as('dashboardSales')
+
+    let trendAttempts = 0
+    cy.intercept('GET', '**/api/v1/dashboard/trend*', (request) => {
+        trendAttempts += 1
+        const period = String(request.query.period ?? 'today') as SalesPeriod
+        const status = typeof trendStatus === 'function' ? trendStatus(trendAttempts) : trendStatus
+        const sales = bodyForPeriod(salesBody, period)
         request.reply({
             statusCode: status,
             body:
                 status === 200
-                    ? typeof salesBody === 'function'
-                        ? salesBody(period)
-                        : (salesBody ?? salesResponse(period))
-                    : { message: 'Sales unavailable' },
+                    ? typeof trendBody === 'function'
+                        ? trendBody(period)
+                        : (trendBody ?? trendResponseFromSales(period, sales))
+                    : { message: 'Trend unavailable' },
         })
-    }).as('dashboardSales')
+    }).as('dashboardTrend')
+
+    let historicalAttempts = 0
+    cy.intercept('GET', '**/api/v1/dashboard/historical-sales*', (request) => {
+        historicalAttempts += 1
+        const status =
+            typeof historicalStatus === 'function'
+                ? historicalStatus(historicalAttempts)
+                : historicalStatus
+        request.reply({
+            statusCode: status,
+            body: status === 200 ? historicalBody : { message: 'Historical sales unavailable' },
+        })
+    }).as('historicalSales')
 
     let averageAttempts = 0
     cy.intercept('GET', '**/api/v1/analytics/average-ticket*', (request) => {
@@ -159,6 +238,14 @@ function setupSalesPage({
             body: status === 200 ? averageBody : { message: 'Average ticket unavailable' },
         })
     }).as('averageTicket')
+}
+
+function bodyForPeriod(
+    salesBody: unknown | ((period: SalesPeriod) => unknown),
+    period: SalesPeriod,
+) {
+    const body = typeof salesBody === 'function' ? salesBody(period) : salesBody
+    return (body ?? salesResponse(period)) as ReturnType<typeof salesResponse>
 }
 
 describe('Ventas · analítica comparativa', () => {
@@ -178,6 +265,7 @@ describe('Ventas · analítica comparativa', () => {
         setupSalesPage()
         cy.visit('/dashboard/sales')
         cy.wait('@dashboardSales').its('request.query.period').should('eq', 'today')
+        cy.wait('@dashboardTrend').its('request.query.period').should('eq', 'today')
         cy.wait('@averageTicket').its('request.query.period').should('eq', 'today')
 
         cy.get('[aria-label="Métricas de ventas"]').within(() => {
@@ -218,6 +306,7 @@ describe('Ventas · analítica comparativa', () => {
                 .should('be.visible')
                 .click()
             cy.wait('@dashboardSales').its('request.query.period').should('eq', value)
+            cy.wait('@dashboardTrend').its('request.query.period').should('eq', value)
             cy.wait('@averageTicket')
                 .its('request.query.period')
                 .should('eq', averageTicketPeriod[value])
@@ -255,6 +344,7 @@ describe('Ventas · analítica comparativa', () => {
         cy.wait('@dashboardSales')
         cy.contains('Ventas no disponibles', { timeout: 30_000 }).should('be.visible')
         cy.contains('Gráfica de ventas no disponible', { timeout: 30_000 }).should('be.visible')
+        cy.contains('Tendencia').should('be.visible')
     })
 
     it('muestra el estado de error del ticket promedio', () => {
@@ -262,6 +352,7 @@ describe('Ventas · analítica comparativa', () => {
         cy.visit('/dashboard/sales')
         cy.wait('@averageTicket')
         cy.contains('Ticket promedio no disponible', { timeout: 30_000 }).should('be.visible')
+        cy.contains('Tendencia').should('be.visible')
     })
 
     it('mantiene la composición usable en móvil', () => {
@@ -484,6 +575,46 @@ describe('Ventas · analítica comparativa', () => {
         cy.get('[aria-label="Métricas de ventas"]')
             .contains('$300.00', { timeout: 30_000 })
             .should('be.visible')
+    })
+
+    it('muestra el error de tendencia sin ocultar ventas ni ticket promedio', () => {
+        setupSalesPage({ trendStatus: 500 })
+        cy.visit('/dashboard/sales')
+        cy.contains('Tendencia no disponible', { timeout: 30_000 }).should('be.visible')
+        cy.contains('Ganancias del periodo').should('be.visible')
+        cy.contains('Ticket promedio del periodo').should('be.visible')
+    })
+
+    it('muestra y puede reintentar las ventas históricas sin afectar ventas', () => {
+        setupSalesPage({ historicalStatus: (attempt) => (attempt <= 4 ? 500 : 200) })
+        cy.visit('/dashboard/sales')
+        cy.contains('Ventas históricas no disponibles', { timeout: 30_000 }).should('be.visible')
+        cy.wait('@historicalSales')
+        cy.wait('@historicalSales')
+        cy.wait('@historicalSales')
+        cy.wait('@historicalSales')
+        cy.contains('Ganancias del periodo').should('be.visible')
+
+        cy.contains('Ventas históricas no disponibles').parent().find('button').click()
+        cy.wait('@historicalSales').its('response.statusCode').should('eq', 200)
+        cy.contains('$9,876.50', { timeout: 30_000 }).should('be.visible')
+        cy.contains('42 pedidos acumulados').should('be.visible')
+        cy.get('@dashboardSales.all').should('have.length', 1)
+    })
+
+    it('reintenta únicamente la consulta de tendencia', () => {
+        setupSalesPage({ trendStatus: (attempt) => (attempt <= 4 ? 500 : 200) })
+        cy.visit('/dashboard/sales')
+        cy.contains('Tendencia no disponible', { timeout: 30_000 }).should('be.visible')
+        cy.get('@dashboardTrend.all').should('have.length', 4)
+
+        cy.contains('Tendencia no disponible').parent().find('button').click()
+        cy.wait('@dashboardTrend').its('response.statusCode').should('eq', 200)
+        cy.get('[aria-label="Comparación visual de ventas"]', { timeout: 30_000 }).should(
+            'be.visible',
+        )
+        cy.get('@dashboardSales.all').should('have.length', 1)
+        cy.get('@averageTicket.all').should('have.length', 1)
     })
 })
 
