@@ -22,6 +22,12 @@ export function hasRequiredOptionGroups(product: PublicProduct) {
     return product.optionGroups.some((group) => group.isRequired)
 }
 
+export function hasAvailableOptions(product: PublicProduct) {
+    return product.optionGroups.some(
+        (group) => group.isActive !== false && group.options.some((option) => option.isAvailable),
+    )
+}
+
 export function validateOptionGroups(
     optionGroups: PublicOptionGroup[],
     selections: OptionQuantities,
