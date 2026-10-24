@@ -5,7 +5,7 @@
 import { Plus, SlidersHorizontal, Utensils } from 'lucide-react'
 import { useState } from 'react'
 import type { PublicProduct } from './publicCatalog.types'
-import { hasRequiredOptionGroups } from './optionGroupValidation'
+import { hasAvailableOptions } from './optionGroupValidation'
 
 export function ProductCard({
     product,
@@ -16,7 +16,7 @@ export function ProductCard({
     onSelect: () => void
     onAdd: () => void
 }) {
-    const requiresCustomization = hasRequiredOptionGroups(product)
+    const hasOptions = hasAvailableOptions(product)
     const [feedbackKey, setFeedbackKey] = useState(0)
 
     function handleAdd() {
@@ -49,6 +49,12 @@ export function ProductCard({
                         <h3 className="font-display text-base tracking-[-.025em] text-[#12234A]">
                             {product.name}
                         </h3>
+                        {hasOptions && (
+                            <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-[#2451C5]">
+                                <SlidersHorizontal className="size-3" aria-hidden="true" />
+                                Personalizable
+                            </span>
+                        )}
                         {product.description && (
                             <p className="mt-1 text-sm leading-5 text-[#65738A]">
                                 {product.description}
@@ -61,11 +67,11 @@ export function ProductCard({
                 </div>
                 <button
                     type="button"
-                    onClick={requiresCustomization ? onSelect : handleAdd}
-                    aria-label={`${requiresCustomization ? 'Seleccionar opciones para' : 'Agregar al carrito:'} ${product.name}`}
+                    onClick={hasOptions ? onSelect : handleAdd}
+                    aria-label={`${hasOptions ? 'Seleccionar opciones para' : 'Agregar al carrito:'} ${product.name}`}
                     className="mt-3 inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-[#EEF3FF] px-3 py-2 text-xs font-bold text-[#2451C5] transition-[background-color,box-shadow,transform] duration-200 hover:bg-[#E2EBFF] active:scale-[.98] sm:min-h-8 sm:px-2.5 sm:py-1.5"
                 >
-                    {requiresCustomization ? (
+                    {hasOptions ? (
                         <SlidersHorizontal className="size-3.5" />
                     ) : (
                         <span
@@ -75,7 +81,7 @@ export function ProductCard({
                             <Plus className="size-3.5" />
                         </span>
                     )}
-                    {requiresCustomization ? 'Seleccionar opciones' : 'Agregar al carrito'}
+                    {hasOptions ? 'Seleccionar opciones' : 'Agregar al carrito'}
                 </button>
             </div>
         </article>
