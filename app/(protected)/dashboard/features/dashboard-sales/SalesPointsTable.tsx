@@ -1,9 +1,15 @@
 'use client'
 
-import type { SalesData } from '../dashboard-data/dashboardData.types'
+import type { TrendDashboardResponse } from '../dashboard-data/dashboardData.types'
 import { formatMoney } from '../dashboard-data/formatters'
 
-export function SalesPointsTable({ data, currency = 'MXN' }: { data: SalesData; currency?: string }) {
+export function SalesPointsTable({
+    data,
+    currency = 'MXN',
+}: {
+    data: TrendDashboardResponse
+    currency?: string
+}) {
     return (
         <div className="mt-6 overflow-x-auto border-t border-[#EDF2F9] pt-5">
             <table className="w-full min-w-[360px] text-left text-sm">
