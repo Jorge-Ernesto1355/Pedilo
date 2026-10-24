@@ -224,6 +224,52 @@ function averageResponse(period: Period, scenario: Scenario) {
     }
 }
 
+function trendResponse(period: Period, scenario: Scenario) {
+    const sales = responseFor(period, scenario)
+    return {
+        period,
+        granularity: sales.granularity,
+        timezone: sales.timezone,
+        trend: sales.trend,
+        points: sales.points.map((point, index) => ({
+            ...point,
+            start: `2026-10-${String(13 - (index % 4)).padStart(2, '0')}T00:00:00.000Z`,
+        })),
+        series: {
+            current: sales.series.current.map((point, index) => ({
+                label: point.label,
+                start: `2026-10-${String(13 - (index % 4)).padStart(2, '0')}T00:00:00.000Z`,
+                sales: point.sales,
+                orderCount: point.orders_count,
+            })),
+            previous: sales.series.previous.map((point, index) => ({
+                label: point.label,
+                start: `2026-10-${String(6 - (index % 4)).padStart(2, '0')}T00:00:00.000Z`,
+                sales: point.sales,
+                orderCount: point.orders_count,
+            })),
+        },
+        comparison: {
+            status: sales.comparison.status,
+            percentage_change: sales.comparison.percentage_change,
+            difference: Number(sales.comparison.difference),
+            current_total: Number(sales.comparison.current_total),
+            previous_total: Number(sales.comparison.previous_total),
+        },
+        tooltip: sales.tooltip.map((point, index) => ({
+            timestamp: `2026-10-${String(13 - (index % 4)).padStart(2, '0')}T00:00:00.000Z`,
+            label: point.label ?? '',
+            current_sales: Number(point.current?.sales ?? 0),
+            previous_sales: Number(point.previous?.sales ?? 0),
+            difference: Number(point.difference ?? 0),
+            percentage_change: point.percentage_change ?? null,
+            current_orders_count: point.current?.orders_count ?? 0,
+            previous_orders_count: point.previous?.orders_count ?? 0,
+            status: point.previous?.sales === '0.00' ? 'NO_BASELINE' : 'OK',
+        })),
+    }
+}
+
 function installFixture({ scenarioByPeriod = scenarios, delaySlowPeriod = false } = {}) {
     cy.intercept('GET', '**/api/v1/businesses/settings', { statusCode: 200, body: settings })
     cy.intercept('GET', '**/api/v1/dashboard/sales*', (request) => {
@@ -235,6 +281,10 @@ function installFixture({ scenarioByPeriod = scenarios, delaySlowPeriod = false 
         }
         request.reply({ statusCode: 200, body: responseFor(period, scenario) })
     }).as('sales')
+    cy.intercept('GET', '**/api/v1/dashboard/trend*', (request) => {
+        const period = String(request.query.period ?? 'today') as Period
+        request.reply({ statusCode: 200, body: trendResponse(period, scenarioByPeriod[period]) })
+    }).as('trend')
     cy.intercept('GET', '**/api/v1/analytics/average-ticket*', (request) => {
         const period = String(request.query.period ?? 'today')
         const salesPeriod = Object.entries(averagePeriod).find(
@@ -268,6 +318,12 @@ function assertPeriod(period: Period, scenario: Scenario) {
         expect(response?.body.data.current.average_ticket).to.eq(
             average(scenario.current.total, scenario.current.orders),
         )
+    })
+    cy.wait('@trend').then(({ request, response }) => {
+        expect(request.query.period).to.eq(period)
+        expect(response?.body.trend).to.eq(expectedChange ?? 0)
+        expect(response?.body.series.current).to.be.an('array')
+        expect(response?.body.series.previous).to.be.an('array')
     })
     cy.contains(money(scenario.current.total)).should('be.visible')
     cy.contains(money(Number(average(scenario.current.total, scenario.current.orders)))).should(
