@@ -4,7 +4,7 @@ import { CircleHelp, TrendingDown, TrendingUp } from 'lucide-react'
 import { useState } from 'react'
 import { Line, LineChart, ResponsiveContainer, Tooltip } from 'recharts'
 import type { ReactNode } from 'react'
-import type { SalesData, SalesPoint, SalesSeriesPoint } from '../dashboard-data/dashboardData.types'
+import type { TrendDashboardResponse, TrendPoint } from '../dashboard-data/dashboardData.types'
 import { DashboardCardError } from '../../components/DashboardCardError'
 import { formatMoney } from '../dashboard-data/formatters'
 
@@ -14,12 +14,14 @@ export function TrendKpiCard({
     isLoading = false,
     isError = false,
     onRetry,
+    isRetrying = false,
 }: {
-    data?: SalesData
+    data?: TrendDashboardResponse
     currency?: string
     isLoading?: boolean
     isError?: boolean
     onRetry?: () => void
+    isRetrying?: boolean
 }) {
     const [infoOpen, setInfoOpen] = useState(false)
 
@@ -30,6 +32,7 @@ export function TrendKpiCard({
                     title="Tendencia no disponible"
                     description="No pudimos comparar tus ventas. Las demás métricas siguen disponibles."
                     onRetry={onRetry}
+                    isRetrying={isRetrying}
                 />
             </TrendCardShell>
         )
@@ -43,10 +46,10 @@ export function TrendKpiCard({
         )
     }
 
-    const percentage = data.comparison?.percentage_change ?? data.trend ?? 0
-    const currentTotal = Number(data.comparison?.current_total ?? data.total)
-    const previousTotal = Number(data.comparison?.previous_total ?? data.previousTotal ?? 0)
-    const noBaselineGrowth = previousTotal === 0 && currentTotal > 0
+    const percentage = data.comparison.percentage_change ?? data.trend
+    const currentTotal = data.comparison.current_total
+    const previousTotal = data.comparison.previous_total
+    const noBaselineGrowth = data.comparison.status === 'NO_BASELINE' && currentTotal > 0
     const isPositive = noBaselineGrowth || percentage > 0
     const isNegative = percentage < 0
     const TrendIcon = isNegative ? TrendingDown : TrendingUp
@@ -109,25 +112,25 @@ export function TrendKpiCard({
     )
 }
 
-function MiniTrendChart({ data, currency = 'MXN' }: { data: SalesData; currency?: string }) {
-    const current = data.series?.current ?? data.points ?? []
-    const previous = data.series?.previous ?? []
+function MiniTrendChart({
+    data,
+    currency = 'MXN',
+}: {
+    data: TrendDashboardResponse
+    currency?: string
+}) {
+    const current = data.series.current
+    const previous = data.series.previous
     const length = Math.max(current.length, previous.length)
 
     const points = Array.from({ length }, (_, index) => ({
         label: current[index]?.label ?? previous[index]?.label ?? `Intervalo ${index + 1}`,
         current: toNumber(current[index]?.sales) ?? 0,
         previous: toNumber(previous[index]?.sales) ?? 0,
-        currentOrders:
-            data.tooltip?.[index]?.current?.orders_count ??
-            data.tooltip?.[index]?.current?.orderCount ??
-            orderCount(current[index]),
-        previousOrders:
-            data.tooltip?.[index]?.previous?.orders_count ??
-            data.tooltip?.[index]?.previous?.orderCount ??
-            orderCount(previous[index]),
-        difference: data.tooltip?.[index]?.difference ?? null,
-        percentage: data.tooltip?.[index]?.percentage_change ?? null,
+        currentOrders: data.tooltip[index]?.current_orders_count ?? orderCount(current[index]),
+        previousOrders: data.tooltip[index]?.previous_orders_count ?? orderCount(previous[index]),
+        difference: data.tooltip[index]?.difference ?? null,
+        percentage: data.tooltip[index]?.percentage_change ?? null,
     }))
 
     if (!points.length) return null
@@ -222,14 +225,14 @@ function MiniTrendTooltip({
     )
 }
 
-function toNumber(value: SalesSeriesPoint['sales'] | undefined) {
+function toNumber(value: number | undefined) {
     const number = Number(value)
     return Number.isFinite(number) ? number : null
 }
 
-function orderCount(point: SalesSeriesPoint | SalesPoint | undefined) {
+function orderCount(point: TrendPoint | undefined) {
     if (!point) return 0
-    return 'orders_count' in point ? (point.orders_count ?? 0) : point.orderCount
+    return point.orderCount
 }
 
 function TrendCardShell({ children }: { children: ReactNode }) {
