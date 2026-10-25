@@ -3,6 +3,7 @@
 import { createPortal } from 'react-dom'
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useQueryClient } from '@tanstack/react-query'
 import {
     BarChart3,
@@ -121,9 +122,14 @@ export function DashboardNav() {
                         href="/dashboard"
                         className="flex items-center gap-2.5 text-lg font-black tracking-[-.04em] text-[#12234A]"
                     >
-                        <span className="grid size-8 place-items-center rounded-[10px] bg-[#1E40AF] text-sm text-white shadow-[0_7px_16px_rgb(30_64_175_/_0.2)]">
-                            P
-                        </span>
+                        <Image
+                            src="/logoPediloSinfondo.png"
+                            alt=""
+                            width={34}
+                            height={34}
+                            className="size-8 object-contain"
+                            priority
+                        />
                         Pedilo
                     </Link>
                     <nav

@@ -3,6 +3,7 @@
 import { FormEvent, Suspense, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Inter, Source_Serif_4 } from 'next/font/google'
+import Image from 'next/image'
 import { loginSchema } from '@/app/auth/lib/validation'
 import { networkAuthError, safeAuthError } from '@/app/auth/lib/client/error-message'
 import Link from 'next/link'
@@ -170,8 +171,15 @@ function LoginForm() {
                     transition={{ duration: 0.45, delay: 0.12 }}
                     whileHover={{ x: 3 }}
                 >
-                    <span className="grid h-[26px] w-[26px] place-items-center rounded-[7px] bg-white text-sm font-black text-[#1E40AF]">
-                        P
+                    <span className="grid h-9 w-9 place-items-center rounded-[9px] bg-white shadow-[0_6px_16px_rgb(8_28_92_/_0.16)]">
+                        <Image
+                            src="/logoPediloSinfondo.png"
+                            alt=""
+                            width={32}
+                            height={32}
+                            className="size-8 object-contain"
+                            priority
+                        />
                     </span>
                     Pedilo
                 </motion.a>

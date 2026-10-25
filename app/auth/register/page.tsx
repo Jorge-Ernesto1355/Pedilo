@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
+import Image from 'next/image'
 import { registerSchema } from '@/app/auth/lib/validation'
 import { getRegisterError } from '@/app/auth/lib/client/error-message'
 import { registerUser } from '@/app/auth/lib/client/register'
@@ -155,7 +156,14 @@ export default function RegisterPage() {
                         href="/"
                         className="inline-flex items-center gap-[9px] font-poppins text-[23px] font-black tracking-[-0.02em] text-slate-900 no-underline"
                     >
-                        <span className="inline-block h-3 w-3 rounded-full bg-blue-800" />
+                        <Image
+                            src="/logoPediloSinfondo.png"
+                            alt=""
+                            width={32}
+                            height={32}
+                            className="size-8 object-contain"
+                            priority
+                        />
                         Pedilo
                     </Link>
                     <div className="text-[15px] text-slate-500">
@@ -182,7 +190,13 @@ export default function RegisterPage() {
                             className="w-full max-w-[440px]"
                         >
                             <div className="mb-[22px] inline-flex items-center gap-2 font-poppins text-sm font-bold uppercase tracking-[0.14em] text-blue-800">
-                                <span className="h-[10px] w-[10px] rounded-full bg-blue-800" />
+                                <Image
+                                    src="/logoPediloSinfondo.png"
+                                    alt=""
+                                    width={28}
+                                    height={28}
+                                    className="size-7 object-contain"
+                                />
                                 Pedilo
                             </div>
                             <h1 className="font-poppins text-[clamp(30px,4vw,40px)] font-black tracking-[-0.02em]">
