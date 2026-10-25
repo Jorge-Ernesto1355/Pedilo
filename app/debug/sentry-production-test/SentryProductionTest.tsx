@@ -14,16 +14,13 @@ export function SentryProductionTest() {
             return
         }
 
-        const sentryTestKey = 'pedilo-sentry-production-test-sent'
-        if (window.sessionStorage.getItem(sentryTestKey)) {
-            setStatus('La prueba ya fue enviada en esta sesión del navegador.')
-            return
-        }
-
-        window.sessionStorage.setItem(sentryTestKey, '1')
         Sentry.captureException(new Error(TEST_MARKER))
-        void Sentry.flush(5000).then(() => {
-            setStatus('Evento enviado. Confirma PEDILO_SENTRY_PRODUCTION_TEST en Sentry.')
+        void Sentry.flush(5000).then((flushed) => {
+            setStatus(
+                flushed
+                    ? 'Evento enviado. Confirma PEDILO_SENTRY_PRODUCTION_TEST en Sentry.'
+                    : 'Sentry recibió el evento para envío, pero no confirmó el vaciado antes del límite de espera.',
+            )
         })
     }, [])
 
