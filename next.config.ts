@@ -3,13 +3,12 @@ import { withSentryConfig } from "@sentry/nextjs/config";
 
 const nextConfig: NextConfig = {
   env: {
-    // Vercel currently has the VITE_* names configured. These values are public
-    // by design for a browser Sentry DSN and are copied at build time.
-    NEXT_PUBLIC_SENTRY_DSN:
-      process.env.NEXT_PUBLIC_SENTRY_DSN ?? process.env.VITE_SENTRY_DSN ?? '',
+    // Sentry's DSN is a public client key. Map the server-side deployment
+    // variables into Next's explicitly public names at build time.
+    NEXT_PUBLIC_SENTRY_DSN: process.env.SENTRY_DSN ?? '',
     NEXT_PUBLIC_SENTRY_ENVIRONMENT:
-      process.env.NEXT_PUBLIC_SENTRY_ENVIRONMENT ??
-      process.env.VITE_SENTRY_ENVIRONMENT ??
+      process.env.SENTRY_ENVIRONMENT ??
+      process.env.VERCEL_ENV ??
       process.env.NODE_ENV ??
       'production',
   },
