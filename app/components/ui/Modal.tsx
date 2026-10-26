@@ -25,6 +25,13 @@ export function Modal({
 }: ModalProps) {
     const closeButtonRef = useRef<HTMLButtonElement>(null)
     const dialogRef = useRef<HTMLDivElement>(null)
+    const onCloseRef = useRef(onClose)
+    const closeDisabledRef = useRef(closeDisabled)
+
+    useEffect(() => {
+        onCloseRef.current = onClose
+        closeDisabledRef.current = closeDisabled
+    }, [closeDisabled, onClose])
 
     useEffect(() => {
         if (!open) return
@@ -34,7 +41,7 @@ export function Modal({
         closeButtonRef.current?.focus()
 
         function handleKeyDown(event: KeyboardEvent) {
-            if (event.key === 'Escape' && !closeDisabled) onClose()
+            if (event.key === 'Escape' && !closeDisabledRef.current) onCloseRef.current()
             if (event.key !== 'Tab') return
 
             const focusable = dialogRef.current?.querySelectorAll<HTMLElement>(
@@ -57,7 +64,7 @@ export function Modal({
             document.body.style.overflow = previousOverflow
             document.removeEventListener('keydown', handleKeyDown)
         }
-    }, [closeDisabled, onClose, open])
+    }, [open])
 
     return (
         <AnimatePresence>
