@@ -283,7 +283,12 @@ describe('Productos · casos límite del catálogo', () => {
             .should('have.attr', 'maxlength', '100')
             .and('have.value', 'D'.repeat(100))
         cy.wait('@createProduct')
-        cy.then(() => expect(state.products[0]?.description).to.have.length(100))
+        cy.then(() =>
+            expect(
+                state.products.find((product) => product.name === 'Descripción limitada')
+                    ?.description,
+            ).to.have.length(100),
+        )
         closeProductModal()
 
         openProductModal()

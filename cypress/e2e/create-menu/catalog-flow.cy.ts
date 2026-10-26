@@ -97,6 +97,15 @@ function requestField(body: unknown, field: string, fallback: string) {
     }
 
     if (typeof body === 'string') {
+        try {
+            const parsed = JSON.parse(body) as unknown
+            if (parsed && typeof parsed === 'object' && field in parsed) {
+                const value = (parsed as Record<string, unknown>)[field]
+                return value == null ? fallback : String(value)
+            }
+        } catch {
+            // Continue with the multipart/form-data fallback below.
+        }
         const match = body.match(new RegExp(`name="${field}"[\\s\\S]*?\\r?\\n\\r?\\n([^\\r\\n]*)`))
         if (match?.[1]) return match[1]
     }
@@ -126,11 +135,10 @@ function installCatalogApi(state: CatalogState, counters: CreationCounters = {})
     cy.intercept('POST', '**/api/v1/businesses/*/menus', (request) => {
         request.alias = 'createMenu'
         counters.menu = (counters.menu ?? 0) + 1
-        const body = request.body as { name: string; description: string }
         state.menu = {
             id: menuId,
-            name: body.name,
-            description: body.description,
+            name: requestField(request.body, 'name', 'Menú de prueba'),
+            description: requestField(request.body, 'description', ''),
             isActive: true,
             categories: [],
         }
@@ -140,12 +148,11 @@ function installCatalogApi(state: CatalogState, counters: CreationCounters = {})
     cy.intercept('POST', '**/api/v1/businesses/*/categories', (request) => {
         request.alias = 'createCategory'
         counters.category = (counters.category ?? 0) + 1
-        const body = request.body as { name: string; description: string; menuId: string }
         state.category = {
             id: categoryId,
-            menuId: body.menuId,
-            name: body.name,
-            description: body.description,
+            menuId: requestField(request.body, 'menuId', menuId),
+            name: requestField(request.body, 'name', 'Categoría de prueba'),
+            description: requestField(request.body, 'description', ''),
             isActive: true,
             sortOrder: 0,
             products: [],
