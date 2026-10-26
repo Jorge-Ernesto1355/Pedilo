@@ -299,7 +299,7 @@ export function OrderDrawer({
                                                         Editar
                                                     </button>
                                                 )}
-                                                <div className="flex min-h-11 items-center gap-1 rounded-lg border border-[#DCE5F3] px-1 sm:min-h-8 sm:gap-2">
+                                                <div className="flex h-11 shrink-0 items-center gap-1 self-center rounded-lg border border-[#DCE5F3] px-1 sm:h-8 sm:gap-2">
                                                     <button
                                                         type="button"
                                                         onClick={() =>
