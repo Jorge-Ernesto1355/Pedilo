@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, type ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import posthog from 'posthog-js'
 import type { User } from '@/lib/auth/getSession'
 import { useAuthStore } from '@/store/authStore'
 
@@ -15,6 +16,21 @@ export function AuthHydration({ user, children }: AuthHydrationProps) {
     const setUser = useAuthStore((state) => state.setUser)
     const currentUser = useAuthStore((state) => state.user)
     const currentUserId = currentUser?.id ?? null
+    const identifiedUserId = useRef<string | null>(null)
+
+    useEffect(() => {
+        if (identifiedUserId.current === user.id) return
+
+        if (identifiedUserId.current !== null) {
+            posthog.reset()
+        }
+
+        posthog.identify(user.id, {
+            email: user.email,
+            name: user.name,
+        })
+        identifiedUserId.current = user.id
+    }, [user.email, user.id, user.name])
 
     useEffect(() => {
         if (currentUserId !== user.id) {
