@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import posthog from 'posthog-js'
 import {
     LoaderCircle,
     Pencil,
@@ -96,8 +97,24 @@ export default function CustomersPage() {
             name: form.name.trim(),
             phone: form.phone.trim(),
         }
-        if (editing) mutations.update.mutate({ id: editing.id, payload }, { onSuccess: closeForm })
-        else mutations.create.mutate(payload, { onSuccess: closeForm })
+        if (editing) {
+            mutations.update.mutate(
+                { id: editing.id, payload },
+                {
+                    onSuccess: () => {
+                        posthog.capture('customer_updated')
+                        closeForm()
+                    },
+                },
+            )
+        } else {
+            mutations.create.mutate(payload, {
+                onSuccess: () => {
+                    posthog.capture('customer_created')
+                    closeForm()
+                },
+            })
+        }
     }
     function remove(customer: Customer) {
         if (mutations.remove.isPending) return
