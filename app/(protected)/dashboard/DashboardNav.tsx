@@ -18,6 +18,7 @@ import { notify } from '@/src/lib/notifications/notify'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuthStore } from '@/store/authStore'
 import { useCurrentBusiness } from '@/app/(protected)/create-menu/features/business-profile/useCurrentBusiness'
+import posthog from 'posthog-js'
 
 const links = [
     { href: '/dashboard', label: 'Resumen', icon: LayoutDashboard },
@@ -96,6 +97,7 @@ export function DashboardNav() {
                 method: 'POST',
                 credentials: 'same-origin',
             })
+            posthog.reset()
             queryClient.clear()
             clearUser()
             window.location.replace('/auth/login')
