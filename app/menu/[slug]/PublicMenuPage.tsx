@@ -11,6 +11,7 @@ import { OrderDrawer } from './features/public-menu/OrderDrawer'
 import { ProductCard } from './features/public-menu/ProductCard'
 import { ProductCustomizeDialog } from './features/public-menu/ProductCustomizeDialog'
 import { OrderConfirmationModal } from './features/public-menu/OrderConfirmationModal'
+import { CatalogEmptyState } from './features/public-menu/CatalogEmptyState'
 import { useBusinessMenu } from './features/public-menu/useBusinessMenu'
 import { useOrderCart } from './features/public-menu/useOrderCart'
 import { createPublicOrder } from '@/src/lib/api/orderApi'
@@ -648,26 +649,31 @@ export default function PublicMenuPage({ slug }: { slug: string }) {
                                                     </p>
                                                 )}
                                             </div>
-                                            {category.products.map((item) => (
-                                                <ProductCard
-                                                    key={item.id}
-                                                    product={item}
-                                                    onSelect={() => {
-                                                        setEditingLineKey(null)
-                                                        setEditingSelections([])
-                                                        setProduct(item)
-                                                    }}
-                                                    onAdd={() => cart.add(item)}
+                                            {category.products.length > 0 ? (
+                                                category.products.map((item) => (
+                                                    <ProductCard
+                                                        key={item.id}
+                                                        product={item}
+                                                        onSelect={() => {
+                                                            setEditingLineKey(null)
+                                                            setEditingSelections([])
+                                                            setProduct(item)
+                                                        }}
+                                                        onAdd={() => cart.add(item)}
+                                                    />
+                                                ))
+                                            ) : (
+                                                <CatalogEmptyState
+                                                    kind="category"
+                                                    categoryName={category.name}
                                                 />
-                                            ))}
+                                            )}
                                         </section>
                                     ))}
                                 </div>
                             </div>
                         ) : (
-                            <p className="mt-6 rounded-2xl border border-dashed border-[#DCE5F3] bg-white p-10 text-center text-sm text-[#65738A]">
-                                Este menú todavía no tiene categorías publicadas.
-                            </p>
+                            <CatalogEmptyState kind="menu" />
                         )}
                     </section>
                 ) : (
