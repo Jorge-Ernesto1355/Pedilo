@@ -3,6 +3,7 @@
 import { FormProvider, useWatch } from 'react-hook-form'
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import posthog from 'posthog-js'
 import { ChevronRight, Store } from 'lucide-react'
 import { BusinessProfileForm } from './features/business-profile/BusinessProfileForm'
 import { useBusinessProfileForm } from './features/business-profile/useBusinessProfileForm'
@@ -217,12 +218,18 @@ export default function BusinessSetupScreen({
     }
 
     function handleProfileSubmit(values: BusinessProfileValues) {
+        const isNewBusiness = !businessQuery.data
+
         saveProfile.mutate(
             { values, logoFile, coverFile, businessId: businessQuery.data?.id ?? null },
             {
                 onSuccess: (response) => {
                     const business = response.business
                     if (!business) return
+
+                    posthog.capture('business_profile_saved', {
+                        is_new_business: isNewBusiness,
+                    })
 
                     form.reset({
                         ...form.getValues(),
