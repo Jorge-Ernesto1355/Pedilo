@@ -278,8 +278,12 @@ describe('Productos · casos límite del catálogo', () => {
         closeProductModal()
 
         openProductModal()
-        submitProduct('Descripción enorme', '20', 'D'.repeat(101))
-        cy.contains('Usa 100 caracteres o menos.').should('be.visible')
+        submitProduct('Descripción limitada', '20', 'D'.repeat(101))
+        cy.get('#product-description')
+            .should('have.attr', 'maxlength', '100')
+            .and('have.value', 'D'.repeat(100))
+        cy.wait('@createProduct')
+        cy.then(() => expect(state.products[0]?.description).to.have.length(100))
         closeProductModal()
 
         openProductModal()

@@ -401,6 +401,57 @@ describe('Catálogo · menú, categoría, productos y opciones', () => {
         cy.get('[role="dialog"]').contains('Escribe un nombre para el menú.').should('be.visible')
         cy.then(() => expect(counters.menu ?? 0).to.eq(0))
     })
+
+    it('limita a 100 caracteres las descripciones de menú, categoría y producto', () => {
+        const state = createState()
+        const counters: CreationCounters = {}
+
+        installCatalogApi(state, counters)
+
+        cy.visit('/create-menu')
+        cy.wait('@listMenus')
+        cy.contains('button', 'Crear menú').first().click()
+        cy.get('#menu-name').type('Menú con descripciones cortas')
+        cy.get('#menu-description')
+            .should('have.attr', 'maxlength', '100')
+            .type('M'.repeat(101))
+            .should('have.value', 'M'.repeat(100))
+        cy.get('[role="dialog"] button[type="submit"]').click()
+        cy.wait('@createMenu')
+        cy.then(() => {
+            expect(state.menu?.description).to.have.length(100)
+            expect(counters.menu).to.eq(1)
+        })
+
+        cy.contains('button', 'Menú con descripciones cortas').click()
+        cy.wait('@getMenu')
+        cy.contains('button', 'Agregar').click()
+        cy.get('input[placeholder="Nombre de categoría"]').type('Categoría breve')
+        cy.get('textarea[placeholder="Descripción (opcional)"]')
+            .should('have.attr', 'maxlength', '100')
+            .type('C'.repeat(101))
+            .should('have.value', 'C'.repeat(100))
+        cy.contains('button', 'Guardar categoría').click()
+        cy.wait('@createCategory')
+        cy.then(() => {
+            expect(state.category?.description).to.have.length(100)
+            expect(counters.category).to.eq(1)
+        })
+
+        cy.contains('button', 'Agregar producto').click()
+        cy.get('#product-name').type('Producto breve')
+        cy.get('#product-description')
+            .should('have.attr', 'maxlength', '100')
+            .type('P'.repeat(101))
+            .should('have.value', 'P'.repeat(100))
+        cy.get('#product-price').type('20')
+        cy.get('[role="dialog"] button[type="submit"]').contains('Crear producto').click()
+        cy.wait('@createProduct')
+        cy.then(() => {
+            expect(state.product?.description).to.have.length(100)
+            expect(counters.product).to.eq(1)
+        })
+    })
 })
 
 export {}

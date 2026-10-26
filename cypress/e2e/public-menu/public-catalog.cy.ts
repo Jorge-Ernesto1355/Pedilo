@@ -200,10 +200,10 @@ const catalog = {
     ],
 }
 
-function installPublicCatalogApi() {
+function installPublicCatalogApi(response = catalog) {
     cy.intercept('GET', `**/api/v1/public/businesses/${slug}/catalog`, {
         statusCode: 200,
-        body: catalog,
+        body: response,
     }).as('getPublicCatalog')
 }
 
@@ -349,6 +349,43 @@ describe('Catálogo público', () => {
                 .and('contain', '$55.00')
             assertPageFitsViewport()
         })
+    })
+
+    it('muestra el estado vacío cuando un menú no tiene categorías', () => {
+        const emptyMenuCatalog = {
+            ...catalog,
+            menus: [{ ...catalog.menus[0], categories: [] }],
+        }
+        installPublicCatalogApi(emptyMenuCatalog)
+
+        cy.visit(`/${slug}`)
+        cy.wait('@getPublicCatalog')
+
+        cy.contains('h2', 'La carta está tomando forma.').should('be.visible')
+        cy.contains('Este menú todavía no tiene categorías').should('be.visible')
+        cy.get('nav[aria-label="Categorías del menú"]').should('not.exist')
+    })
+
+    it('muestra el estado vacío cuando una categoría no tiene productos', () => {
+        const emptyCategoryCatalog = {
+            ...catalog,
+            menus: [
+                {
+                    ...catalog.menus[0],
+                    categories: [{ ...catalog.menus[0].categories[0], products: [] }],
+                },
+            ],
+        }
+        installPublicCatalogApi(emptyCategoryCatalog)
+
+        cy.visit(`/${slug}`)
+        cy.wait('@getPublicCatalog')
+
+        cy.get('#category-category-tacos-public-e2e')
+            .should('be.visible')
+            .and('contain', 'Esta sección está entre bastidores.')
+            .and('contain', '“Tacos”')
+        cy.get('nav[aria-label="Categorías del menú"]').should('contain', 'Tacos')
     })
 })
 
