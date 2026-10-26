@@ -1,5 +1,6 @@
 import * as Sentry from "@sentry/nextjs";
 import { OTLPLogExporter } from '@opentelemetry/exporter-logs-otlp-http'
+import type { Instrumentation } from 'next'
 import { resourceFromAttributes } from '@opentelemetry/resources'
 import { BatchLogRecordProcessor, LoggerProvider } from '@opentelemetry/sdk-logs'
 
@@ -47,4 +48,16 @@ export async function register() {
   }
 }
 
-export const onRequestError = Sentry.captureRequestError;
+export const onRequestError: Instrumentation.onRequestError = async (...args) => {
+  Sentry.captureRequestError(...args)
+
+  if (process.env.NEXT_RUNTIME === 'nodejs') {
+    const { getPostHogClient } = await import('./src/lib/posthog-server')
+    const posthog = getPostHogClient()
+
+    if (posthog) {
+      posthog.captureException(args[0])
+      await posthog.flush()
+    }
+  }
+}

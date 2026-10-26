@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withPostHogConfig } from "@posthog/nextjs-config";
 import { withSentryConfig } from "@sentry/nextjs/config";
 
 const nextConfig: NextConfig = {
@@ -17,12 +18,25 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withSentryConfig(nextConfig, {
+const sentryConfig = withSentryConfig(nextConfig, {
   org: "pedilo-70",
   project: "pedilo-frontend",
   silent: !process.env.CI,
   widenClientFileUpload: true,
   sourcemaps: {
     deleteSourcemapsAfterUpload: true,
+  },
+});
+
+export default withPostHogConfig(sentryConfig, {
+  personalApiKey: process.env.POSTHOG_API_KEY ?? '',
+  projectId: process.env.POSTHOG_PROJECT_ID,
+  host: process.env.POSTHOG_HOST,
+  sourcemaps: {
+    enabled: Boolean(
+      process.env.POSTHOG_API_KEY?.startsWith('phx_') &&
+        process.env.POSTHOG_PROJECT_ID,
+    ),
+    deleteAfterUpload: true,
   },
 });

@@ -30,6 +30,7 @@
         "@opentelemetry/exporter-logs-otlp-http": "^0.300.0",
         "@opentelemetry/resources": "^3.0.0",
         "@opentelemetry/sdk-logs": "^3.0.0",
+        "@posthog/nextjs-config": "^1.12.0",
         "@sentry/nextjs": "^11.9.0",
         "@tanstack/react-query": "^5.102.8",
         "@types/leaflet": "^1.9.22",
