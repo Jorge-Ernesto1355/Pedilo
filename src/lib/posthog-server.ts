@@ -1,7 +1,7 @@
 import { PostHog } from 'posthog-node'
 
-const posthogKey = process.env.NEXT_PUBLIC_POSTHOG_KEY
-const posthogHost = process.env.NEXT_PUBLIC_POSTHOG_HOST
+const posthogKey = process.env.POSTHOG_KEY ?? process.env.NEXT_PUBLIC_POSTHOG_KEY
+const posthogHost = process.env.POSTHOG_HOST ?? process.env.NEXT_PUBLIC_POSTHOG_HOST
 
 function missingPostHogConfiguration(variableName: string) {
     if (process.env.NODE_ENV !== 'production') {
@@ -14,9 +14,9 @@ function missingPostHogConfiguration(variableName: string) {
 let posthogClient: PostHog | undefined
 
 if (!posthogKey) {
-    missingPostHogConfiguration('NEXT_PUBLIC_POSTHOG_KEY')
+    missingPostHogConfiguration('POSTHOG_KEY')
 } else if (!posthogHost) {
-    missingPostHogConfiguration('NEXT_PUBLIC_POSTHOG_HOST')
+    missingPostHogConfiguration('POSTHOG_HOST')
 } else {
     posthogClient = new PostHog(posthogKey, {
         host: posthogHost,

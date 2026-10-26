@@ -1,18 +1,19 @@
 # PostHog error tracking
 
 > ⚠️ **Needs your attention**
+>
 > - Add `POSTHOG_API_KEY`, `POSTHOG_PROJECT_ID`, and `POSTHOG_HOST` to the Vercel Production build environment; `POSTHOG_API_KEY` must be a personal API key with the Source map upload preset.
-> - Ensure `NEXT_PUBLIC_POSTHOG_KEY` and `NEXT_PUBLIC_POSTHOG_HOST` are configured in Vercel for the deployed app.
+> - Ensure `POSTHOG_KEY` and `POSTHOG_HOST` are configured in Vercel for the deployed app. Next maps them to the public browser variables automatically.
 > - Redeploy from the connected Git repository so production builds can upload source maps and associate releases. The local verification build passed, but no credentialed upload was verified.
 
 ## What you still need to do
 
 1. Create a personal API key with the **Source map upload** preset at https://us.posthog.com/settings/user-api-keys. The preset provides the error-tracking write scope required for source-map uploads and release association.
 2. In the linked Vercel project, add these Production build environment variables before the next deploy:
-   - `POSTHOG_API_KEY` — store as a Sensitive/secret value.
-   - `POSTHOG_PROJECT_ID` — set to `686590`.
-   - `POSTHOG_HOST` — set to the PostHog API host used by the uploader.
-   Also ensure the application variables `NEXT_PUBLIC_POSTHOG_KEY` and `NEXT_PUBLIC_POSTHOG_HOST` exist under those exact names. Redeploy from the connected Git repository.
+    - `POSTHOG_API_KEY` — store as a Sensitive/secret value.
+    - `POSTHOG_PROJECT_ID` — set to `686590`.
+    - `POSTHOG_HOST` — set to the PostHog API host used by the uploader.
+      For the application itself, add `POSTHOG_KEY` (the project token) and `POSTHOG_HOST` (for example `https://us.i.posthog.com`). Redeploy from the connected Git repository.
 3. If production is built somewhere other than the documented Vercel path, expose the same five variables there and provide both release identity halves (repository/release name and commit/version). No repository-managed CI pipeline was found to edit.
 
 ## What is active now
