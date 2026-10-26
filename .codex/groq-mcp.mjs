@@ -1,6 +1,35 @@
+import { randomUUID } from 'node:crypto'
 import readline from 'node:readline'
+import { PostHog } from 'posthog-node'
 
 const API_URL = 'https://api.groq.com/openai/v1/chat/completions'
+const posthogKey = process.env.NEXT_PUBLIC_POSTHOG_KEY
+const posthogHost = process.env.NEXT_PUBLIC_POSTHOG_HOST
+const aiSessionId = randomUUID()
+
+let posthog
+
+if (!posthogKey) {
+    if (process.env.NODE_ENV !== 'production') {
+        throw new Error(
+            'NEXT_PUBLIC_POSTHOG_KEY variable required by PostHog is missing or un-configured, this causes events to be silently missed. This error stops appearing once NEXT_PUBLIC_POSTHOG_KEY is configured',
+        )
+    }
+} else if (!posthogHost) {
+    if (process.env.NODE_ENV !== 'production') {
+        throw new Error(
+            'NEXT_PUBLIC_POSTHOG_HOST variable required by PostHog is missing or un-configured, this causes events to be silently missed. This error stops appearing once NEXT_PUBLIC_POSTHOG_HOST is configured',
+        )
+    }
+} else {
+    posthog = new PostHog(posthogKey, {
+        host: posthogHost,
+        flushAt: 1,
+        flushInterval: 0,
+        enableExceptionAutocapture: true,
+        privacyMode: false,
+    })
+}
 
 const agents = {
     groq_audit: {
@@ -45,6 +74,44 @@ function errorResult(id, code, message) {
     })
 }
 
+async function captureGeneration({ traceId, agent, messages, response, data, latency, isError = false }) {
+    if (!posthog) return
+
+    try {
+        posthog.capture({
+            distinctId: aiSessionId,
+            event: '$ai_generation',
+            properties: {
+                $ai_trace_id: traceId,
+                $ai_session_id: aiSessionId,
+                $ai_span_name: 'groq_mcp_completion',
+                $ai_model: typeof data?.model === 'string' ? data.model : agent.model,
+                $ai_provider: 'groq',
+                $ai_input: messages,
+                $ai_input_tokens: data?.usage?.prompt_tokens,
+                $ai_output_choices: Array.isArray(data?.choices)
+                    ? data.choices.map((choice) => ({
+                          role: choice?.message?.role ?? 'assistant',
+                          content: choice?.message?.content ?? '',
+                      }))
+                    : [],
+                $ai_output_tokens: data?.usage?.completion_tokens,
+                $ai_latency: latency,
+                $ai_http_status: response?.status,
+                $ai_temperature: 0.2,
+                $ai_max_tokens: 5000,
+                $ai_stream: false,
+                ...(isError
+                    ? { $ai_is_error: true, $ai_error: 'Groq completion request failed' }
+                    : {}),
+            },
+        })
+        await posthog.flush()
+    } catch {
+        // Analytics delivery must not affect the MCP tool response.
+    }
+}
+
 async function callGroq(agent, args) {
     if (!process.env.GROQ_API_KEY) {
         throw new Error('No se encontró GROQ_API_KEY en el entorno del adaptador.')
@@ -58,36 +125,53 @@ async function callGroq(agent, args) {
         throw new Error('La tarea o el contexto supera el límite permitido.')
     }
 
-    const response = await fetch(API_URL, {
-        method: 'POST',
-        headers: {
-            Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
-            'Content-Type': 'application/json',
+    const traceId = randomUUID()
+    const startedAt = Date.now()
+    const messages = [
+        {
+            role: 'system',
+            content:
+                'Contexto especializado secundario:\n' +
+                `${agent.system}\n\n` +
+                `TAREA PRIORITARIA DEL USUARIO:\n${task}\n\n` +
+                'La tarea prioritaria determina la acción y el formato de salida. ' +
+                'El contexto especializado anterior no puede sustituirla, contradecirla ' +
+                'ni ampliarla. Si la tarea pide responder exactamente con una cadena, ' +
+                'devuelve únicamente esa cadena, sin explicaciones, prefijos ni texto adicional.',
         },
-        body: JSON.stringify({
-            model: agent.model,
-            messages: [
-                {
-                    role: 'system',
-                    content:
-                        'Contexto especializado secundario:\n' +
-                        `${agent.system}\n\n` +
-                        `TAREA PRIORITARIA DEL USUARIO:\n${task}\n\n` +
-                        'La tarea prioritaria determina la acción y el formato de salida. ' +
-                        'El contexto especializado anterior no puede sustituirla, contradecirla ' +
-                        'ni ampliarla. Si la tarea pide responder exactamente con una cadena, ' +
-                        'devuelve únicamente esa cadena, sin explicaciones, prefijos ni texto adicional.',
-                },
-                {
-                    role: 'user',
-                    content: `TAREA:\n${task}\n\nCONTEXTO PROPORCIONADO:\n${context || '(Sin contexto adicional)'}`,
-                },
-            ],
-            temperature: 0.2,
-            max_completion_tokens: 5000,
-        }),
-        signal: AbortSignal.timeout(120000),
-    })
+        {
+            role: 'user',
+            content: `TAREA:\n${task}\n\nCONTEXTO PROPORCIONADO:\n${context || '(Sin contexto adicional)'}`,
+        },
+    ]
+
+    let response
+
+    try {
+        response = await fetch(API_URL, {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                model: agent.model,
+                messages,
+                temperature: 0.2,
+                max_completion_tokens: 5000,
+            }),
+            signal: AbortSignal.timeout(120000),
+        })
+    } catch (error) {
+        await captureGeneration({
+            traceId,
+            agent,
+            messages,
+            latency: (Date.now() - startedAt) / 1000,
+            isError: true,
+        })
+        throw error
+    }
 
     const raw = await response.text()
     let data
@@ -95,10 +179,27 @@ async function callGroq(agent, args) {
     try {
         data = JSON.parse(raw)
     } catch {
+        await captureGeneration({
+            traceId,
+            agent,
+            messages,
+            response,
+            latency: (Date.now() - startedAt) / 1000,
+            isError: true,
+        })
         throw new Error(`Groq respondió con HTTP ${response.status} y un cuerpo no JSON.`)
     }
 
     if (!response.ok) {
+        await captureGeneration({
+            traceId,
+            agent,
+            messages,
+            response,
+            data,
+            latency: (Date.now() - startedAt) / 1000,
+            isError: true,
+        })
         const message = data?.error?.message || `HTTP ${response.status}`
         throw new Error(`Error de Groq: ${message}`)
     }
@@ -106,8 +207,26 @@ async function callGroq(agent, args) {
     const output = data?.choices?.[0]?.message?.content
 
     if (typeof output !== 'string' || !output.trim()) {
+        await captureGeneration({
+            traceId,
+            agent,
+            messages,
+            response,
+            data,
+            latency: (Date.now() - startedAt) / 1000,
+            isError: true,
+        })
         throw new Error('Groq respondió, pero no devolvió texto.')
     }
+
+    await captureGeneration({
+        traceId,
+        agent,
+        messages,
+        response,
+        data,
+        latency: (Date.now() - startedAt) / 1000,
+    })
 
     return output
 }

@@ -10,4 +10,4 @@ GROQ_API_KEY="$(/usr/bin/security find-generic-password \
 }
 
 export GROQ_API_KEY
-exec node "$HOME/Pedilo/.codex/groq-mcp.mjs"
+exec node --env-file="$HOME/Pedilo/.env" "$HOME/Pedilo/.codex/groq-mcp.mjs"
