@@ -23,6 +23,10 @@ import {
     CreateMenuErrorState,
     MenuManagementSkeleton,
 } from '../../components/CreateMenuStates'
+import {
+    CATEGORY_DESCRIPTION_MAX_LENGTH,
+    MENU_DESCRIPTION_MAX_LENGTH,
+} from '../../description-limits'
 
 type MenuManagement = ReturnType<typeof useCategoryManagement>
 type ProductManagement = ReturnType<typeof useProductManagement>
@@ -700,6 +704,7 @@ export function MenuManagementPanel({ management }: { management: MenuManagement
                                             }
                                             placeholder="Descripción (opcional)"
                                             rows={2}
+                                            maxLength={CATEGORY_DESCRIPTION_MAX_LENGTH}
                                             className="w-full resize-none rounded-lg border border-[#D7E1EF] px-3 py-2 text-sm outline-none focus:border-[#2451C5]"
                                         />
                                         <button
@@ -884,6 +889,7 @@ export function MenuManagementPanel({ management }: { management: MenuManagement
                         onChange={(event) => setMenuDescription(event.target.value)}
                         placeholder="Descripción (opcional)"
                         rows={3}
+                        maxLength={MENU_DESCRIPTION_MAX_LENGTH}
                         className="w-full resize-none rounded-xl border border-[#D7E1EF] px-3.5 py-3 text-sm"
                     />
                     <div className="flex justify-end gap-2">
@@ -936,6 +942,7 @@ export function MenuManagementPanel({ management }: { management: MenuManagement
                                 }
                                 placeholder="Descripción (opcional)"
                                 rows={3}
+                                maxLength={CATEGORY_DESCRIPTION_MAX_LENGTH}
                                 className="w-full resize-none rounded-xl border border-[#D7E1EF] px-3.5 py-3 text-sm"
                             />
                             <div className="flex justify-end gap-2">

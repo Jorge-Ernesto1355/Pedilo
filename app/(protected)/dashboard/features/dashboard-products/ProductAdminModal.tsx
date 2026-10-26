@@ -12,6 +12,7 @@ import type {
 } from '@/app/(protected)/create-menu/features/product-management/product.types'
 import { OptionGroupsEditor } from '@/app/(protected)/create-menu/features/option-management/OptionGroupsEditor'
 import Link from 'next/link'
+import { PRODUCT_DESCRIPTION_MAX_LENGTH } from '@/app/(protected)/create-menu/description-limits'
 
 export type ProductCategoryOption = { id: string; name: string; label: string }
 
@@ -132,6 +133,7 @@ export function ProductAdminModal({
                         onChange={(event) => update('description', event.target.value)}
                         placeholder="Ingredientes, tamaño o detalles importantes"
                         rows={3}
+                        maxLength={PRODUCT_DESCRIPTION_MAX_LENGTH}
                         className="w-full rounded-xl border border-[#D7E1EF] bg-white px-3 py-2.5 text-sm text-[#243556] outline-none transition focus:border-[#2451C5] focus:ring-4 focus:ring-[#2451C5]/10 resize-none"
                     />
                 </Field>
@@ -152,7 +154,10 @@ export function ProductAdminModal({
                             className="w-full rounded-xl border border-[#D7E1EF] bg-white px-3 py-2.5 text-sm text-[#243556] outline-none transition focus:border-[#2451C5] focus:ring-4 focus:ring-[#2451C5]/10"
                         />
                     </Field>
-                    <Field label="Imagen" hint="Opcional · máximo 5 MB. Usa solo imágenes que tengas autorización para publicar.">
+                    <Field
+                        label="Imagen"
+                        hint="Opcional · máximo 5 MB. Usa solo imágenes que tengas autorización para publicar."
+                    >
                         <input
                             type="file"
                             accept="image/*"
@@ -163,13 +168,20 @@ export function ProductAdminModal({
                 </div>
                 <p className="text-xs leading-5 text-[#65738A]">
                     Consulta las políticas de{' '}
-                    <Link href="/productos-y-contenido" className="font-semibold text-[#2451C5] underline underline-offset-2">
+                    <Link
+                        href="/productos-y-contenido"
+                        className="font-semibold text-[#2451C5] underline underline-offset-2"
+                    >
                         productos y contenido
                     </Link>{' '}
                     y{' '}
-                    <Link href="/propiedad-intelectual" className="font-semibold text-[#2451C5] underline underline-offset-2">
+                    <Link
+                        href="/propiedad-intelectual"
+                        className="font-semibold text-[#2451C5] underline underline-offset-2"
+                    >
                         propiedad intelectual
-                    </Link>{' '}antes de publicar.
+                    </Link>{' '}
+                    antes de publicar.
                 </p>
                 <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-[#DCE5F3] px-3 py-3 text-sm text-[#243556]">
                     <input

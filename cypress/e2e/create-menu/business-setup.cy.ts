@@ -71,8 +71,14 @@ function fillBusinessProfile(overrides: Partial<Record<string, string>> = {}) {
     cy.get('#description')
         .clear()
         .type(overrides.description ?? 'Tacos, quesadillas y aguas frescas.')
-    cy.get('#open-time').should('be.enabled').clear().type(overrides.openTime ?? '10:30')
-    cy.get('#close-time').should('be.enabled').clear().type(overrides.closeTime ?? '22:30')
+    cy.get('#open-time')
+        .should('be.enabled')
+        .clear()
+        .type(overrides.openTime ?? '10:30')
+    cy.get('#close-time')
+        .should('be.enabled')
+        .clear()
+        .type(overrides.closeTime ?? '22:30')
 }
 
 function businessResponse(overrides: Partial<BusinessApi> = {}): BusinessApi {
@@ -325,14 +331,14 @@ describe('Crear menú · perfil del restaurante', () => {
         cy.get('#businessName').clear().type('N'.repeat(41))
         cy.get('#slug').clear().type('s'.repeat(31))
         cy.get('#location').clear().type('L'.repeat(101))
-        cy.get('#description').clear().type('D'.repeat(181))
+        cy.get('#description').clear().type('D'.repeat(231))
         cy.get('#location').should('have.value', 'L'.repeat(100))
-        cy.get('#description').should('have.value', 'D'.repeat(180))
+        cy.get('#description').should('have.value', 'D'.repeat(230))
         cy.contains('button', 'Guardar cambios').click()
 
         cy.contains('Usa 40 caracteres o menos.').should('be.visible')
         cy.contains('Usa 100 caracteres o menos.').should('not.exist')
-        cy.contains('Usa 180 caracteres o menos.').should('not.exist')
+        cy.contains('Usa 230 caracteres o menos.').should('not.exist')
         cy.then(() => expect(createCalls).to.eq(0))
     })
 
@@ -453,7 +459,9 @@ describe('Crear menú · perfil del restaurante', () => {
             .and('contain', 'La URL del negocio ya está en uso.')
 
         cy.get('#slug').clear().type(`slug-libre-${uniqueSuffix()}`)
-        cy.get('#slug').invoke('val').should('match', /^slug-libre-/)
+        cy.get('#slug')
+            .invoke('val')
+            .should('match', /^slug-libre-/)
     })
 
     it('muestra error 500 y permite reintentar sin bloquear el formulario', () => {

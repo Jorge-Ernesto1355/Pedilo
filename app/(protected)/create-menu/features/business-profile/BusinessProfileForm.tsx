@@ -15,8 +15,8 @@ import { MapPinned } from 'lucide-react'
 import type { FormEventHandler } from 'react'
 import { ProgressiveImage } from './ProgressiveImage'
 import { BusinessProfileSkeleton } from '../../components/CreateMenuStates'
+import { BUSINESS_DESCRIPTION_MAX_LENGTH } from '../../description-limits'
 
-const DESCRIPTION_MAX_LENGTH = 180
 const LOCATION_MAX_LENGTH = 100
 
 type BusinessProfileFormProps = {
@@ -214,7 +214,7 @@ export function BusinessProfileForm({
                     <textarea
                         id="description"
                         rows={4}
-                        maxLength={DESCRIPTION_MAX_LENGTH}
+                        maxLength={BUSINESS_DESCRIPTION_MAX_LENGTH}
                         placeholder="Cuéntales qué hace especial a tu negocio"
                         className={`${inputClass} resize-none`}
                         {...register('description')}
@@ -224,7 +224,7 @@ export function BusinessProfileForm({
                             {errors.description?.message ?? 'Una frase breve funciona mejor.'}
                         </span>
                         <span className="shrink-0 tabular-nums">
-                            {description.length}/{DESCRIPTION_MAX_LENGTH}
+                            {description.length}/{BUSINESS_DESCRIPTION_MAX_LENGTH}
                         </span>
                     </div>
                 </div>

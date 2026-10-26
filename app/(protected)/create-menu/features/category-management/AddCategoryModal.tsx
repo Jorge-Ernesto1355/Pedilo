@@ -7,6 +7,10 @@ import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { Modal } from '@/app/components/ui/Modal'
 import type { MenuCreationInput } from './menu.types'
+import {
+    CATEGORY_DESCRIPTION_MAX_LENGTH,
+    MENU_DESCRIPTION_MAX_LENGTH,
+} from '../../description-limits'
 
 const menuFormSchema = z.object({
     name: z
@@ -14,9 +18,18 @@ const menuFormSchema = z.object({
         .trim()
         .min(1, 'Escribe un nombre para el menú.')
         .max(80, 'Usa 80 caracteres o menos.'),
-    description: z.string().trim().max(180, 'Usa 180 caracteres o menos.'),
+    description: z
+        .string()
+        .trim()
+        .max(MENU_DESCRIPTION_MAX_LENGTH, `Usa ${MENU_DESCRIPTION_MAX_LENGTH} caracteres o menos.`),
     category: z.string().trim().max(40, 'Usa 40 caracteres o menos.'),
-    categoryDescription: z.string().trim().max(180, 'Usa 180 caracteres o menos.'),
+    categoryDescription: z
+        .string()
+        .trim()
+        .max(
+            CATEGORY_DESCRIPTION_MAX_LENGTH,
+            `Usa ${CATEGORY_DESCRIPTION_MAX_LENGTH} caracteres o menos.`,
+        ),
 })
 
 type MenuFormValues = z.infer<typeof menuFormSchema>
@@ -135,6 +148,7 @@ export function AddCategoryModal({
                     <textarea
                         id="menu-description"
                         rows={3}
+                        maxLength={MENU_DESCRIPTION_MAX_LENGTH}
                         placeholder="Hamburguesas, alitas y bebidas"
                         className="w-full resize-none rounded-xl border border-[#D7E1EF] px-3.5 py-3 text-sm outline-none transition placeholder:text-[#A0ACBD] focus:border-[#2451C5] focus:ring-4 focus:ring-[#2451C5]/10"
                         {...register('description')}
@@ -172,6 +186,7 @@ export function AddCategoryModal({
                             <textarea
                                 id="category-description"
                                 rows={2}
+                                maxLength={CATEGORY_DESCRIPTION_MAX_LENGTH}
                                 placeholder="Descripción de categoría (opcional)"
                                 className="mt-2 w-full resize-none rounded-xl border border-[#D7E1EF] px-3.5 py-2.5 text-sm outline-none transition placeholder:text-[#A0ACBD] focus:border-[#2451C5] focus:ring-4 focus:ring-[#2451C5]/10"
                                 {...register('categoryDescription')}

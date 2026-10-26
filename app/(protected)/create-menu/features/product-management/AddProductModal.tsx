@@ -15,6 +15,7 @@ import { ApiError } from '@/app/auth/lib/client/api-error'
 import { notify } from '@/src/lib/notifications/notify'
 import { ImagePlus } from 'lucide-react'
 import Link from 'next/link'
+import { PRODUCT_DESCRIPTION_MAX_LENGTH } from '../../description-limits'
 
 type AddProductModalProps = {
     open: boolean
@@ -188,6 +189,7 @@ export function AddProductModal({
                     <textarea
                         id="product-description"
                         rows={3}
+                        maxLength={PRODUCT_DESCRIPTION_MAX_LENGTH}
                         className={`${inputClass} resize-none`}
                         placeholder="Carne, queso, lechuga y aderezo de la casa"
                         {...register('description')}
