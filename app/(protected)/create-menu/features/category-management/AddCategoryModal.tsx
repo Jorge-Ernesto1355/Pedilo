@@ -12,7 +12,7 @@ import {
     MENU_DESCRIPTION_MAX_LENGTH,
 } from '../../description-limits'
 
-const menuFormSchema = z.object({
+export const menuFormSchema = z.object({
     name: z
         .string()
         .trim()
