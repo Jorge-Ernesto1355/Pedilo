@@ -153,7 +153,7 @@ export function ProductCustomizeDialog({
                                                             </span>
                                                         )}
                                                     </span>
-                                                    <div className="flex items-center gap-2 rounded-lg border border-[#DCE5F3] px-1">
+                                                    <div className="flex min-h-11 items-center gap-1 rounded-lg border border-[#DCE5F3] px-1 sm:min-h-8 sm:gap-2">
                                                         <button
                                                             type="button"
                                                             disabled={
@@ -171,11 +171,11 @@ export function ProductCustomizeDialog({
                                                                 )
                                                             }
                                                             aria-label={`Quitar ${option.name}`}
-                                                            className="grid size-10 place-items-center rounded text-[#65738A] disabled:opacity-30 sm:size-7"
+                                                            className="grid size-10 place-items-center rounded text-[#65738A] hover:bg-[#F5F8FC] disabled:opacity-30 sm:size-6"
                                                         >
                                                             <Minus className="size-3.5" />
                                                         </button>
-                                                        <span className="w-5 text-center text-sm font-bold text-[#12234A]">
+                                                        <span className="w-4 text-center text-xs font-bold text-[#12234A]">
                                                             {quantity}
                                                         </span>
                                                         <button
@@ -189,7 +189,7 @@ export function ProductCustomizeDialog({
                                                                 )
                                                             }
                                                             aria-label={`Agregar ${option.name}`}
-                                                            className="grid size-10 place-items-center rounded text-[#2451C5] disabled:opacity-30 sm:size-7"
+                                                            className="grid size-10 place-items-center rounded text-[#2451C5] hover:bg-[#EAF0FF] disabled:opacity-30 sm:size-6"
                                                         >
                                                             <Plus className="size-3.5" />
                                                         </button>
