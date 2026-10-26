@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import posthog from 'posthog-js'
 import { AlertCircle, Utensils } from 'lucide-react'
 import { ApiError } from '@/app/auth/lib/client/api-error'
 import { getUserFriendlyError } from '@/src/lib/errors/user-friendly-error'
@@ -570,6 +571,12 @@ export default function PublicMenuPage({ slug }: { slug: string }) {
             if (!redirected) {
                 setManualWhatsAppUrl(whatsappUrl)
             }
+
+            posthog.capture('public_order_created', {
+                item_count: cart.totalItems,
+                order_total: cart.total,
+                has_notes: Boolean(notes),
+            })
 
             cart.clear()
             setOrderOpen(false)
