@@ -1,5 +1,11 @@
 'use client'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+    keepPreviousData,
+    useMutation,
+    useQueries,
+    useQuery,
+    useQueryClient,
+} from '@tanstack/react-query'
 import { useAuthStore } from '@/store/authStore'
 import { getOrder, getOrders, updateOrderStatus } from '@/src/lib/api/orderApi'
 import type { OrderPeriod, OrderStatus } from '@/src/lib/api/order-types'
@@ -20,7 +26,26 @@ export function useOrders(params: {
         queryKey: ['orders', businessId, params],
         queryFn: () => getOrders(businessId as string, params),
         enabled: Boolean(businessId),
+        placeholderData: keepPreviousData,
         staleTime: 30 * 1000,
+    })
+}
+
+export function useOrderStatusCounts(params: { search?: string; period?: OrderPeriod }) {
+    const businessId = useAuthStore((state) => state.user?.businessId)
+    return useQueries({
+        queries: (['PENDING', 'PREPARING', 'READY', 'CANCELLED'] as const).map((status) => ({
+            queryKey: ['orders', businessId, { ...params, status, page: 1, limit: 1 }],
+            queryFn: () =>
+                getOrders(businessId as string, {
+                    page: 1,
+                    limit: 1,
+                    status,
+                    ...params,
+                }),
+            enabled: Boolean(businessId),
+            staleTime: 30 * 1000,
+        })),
     })
 }
 export function useOrder(orderId: string | null) {

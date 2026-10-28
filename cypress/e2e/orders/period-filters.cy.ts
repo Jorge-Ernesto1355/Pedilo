@@ -34,12 +34,12 @@ function installPeriodApi() {
         const search = url.searchParams.get('search')
 
         const limit = url.searchParams.get('limit')
-        expect(['5', '20']).to.include(limit)
+        expect(['1', '5', '10', '20']).to.include(limit)
         if (period) expect(['today', '7d', '30d', 'lastMonth']).to.include(period)
         if (status) expect(['PENDING', 'PREPARING', 'READY', 'CANCELLED']).to.include(status)
         expect(url.searchParams.has('CONFIRMED')).to.eq(false)
 
-        request.alias = limit === '20' ? 'filteredOrders' : 'dashboardOrders'
+        request.alias = limit === '10' ? 'filteredOrders' : 'dashboardOrders'
         request.reply({
             statusCode: 200,
             body: {
@@ -52,7 +52,7 @@ function installPeriodApi() {
                     },
                 ],
                 page,
-                limit: 20,
+                limit: Number(limit),
                 total: 41,
             },
         })
@@ -108,7 +108,7 @@ describe('Filtros de periodo de órdenes', () => {
                 expect(url).to.include('page=1')
             })
 
-        cy.get('select[aria-label="Filtrar pedidos por estado"]').select('READY')
+        cy.contains('button', /^Listas/).click()
         cy.wait('@filteredOrders')
             .its('request.url')
             .then((url) => {
@@ -126,7 +126,7 @@ describe('Filtros de periodo de órdenes', () => {
                 expect(url).to.include('status=READY')
                 expect(url).to.include('search=29')
                 expect(url).to.include('page=1')
-                expect(url).to.include('limit=20')
+                expect(url).to.include('limit=10')
             })
     })
 })

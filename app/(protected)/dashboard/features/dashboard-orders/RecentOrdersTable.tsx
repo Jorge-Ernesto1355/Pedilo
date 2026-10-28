@@ -12,8 +12,8 @@ const money = new Intl.NumberFormat('es-MX', {
 })
 const statusCopy: Record<Order['status'], { label: string; color: string }> = {
     ready: { label: '¡Lista!', color: 'bg-[#39A86B]' },
-    pending: { label: 'Nueva', color: 'bg-[#D59A21]' },
-    preparing: { label: 'Preparando', color: 'bg-[#315FE8]' },
+    pending: { label: 'Pendiente', color: 'bg-[#D59A21]' },
+    preparing: { label: 'En preparación', color: 'bg-[#315FE8]' },
     cancelled: { label: 'Cancelada', color: 'bg-[#C94B4B]' },
 }
 

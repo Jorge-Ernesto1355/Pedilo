@@ -80,11 +80,11 @@ function installStatusApi(state: { status: TestOrderStatus }, counters: { update
 }
 
 function orderCard() {
-    return cy.contains('article', `Pedido #${order.orderNumber}`)
+    return cy.contains('article', `#${String(order.orderNumber).padStart(3, '0')}`)
 }
 
 describe('Cambio rápido de estados de órdenes', () => {
-    it('avanza Nueva → Preparando → ¡Lista! desde la lista sin duplicar actualizaciones', () => {
+    it('avanza Pendiente → En preparación → Lista desde la lista sin duplicar actualizaciones', () => {
         const state: { status: TestOrderStatus } = { status: 'PENDING' }
         const counters = { updates: 0 }
 
@@ -94,8 +94,8 @@ describe('Cambio rápido de estados de órdenes', () => {
         cy.wait('@listOrders')
 
         orderCard().within(() => {
-            cy.contains('Nueva').should('be.visible')
-            cy.contains('button', 'Empezar a preparar').click()
+            cy.contains('Pendiente').should('be.visible')
+            cy.contains('button', 'Preparar').click()
         })
 
         cy.get('[role="dialog"][aria-labelledby="order-detail-title"]').should('not.exist')
@@ -105,26 +105,26 @@ describe('Cambio rápido de estados de órdenes', () => {
         cy.wait('@listOrders')
 
         orderCard().within(() => {
-            cy.contains('Preparando').should('be.visible')
-            cy.contains('button', 'Marcar como lista').should('be.visible')
+            cy.contains('En preparación').should('be.visible')
+            cy.contains('button', 'Marcar listo').should('be.visible')
         })
 
-        orderCard().contains('button', 'Marcar como lista').click()
+        orderCard().contains('button', 'Marcar listo').click()
         orderCard().contains('button', 'Actualizando…').should('be.disabled').click({ force: true })
         cy.wait('@updateOrderStatus')
         cy.then(() => expect(counters.updates).to.eq(2))
         cy.wait('@listOrders')
 
         orderCard().within(() => {
-            cy.contains('¡Lista!').should('be.visible')
-            cy.contains('button', 'Marcar como lista').should('not.exist')
-            cy.contains('button', 'Empezar a preparar').should('not.exist')
+            cy.contains('Lista').should('be.visible')
+            cy.contains('button', 'Marcar listo').should('not.exist')
+            cy.contains('button', 'Preparar').should('not.exist')
         })
 
         cy.reload()
         cy.wait('@listOrders')
         orderCard().within(() => {
-            cy.contains('¡Lista!').should('be.visible')
+            cy.contains('Lista').should('be.visible')
         })
         cy.then(() => expect(state.status).to.eq('READY'))
     })
@@ -139,7 +139,7 @@ describe('Cambio rápido de estados de órdenes', () => {
         cy.wait('@listOrders')
 
         orderCard().within(() => {
-            cy.contains('Nueva').should('be.visible')
+            cy.contains('Pendiente').should('be.visible')
             cy.get(`button[aria-label="Cancelar pedido #${order.orderNumber}"]`).click()
         })
 
@@ -150,15 +150,15 @@ describe('Cambio rápido de estados de órdenes', () => {
         cy.wait('@listOrders')
 
         orderCard().within(() => {
-            cy.contains('Cancelada').should('be.visible')
-            cy.contains('button', 'Empezar a preparar').should('not.exist')
-            cy.contains('button', 'Marcar como lista').should('not.exist')
+            cy.contains('Cancelado').should('be.visible')
+            cy.contains('button', 'Preparar').should('not.exist')
+            cy.contains('button', 'Marcar listo').should('not.exist')
             cy.get(`button[aria-label="Cancelar pedido #${order.orderNumber}"]`).should('not.exist')
         })
 
-        cy.get('select[aria-label="Filtrar pedidos por estado"]').select('CANCELLED')
+        cy.contains('button', /^Cancelados/).click()
         cy.wait('@listCancelledOrders').its('request.url').should('include', 'status=CANCELLED')
-        orderCard().contains('Cancelada').should('be.visible')
+        orderCard().contains('Cancelado').should('be.visible')
         cy.then(() => expect(state.status).to.eq('CANCELLED'))
     })
 
@@ -175,12 +175,12 @@ describe('Cambio rápido de estados de órdenes', () => {
             cy.scrollTo('top')
             assertPageFitsViewport()
             assertTouchTargets('article button')
-            orderCard().contains('Nueva').should('be.visible')
+            orderCard().contains('Pendiente').should('be.visible')
 
-            orderCard().contains('button', 'Avanzar').click()
+            orderCard().contains('button', 'Preparar').click()
             cy.wait('@updateOrderStatus')
             cy.wait('@listOrders')
-            orderCard().contains('Preparando').should('be.visible')
+            orderCard().contains('En preparación').should('be.visible')
             cy.then(() => {
                 expect(state.status).to.eq('PREPARING')
                 expect(counters.updates).to.eq(1)

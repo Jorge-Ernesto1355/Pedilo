@@ -109,6 +109,7 @@ function installSearchApi() {
         const search = (url.searchParams.get('search') ?? '').trim().toLowerCase()
         const status = url.searchParams.get('status') as SearchOrderStatus | null
         const period = url.searchParams.get('period')
+        const limit = url.searchParams.get('limit')
         const normalizedSearch = normalizePhone(search)
         const hasPhoneSearch = normalizedSearch.length >= 7 && /^\d+$/.test(normalizedSearch)
         const filteredOrders = orders.filter((order) => {
@@ -122,17 +123,27 @@ function installSearchApi() {
             return matchesStatus && matchesSearch
         })
 
-        if (period && status && search) request.alias = 'periodStatusSearchOrders'
-        else if (period && status) request.alias = 'periodStatusOrders'
-        else if (period) request.alias = 'periodOrders'
-        else if (status && search) request.alias = 'searchAndStatusOrders'
-        else if (status) request.alias = 'statusOrders'
-        else if (search) request.alias = 'searchOrders'
-        else request.alias = 'allOrders'
+        // The page also requests four status counters with limit=1. They use
+        // the same endpoint but must not consume aliases intended for the main
+        // order list (limit=10).
+        if (limit !== '1') {
+            if (period && status && search) request.alias = 'periodStatusSearchOrders'
+            else if (period && status) request.alias = 'periodStatusOrders'
+            else if (period) request.alias = 'periodOrders'
+            else if (status && search) request.alias = 'searchAndStatusOrders'
+            else if (status) request.alias = 'statusOrders'
+            else if (search) request.alias = 'searchOrders'
+            else request.alias = 'allOrders'
+        }
 
         request.reply({
             statusCode: 200,
-            body: { orders: filteredOrders, page: 1, limit: 20, total: filteredOrders.length },
+            body: {
+                orders: filteredOrders,
+                page: 1,
+                limit: Number(limit),
+                total: filteredOrders.length,
+            },
         })
     })
 }
@@ -152,7 +163,8 @@ function enterSearch(value: string) {
 function assertVisibleOrderNumbers(expected: string[]) {
     cy.get('article').should(($articles) => {
         const actual = [...$articles].map(
-            (article) => article.textContent?.match(/Pedido #(\d{4})/)?.[1],
+            (article) =>
+                article.querySelector('button:first-child span.font-display')?.textContent?.trim().replace('#', ''),
         )
         expect(actual).to.deep.equal(expected)
     })
@@ -169,7 +181,7 @@ describe('Búsqueda de órdenes', () => {
     it('busca por número exacto y por nombre sin distinguir mayúsculas', () => {
         enterSearch('1024')
         cy.wait('@searchOrders').its('request.url').should('include', 'search=1024')
-        cy.get('article').should('have.length', 1).and('contain', 'Pedido #1024')
+        cy.get('article').should('have.length', 1).and('contain', '#1024')
 
         enterSearch('Jorge')
         cy.wait('@searchOrders')
@@ -213,17 +225,17 @@ describe('Búsqueda de órdenes', () => {
         searchInput().should('have.value', '')
         cy.get('article').should('have.length', 3)
 
-        cy.get('select[aria-label="Filtrar pedidos por estado"]').select('PREPARING')
+        cy.contains('button', /^En preparación/).click()
         cy.wait('@statusOrders').its('request.url').should('include', 'status=PREPARING')
-        cy.get('article').should('have.length', 1).and('contain', 'Pedido #1025')
+        cy.get('article').should('have.length', 1).and('contain', '#1025')
 
         enterSearch('Jorge')
         cy.wait('@searchAndStatusOrders').then(({ request }) => {
             expect(request.url).to.include('search=Jorge')
             expect(request.url).to.include('status=PREPARING')
         })
-        cy.get('article').should('have.length', 1).and('contain', 'Pedido #1025')
-        cy.get('article').should('not.contain', 'Pedido #1024')
+        cy.get('article').should('have.length', 1).and('contain', '#1025')
+        cy.get('article').should('not.contain', '#1024')
     })
 
     it('envía los cuatro periodos soportados por backend y no muestra CONFIRMED', () => {
@@ -245,12 +257,12 @@ describe('Búsqueda de órdenes', () => {
         cy.get('select[aria-label="Filtrar pedidos por periodo"]').select('lastMonth')
         cy.wait('@periodOrders')
 
-        cy.get('select[aria-label="Filtrar pedidos por estado"]').select('PREPARING')
+        cy.contains('button', /^En preparación/).click()
         cy.wait('@periodStatusOrders').then(({ request }) => {
             expect(request.url).to.include('period=lastMonth')
             expect(request.url).to.include('status=PREPARING')
             expect(request.url).to.include('page=1')
-            expect(request.url).to.include('limit=20')
+            expect(request.url).to.include('limit=10')
         })
 
         enterSearch('Jorge')
@@ -259,7 +271,7 @@ describe('Búsqueda de órdenes', () => {
             expect(request.url).to.include('status=PREPARING')
             expect(request.url).to.include('search=Jorge')
             expect(request.url).to.include('page=1')
-            expect(request.url).to.include('limit=20')
+            expect(request.url).to.include('limit=10')
         })
     })
 
@@ -279,9 +291,7 @@ describe('Búsqueda de órdenes', () => {
             assertTouchTargets('button[aria-label="Limpiar búsqueda"]')
             cy.get('button[aria-label="Limpiar búsqueda"]').click()
             cy.wait('@allOrders')
-            cy.get('select[aria-label="Filtrar pedidos por estado"]')
-                .should('be.visible')
-                .and('have.value', '')
+            cy.contains('button', /^Todos/).should('be.visible')
             assertPageFitsViewport()
         })
     })
