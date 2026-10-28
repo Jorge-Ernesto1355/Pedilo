@@ -3,6 +3,8 @@ export type ProductOption = {
     optionGroupId: string
     name: string
     price: number | string
+    minSelections: number
+    maxSelections: number
     isAvailable: boolean
     sortOrder: number
     createdAt?: string
@@ -23,12 +25,22 @@ export type OptionGroup = {
 export type OptionGroupInput = {
     name: string
     isRequired: boolean
-    minSelections: number
-    maxSelections: number
     isActive: boolean
-    options: Array<{ name: string; price: number; isAvailable: boolean }>
+    options: Array<{
+        name: string
+        price: number
+        minSelections: number
+        maxSelections: number
+        isAvailable: boolean
+    }>
 }
 
 export type OptionGroupUpdateInput = Omit<OptionGroupInput, 'options' | 'isActive'>
-export type OptionInput = { name: string; price: number; isAvailable: boolean }
+export type OptionInput = {
+    name: string
+    price: number
+    minSelections: number
+    maxSelections: number
+    isAvailable: boolean
+}
 export type OptionUpdateInput = Omit<OptionInput, 'isAvailable'>

@@ -62,6 +62,8 @@ export function LocationPickerModal({
     const initial = coordinates ?? defaultCoordinates
     const [draft, setDraft] = useState<LocationCoordinates>(initial)
     const hasTriedInitialGeocode = useRef(false)
+    const hasManuallyEditedCoordinates = useRef(false)
+    const geocodeSession = useRef(0)
     const { query, setQuery, results, isSearching, searchError, geocode } = useNominatimSearch()
     const {
         register,
@@ -76,6 +78,8 @@ export function LocationPickerModal({
     useEffect(() => {
         if (!open) {
             hasTriedInitialGeocode.current = false
+            hasManuallyEditedCoordinates.current = false
+            geocodeSession.current += 1
             return
         }
         const next = coordinates ?? defaultCoordinates
@@ -90,15 +94,25 @@ export function LocationPickerModal({
     useEffect(() => {
         if (!open || coordinates || !locationText.trim() || hasTriedInitialGeocode.current) return
         hasTriedInitialGeocode.current = true
+        const session = ++geocodeSession.current
         void geocode(locationText).then((result) => {
             const next = result ? parseResultCoordinates(result) : null
-            if (next) updateDraft(next, setDraft, setValue)
+            if (
+                next &&
+                session === geocodeSession.current &&
+                !hasManuallyEditedCoordinates.current
+            )
+                updateDraft(next, setDraft, setValue)
         })
     }, [coordinates, geocode, locationText, open, setValue])
 
     function updateLocation(next: LocationCoordinates) {
+        hasManuallyEditedCoordinates.current = true
         updateDraft(next, setDraft, setValue)
     }
+
+    const latitudeRegistration = register('latitude')
+    const longitudeRegistration = register('longitude')
 
     function handleSearchResult(result: NominatimResult) {
         const next = parseResultCoordinates(result)
@@ -187,7 +201,11 @@ export function LocationPickerModal({
                             inputMode="decimal"
                             aria-invalid={Boolean(errors.latitude)}
                             className="w-full rounded-xl border border-[#D7E1EF] px-3 py-2.5 text-sm outline-none transition focus:border-[#2451C5] focus:ring-4 focus:ring-[#2451C5]/10"
-                            {...register('latitude')}
+                            {...latitudeRegistration}
+                            onChange={(event) => {
+                                hasManuallyEditedCoordinates.current = true
+                                void latitudeRegistration.onChange(event)
+                            }}
                         />
                         {errors.latitude && (
                             <p role="alert" className="mt-1 text-xs text-[#B42318]">
@@ -208,7 +226,11 @@ export function LocationPickerModal({
                             inputMode="decimal"
                             aria-invalid={Boolean(errors.longitude)}
                             className="w-full rounded-xl border border-[#D7E1EF] px-3 py-2.5 text-sm outline-none transition focus:border-[#2451C5] focus:ring-4 focus:ring-[#2451C5]/10"
-                            {...register('longitude')}
+                            {...longitudeRegistration}
+                            onChange={(event) => {
+                                hasManuallyEditedCoordinates.current = true
+                                void longitudeRegistration.onChange(event)
+                            }}
                         />
                         {errors.longitude && (
                             <p role="alert" className="mt-1 text-xs text-[#B42318]">

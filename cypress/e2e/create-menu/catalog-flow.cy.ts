@@ -26,6 +26,8 @@ type Option = {
     optionGroupId: string
     name: string
     price: number
+    minSelections: number
+    maxSelections: number
     isAvailable: boolean
     sortOrder: number
 }
@@ -62,6 +64,7 @@ type CreationCounters = {
     product?: number
     group?: number
     option?: number
+    optionUpdate?: number
 }
 
 const businessId = 'business-catalog-e2e'
@@ -220,10 +223,16 @@ function installCatalogApi(state: CatalogState, counters: CreationCounters = {})
         const body = request.body as {
             name: string
             isRequired: boolean
-            minSelections: number
-            maxSelections: number
-            options: Array<{ name: string; price: number; isAvailable: boolean }>
+            options: Array<{
+                name: string
+                price: number
+                minSelections: number
+                maxSelections: number
+                isAvailable: boolean
+            }>
         }
+        expect(body).not.to.have.property('minSelections')
+        expect(body).not.to.have.property('maxSelections')
         state.options = body.options.map((option, index) => ({
             id: `option-catalog-e2e-${index + 1}`,
             optionGroupId: groupId,
@@ -236,8 +245,8 @@ function installCatalogApi(state: CatalogState, counters: CreationCounters = {})
                 productId,
                 name: body.name,
                 isRequired: body.isRequired,
-                minSelections: body.minSelections,
-                maxSelections: body.maxSelections,
+                minSelections: body.isRequired ? 1 : 0,
+                maxSelections: 1,
                 isActive: true,
                 sortOrder: 0,
                 options: state.options,
@@ -255,7 +264,13 @@ function installCatalogApi(state: CatalogState, counters: CreationCounters = {})
     cy.intercept('POST', `**/api/v1/businesses/option-groups/${groupId}/options`, (request) => {
         request.alias = 'createOption'
         counters.option = (counters.option ?? 0) + 1
-        const body = request.body as { name: string; price: number; isAvailable: boolean }
+        const body = request.body as {
+            name: string
+            price: number
+            minSelections: number
+            maxSelections: number
+            isAvailable: boolean
+        }
         const option = {
             id: `option-catalog-e2e-${state.options.length + 1}`,
             optionGroupId: groupId,
@@ -266,6 +281,18 @@ function installCatalogApi(state: CatalogState, counters: CreationCounters = {})
         if (state.groups[0]) state.groups[0].options = state.options
         if (state.product) state.product.optionGroups = state.groups
         request.reply({ delay: 350, statusCode: 201, body: option })
+    })
+
+    cy.intercept('PATCH', '**/api/v1/businesses/options/*', (request) => {
+        request.alias = 'updateOption'
+        counters.optionUpdate = (counters.optionUpdate ?? 0) + 1
+        const option = state.options.find((item) => item.id === request.url.split('/').pop())
+        if (!option) {
+            request.reply({ statusCode: 404, body: { error: { code: 'OPTION_NOT_FOUND' } } })
+            return
+        }
+        Object.assign(option, request.body)
+        request.reply({ statusCode: 200, body: option })
     })
 }
 
@@ -351,12 +378,18 @@ describe('Catálogo · menú, categoría, productos y opciones', () => {
         cy.wait('@listGroups')
         cy.contains('button', 'Crear grupo').click()
         cy.get('[role="dialog"]').last().find('input[placeholder="Ej. Extras"]').type('Extras')
-        cy.get('[role="dialog"]').last().find('input[inputmode="numeric"]').eq(0).clear().type('1')
-        cy.get('[role="dialog"]').last().find('input[inputmode="numeric"]').eq(1).clear().type('2')
         cy.get('#draft-option-name').type('Aguacate')
         cy.get('#draft-option-price').clear().type('20')
+        cy.get('#draft-option-min').type('0')
+        cy.get('#draft-option-max').type('2')
         cy.get('[role="dialog"]').last().find('button[aria-label="Agregar opción"]').click()
         cy.get('[role="dialog"]').last().contains('Aguacate').should('be.visible')
+        cy.get('#draft-option-name').should('have.value', '')
+        cy.get('#draft-option-price').should('have.value', '')
+        cy.get('#draft-option-min').should('have.value', '')
+        cy.get('#draft-option-max').should('have.value', '')
+        cy.get('[role="dialog"]').last().find('input[placeholder="Mínimo (ej. 0)"]').should('be.visible')
+        cy.get('[role="dialog"]').last().find('input[placeholder="Máximo (ej. 1)"]').should('be.visible')
         cy.get('[role="dialog"]').last().contains('button', 'Crear grupo').click()
         cy.get('[role="dialog"]')
             .last()
@@ -368,12 +401,14 @@ describe('Catálogo · menú, categoría, productos y opciones', () => {
         cy.then(() => expect(counters.group).to.eq(1))
         cy.contains('h5', 'Extras').should('be.visible')
         cy.contains('Aguacate').should('be.visible')
-        cy.contains('Selecciona 1–2').should('be.visible')
+        cy.contains('Límites configurados individualmente por opción').should('be.visible')
 
         cy.contains('button', 'Agregar opción').click()
         cy.get('[role="dialog"]').last().should('contain', 'Agregar opción')
         cy.get('[role="dialog"]').last().find('input[placeholder="Ej. Queso extra"]').type('Tocino')
         cy.get('[role="dialog"]').last().find('input[inputmode="decimal"]').clear().type('25')
+        cy.get('[role="dialog"]').last().find('input[inputmode="numeric"]').eq(0).type('0')
+        cy.get('[role="dialog"]').last().find('input[inputmode="numeric"]').eq(1).type('1')
         cy.get('[role="dialog"]').last().contains('button', 'Agregar opción').click()
         cy.get('[role="dialog"]')
             .last()
@@ -384,6 +419,32 @@ describe('Catálogo · menú, categoría, productos y opciones', () => {
         cy.wait('@listOptions')
         cy.then(() => expect(counters.option).to.eq(1))
         cy.contains('Tocino').should('be.visible')
+
+        cy.contains('Tocino')
+            .closest('div')
+            .find('button[aria-label="Editar opción"]')
+            .click()
+        cy.get('[role="dialog"]').last().within(() => {
+            cy.get('input[placeholder="Ej. Queso extra"]').should('have.value', 'Tocino')
+            cy.get('input[inputmode="numeric"]').eq(0).clear().type('1')
+            cy.get('input[inputmode="numeric"]').eq(1).clear().type('3')
+            cy.contains('button', 'Guardar opción').click()
+        })
+        cy.wait('@updateOption')
+        cy.then(() => expect(counters.optionUpdate).to.eq(1))
+        // El modal de edición del producto sigue abierto; únicamente debe cerrarse
+        // el modal anidado de edición de la opción.
+        cy.get('[role="dialog"]').should('have.length', 1)
+        cy.contains('Tocino').should('be.visible')
+
+        cy.contains('button', 'Agregar opción').click()
+        cy.get('[role="dialog"]').last().within(() => {
+            cy.get('input[placeholder="Ej. Queso extra"]').should('have.value', '')
+            cy.get('input[inputmode="decimal"]').should('have.value', '')
+            cy.get('input[inputmode="numeric"]').eq(0).should('have.value', '')
+            cy.get('input[inputmode="numeric"]').eq(1).should('have.value', '')
+        })
+        cy.get('[role="dialog"]').last().find('button[aria-label="Cerrar"]').click()
 
         cy.get('[role="dialog"]').last().find('button[aria-label="Cerrar"]').click()
         cy.get('[role="dialog"]')
