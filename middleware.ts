@@ -5,6 +5,10 @@ import { RedirectedUrls } from './src/lib/RedirectUrls'
 const SESSION_COOKIE_NAMES = [
     'better-auth.session_token',
     '__Secure-better-auth.session_token',
+    'better-auth-development.session_token',
+    '__Secure-better-auth-development.session_token',
+    'better-auth-local.session_token',
+    '__Secure-better-auth-local.session_token',
 ] as const
 
 function redirectToLogin(request: NextRequest) {

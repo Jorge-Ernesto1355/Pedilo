@@ -7,6 +7,8 @@ describe('Google Reviews tracking URL', () => {
     })
 
     it('uses the backend root redirect route, outside the versioned API prefix', () => {
+        vi.stubEnv('PEDILO_ENV', 'local')
+        vi.stubEnv('NEXT_PUBLIC_PEDILO_ENV', 'local')
         vi.stubEnv('NEXT_PUBLIC_BACKEND_URL', 'http://localhost:3001/api/v1')
 
         expect(getGoogleReviewTrackingUrl('c12345678901234567890123')).toBe(
@@ -15,6 +17,8 @@ describe('Google Reviews tracking URL', () => {
     })
 
     it('encodes the QR code as one route segment', () => {
+        vi.stubEnv('PEDILO_ENV', 'production')
+        vi.stubEnv('NEXT_PUBLIC_PEDILO_ENV', 'production')
         vi.stubEnv('NEXT_PUBLIC_BACKEND_URL', 'https://api.pedilo.mx')
 
         expect(getGoogleReviewTrackingUrl('c12345678901234567890123')).toBe(
@@ -23,6 +27,8 @@ describe('Google Reviews tracking URL', () => {
     })
 
     it('rejects QR codes the backend redirect route cannot resolve', () => {
+        vi.stubEnv('PEDILO_ENV', 'production')
+        vi.stubEnv('NEXT_PUBLIC_PEDILO_ENV', 'production')
         vi.stubEnv('NEXT_PUBLIC_BACKEND_URL', 'https://api.pedilo.mx')
 
         expect(getGoogleReviewTrackingUrl('abc')).toBe('')

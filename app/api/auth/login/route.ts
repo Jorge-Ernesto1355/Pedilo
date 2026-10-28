@@ -2,6 +2,7 @@ import { SeverityNumber } from '@opentelemetry/api-logs'
 import { after, NextResponse } from 'next/server'
 import { posthogLoggerProvider } from '@/instrumentation'
 import { loginSchema } from '@/app/auth/lib/validation'
+import { getBackendUrl } from '@/lib/auth/config'
 import { appendBackendCookies, clearAuthCookies } from '../session-cookies'
 
 const posthogLoginLogger = posthogLoggerProvider?.getLogger('posthog-auth-login')
@@ -14,9 +15,6 @@ function emitPostHogLoginLog(
     posthogLoginLogger?.emit({ body, severityNumber, attributes })
 }
 
-const AUTH_API_URL =
-    process.env.BACKEND_URL ??
-    (process.env.NODE_ENV === 'production' ? 'https://api.pedilo.mx' : 'http://localhost:3001')
 const LOGIN_TIMEOUT_MS = 8_000
 
 interface RateLimitBody {
@@ -74,7 +72,7 @@ export async function POST(request: Request) {
         }, LOGIN_TIMEOUT_MS)
 
         // El navegador solo llama a este origen; el proxy oculta el backend y copia sus cookies.
-        const backendResponse = await fetch(`${AUTH_API_URL}/api/v1/auth/login`, {
+        const backendResponse = await fetch(`${getBackendUrl()}/api/v1/auth/login`, {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
             body: JSON.stringify({

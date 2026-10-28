@@ -4,7 +4,10 @@ import posthog from 'posthog-js'
 Sentry.init({
     // Next.js only exposes NEXT_PUBLIC_* variables to the browser bundle.
     dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
-    environment: process.env.NEXT_PUBLIC_SENTRY_ENVIRONMENT ?? process.env.NODE_ENV,
+    environment:
+        process.env.NEXT_PUBLIC_SENTRY_ENVIRONMENT ??
+        process.env.NEXT_PUBLIC_PEDILO_ENV ??
+        process.env.NODE_ENV,
     tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0,
 })
 

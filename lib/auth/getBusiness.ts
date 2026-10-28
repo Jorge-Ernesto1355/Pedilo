@@ -2,11 +2,7 @@ import { cookies } from 'next/headers'
 import { cache } from 'react'
 import { redirect } from 'next/navigation'
 import { RedirectedUrls } from '@/src/lib/RedirectUrls'
-
-const BACKEND_URL = process.env.BACKEND_URL ?? 'http://localhost:3001'
-const API_URL = BACKEND_URL.endsWith('/api/v1')
-    ? BACKEND_URL
-    : `${BACKEND_URL.replace(/\/$/, '')}/api/v1`
+import { getApiBaseUrl } from './config'
 
 type BusinessResponse = {
     business?: Record<string, unknown> | null
@@ -40,7 +36,7 @@ export const getCurrentBusiness = cache(async () => {
     const cookieHeader = (await cookies()).toString()
 
     try {
-        const response = await fetch(`${API_URL}/businesses/mine`, {
+        const response = await fetch(`${getApiBaseUrl()}/businesses/mine`, {
             headers: cookieHeader ? { cookie: cookieHeader } : undefined,
             cache: 'no-store',
         })

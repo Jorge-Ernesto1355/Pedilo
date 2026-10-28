@@ -42,9 +42,12 @@ export default defineConfig({
     env: {
         backendUrl:
             process.env.BACKEND_URL ??
-            (cypressBaseUrl.includes('pedilo.mx')
-                ? 'https://api.pedilo.mx'
-                : 'http://localhost:3001'),
+            process.env.NEXT_PUBLIC_BACKEND_URL ??
+            (process.env.PEDILO_ENV === 'development' || cypressBaseUrl === 'https://dev.pedilo.mx'
+                ? 'https://api-dev.pedilo.mx'
+                : process.env.PEDILO_ENV === 'production' || cypressBaseUrl === 'https://pedilo.mx'
+                  ? 'https://api.pedilo.mx'
+                  : 'http://localhost:3001'),
         testUserEmail,
         testUserPassword,
         testAccountAEmail,

@@ -16,6 +16,24 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+## Entornos y URLs
+
+La URL del backend se selecciona con `PEDILO_ENV`; no se usa `NODE_ENV` para
+decidir entre Development y Production. En Next.js, las variables `NEXT_PUBLIC_*`
+se incorporan al bundle del navegador durante el build.
+
+| Entorno | `PEDILO_ENV` | `NEXT_PUBLIC_BACKEND_URL` | Frontend |
+| --- | --- | --- | --- |
+| Local | `local` | `http://localhost:3001` | `http://localhost:3000` |
+| Development | `development` | `https://api-dev.pedilo.mx` | `https://dev.pedilo.mx` |
+| Production | `production` | `https://api.pedilo.mx` | `https://pedilo.mx` |
+
+En local se puede omitir la URL y se usa únicamente `http://localhost:3001`.
+En Development y Production la URL es obligatoria y se rechaza si pertenece a
+otro entorno. En Vercel configura `PEDILO_ENV` y `BACKEND_URL` con el mismo
+valor del entorno; `next.config.ts` lo expone como `NEXT_PUBLIC_*` para el
+navegador. No compartas `DATABASE_URL` entre servicios de Render.
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.

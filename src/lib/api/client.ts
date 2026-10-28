@@ -1,18 +1,13 @@
 import axios, { AxiosError } from 'axios'
-import { getBackendUrl } from '@/lib/auth/config'
-
-const configuredBackendUrl = getBackendUrl()
-
-const apiBaseUrl = configuredBackendUrl.endsWith('/api/v1')
-    ? configuredBackendUrl
-    : `${configuredBackendUrl.replace(/\/$/, '')}/api/v1`
+import { getApiBaseUrl } from '@/lib/auth/config'
 
 export const apiClient = axios.create({
-    baseURL: apiBaseUrl,
+    baseURL: getApiBaseUrl(),
     headers: {
         Accept: 'application/json',
     },
     timeout: 15_000,
+    withCredentials: true,
 })
 
 export function isAxiosError(error: unknown): error is AxiosError {

@@ -1,6 +1,13 @@
 import type { NextResponse } from 'next/server'
 
-const AUTH_COOKIE_NAMES = ['better-auth.session_token', '__Secure-better-auth.session_token']
+const AUTH_COOKIE_NAMES = [
+    'better-auth.session_token',
+    '__Secure-better-auth.session_token',
+    'better-auth-development.session_token',
+    '__Secure-better-auth-development.session_token',
+    'better-auth-local.session_token',
+    '__Secure-better-auth-local.session_token',
+]
 
 function isPediloHost(requestUrl: string) {
     const hostname = new URL(requestUrl).hostname

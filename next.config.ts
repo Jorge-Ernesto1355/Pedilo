@@ -9,9 +9,15 @@ const nextConfig: NextConfig = {
         NEXT_PUBLIC_SENTRY_DSN: process.env.SENTRY_DSN ?? '',
         NEXT_PUBLIC_SENTRY_ENVIRONMENT:
             process.env.SENTRY_ENVIRONMENT ??
-            process.env.VERCEL_ENV ??
-            process.env.NODE_ENV ??
-            'production',
+            process.env.NEXT_PUBLIC_PEDILO_ENV ??
+            process.env.PEDILO_ENV ??
+            (process.env.NODE_ENV === 'development' ? 'local' : ''),
+        NEXT_PUBLIC_PEDILO_ENV:
+            process.env.NEXT_PUBLIC_PEDILO_ENV ??
+            process.env.PEDILO_ENV ??
+            (process.env.NODE_ENV === 'development' ? 'local' : ''),
+        NEXT_PUBLIC_BACKEND_URL:
+            process.env.NEXT_PUBLIC_BACKEND_URL ?? process.env.BACKEND_URL ?? '',
         // PostHog's browser SDK needs public values. Keep the Vercel-facing
         // variables short while exposing them under Next's client-safe names.
         NEXT_PUBLIC_POSTHOG_KEY:
