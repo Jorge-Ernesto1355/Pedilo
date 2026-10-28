@@ -1,4 +1,4 @@
-import type { PublicOptionGroup, PublicProduct } from './publicCatalog.types'
+import type { PublicOption, PublicOptionGroup, PublicProduct } from './publicCatalog.types'
 
 export type OptionQuantities = Record<string, Record<string, number>>
 export type OptionGroupValidationError = { groupId: string; groupName: string; message: string }
@@ -9,6 +9,14 @@ export function getGroupMinSelect(group: PublicOptionGroup) {
 
 export function getGroupMaxSelect(group: PublicOptionGroup) {
     return group.maxSelect ?? group.maxSelections ?? 0
+}
+
+export function getOptionMinSelect(option: PublicOption) {
+    return option.minSelections ?? 0
+}
+
+export function getOptionMaxSelect(option: PublicOption) {
+    return option.maxSelections ?? 1
 }
 
 export function getSelectedQuantity(groupId: string, selections: OptionQuantities) {
@@ -35,20 +43,23 @@ export function validateOptionGroups(
     const errors: OptionGroupValidationError[] = []
     optionGroups.forEach((group) => {
         const selectedQuantity = getSelectedQuantity(group.id, selections)
-        const minSelect = getGroupMinSelect(group)
-        const maxSelect = getGroupMaxSelect(group)
-        if (selectedQuantity > maxSelect)
+        if (group.isRequired && selectedQuantity === 0)
             errors.push({
                 groupId: group.id,
                 groupName: group.name,
-                message: `No puedes seleccionar más de ${maxSelect} opción${maxSelect === 1 ? '' : 'es'}.`,
+                message: 'Selecciona al menos una opción.',
             })
-        if (group.isRequired && selectedQuantity < minSelect)
-            errors.push({
-                groupId: group.id,
-                groupName: group.name,
-                message: `Selecciona al menos ${minSelect} opción${minSelect === 1 ? '' : 'es'}.`,
-            })
+        group.options.forEach((option) => {
+            const quantity = selections[group.id]?.[option.id] ?? 0
+            const minSelect = getOptionMinSelect(option)
+            const maxSelect = getOptionMaxSelect(option)
+            if (quantity < minSelect || quantity > maxSelect)
+                errors.push({
+                    groupId: group.id,
+                    groupName: group.name,
+                    message: `${option.name}: selecciona entre ${minSelect} y ${maxSelect}.`,
+                })
+        })
     })
     return { valid: errors.length === 0, errors, firstError: errors[0] }
 }

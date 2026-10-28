@@ -4,8 +4,8 @@ import { Minus, Plus, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import type { PublicProduct } from './publicCatalog.types'
 import {
-    getGroupMaxSelect,
-    getSelectedQuantity,
+    getOptionMaxSelect,
+    getOptionMinSelect,
     validateOptionGroups,
     type OptionQuantities,
 } from './optionGroupValidation'
@@ -51,18 +51,11 @@ export function ProductCustomizeDialog({
             const group = groups.find((item) => item.id === groupId)
             if (!group) return current
             const currentQuantity = current[groupId]?.[optionId] ?? 0
-            const groupQuantity = getSelectedQuantity(groupId, current)
-            const max = getGroupMaxSelect(group)
-            const nextQuantity = Math.max(
-                0,
-                Math.min(currentQuantity + delta, max - (groupQuantity - currentQuantity)),
-            )
-            if (
-                delta < 0 &&
-                group.isRequired &&
-                groupQuantity <= (group.minSelect ?? group.minSelections)
-            )
-                return current
+            const max = getOptionMaxSelect(group.options.find((item) => item.id === optionId)!)
+            const nextQuantity = Math.max(0, Math.min(currentQuantity + delta, max))
+            const min = getOptionMinSelect(group.options.find((item) => item.id === optionId)!)
+            if (delta < 0 && nextQuantity < min) return current
+            if (delta > 0 && currentQuantity >= max) return current
             return {
                 ...current,
                 [groupId]: { ...(current[groupId] ?? {}), [optionId]: nextQuantity },
@@ -115,7 +108,6 @@ export function ProductCustomizeDialog({
                         </strong>
                     </p>
                     {groups.map((group) => {
-                        const groupQuantity = getSelectedQuantity(group.id, selected)
                         const groupError = validation.errors.find(
                             (error) => error.groupId === group.id,
                         )
@@ -126,8 +118,8 @@ export function ProductCustomizeDialog({
                                     {group.isRequired && <span className="text-[#B42318]">*</span>}
                                     <span className="ml-2 text-xs font-normal text-[#8996A9]">
                                         {group.isRequired
-                                            ? `Mínimo ${group.minSelect ?? group.minSelections} · máximo ${getGroupMaxSelect(group)}`
-                                            : `Opcional · máximo ${getGroupMaxSelect(group)}`}
+                                            ? 'Selecciona al menos una opción'
+                                            : 'Opciones individuales'}
                                     </span>
                                 </legend>
                                 <div className="mt-3 space-y-2">
@@ -136,7 +128,8 @@ export function ProductCustomizeDialog({
                                         .sort((a, b) => a.sortOrder - b.sortOrder)
                                         .map((option) => {
                                             const quantity = selected[group.id]?.[option.id] ?? 0
-                                            const atMax = groupQuantity >= getGroupMaxSelect(group)
+                                            const optionMax = getOptionMaxSelect(option)
+                                            const optionMin = getOptionMinSelect(option)
                                             return (
                                                 <div
                                                     key={option.id}
@@ -152,17 +145,14 @@ export function ProductCustomizeDialog({
                                                                 )}
                                                             </span>
                                                         )}
+                                                        <span className="ml-2 text-[11px] font-normal text-[#8996A9]">
+                                                            {optionMin}–{optionMax}
+                                                        </span>
                                                     </span>
                                                     <div className="flex min-h-11 items-center gap-1 rounded-lg border border-[#DCE5F3] px-1 sm:min-h-8 sm:gap-2">
                                                         <button
                                                             type="button"
-                                                            disabled={
-                                                                quantity <= 0 ||
-                                                                (group.isRequired &&
-                                                                    groupQuantity <=
-                                                                        (group.minSelect ??
-                                                                            group.minSelections))
-                                                            }
+                                                            disabled={quantity <= optionMin}
                                                             onClick={() =>
                                                                 changeQuantity(
                                                                     group.id,
@@ -180,7 +170,10 @@ export function ProductCustomizeDialog({
                                                         </span>
                                                         <button
                                                             type="button"
-                                                            disabled={!option.isAvailable || atMax}
+                                                            disabled={
+                                                                !option.isAvailable ||
+                                                                quantity >= optionMax
+                                                            }
                                                             onClick={() =>
                                                                 changeQuantity(
                                                                     group.id,

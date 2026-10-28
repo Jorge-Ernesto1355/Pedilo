@@ -5,6 +5,8 @@ type PublicOption = {
     optionGroupId: string
     name: string
     price: number
+    minSelections: number
+    maxSelections: number
     sortOrder: number
     isAvailable: boolean
 }
@@ -105,6 +107,8 @@ const catalog = {
                                             optionGroupId: 'group-extras-public-e2e',
                                             name: 'Aguacate',
                                             price: 20,
+                                            minSelections: 0,
+                                            maxSelections: 2,
                                             sortOrder: 0,
                                             isAvailable: true,
                                         },
@@ -113,6 +117,8 @@ const catalog = {
                                             optionGroupId: 'group-extras-public-e2e',
                                             name: 'Tocino',
                                             price: 25,
+                                            minSelections: 0,
+                                            maxSelections: 1,
                                             sortOrder: 1,
                                             isAvailable: true,
                                         },
@@ -258,10 +264,16 @@ describe('Catálogo público', () => {
             .within(() => {
                 cy.contains('h2', 'Taco de asada').should('be.visible')
                 cy.contains('Precio base:').should('contain', '$89.00')
-                cy.contains('legend', 'Extras').should('contain', 'Mínimo 1 · máximo 2')
+                cy.contains('legend', 'Extras').should('contain', 'Selecciona al menos una opción')
                 cy.contains('Aguacate').should('be.visible')
                 cy.contains('Tocino').should('be.visible')
+                cy.contains('Aguacate').should('contain', '0–2')
+                cy.contains('Tocino').should('contain', '0–1')
                 cy.get('button[aria-label="Agregar Aguacate"]').click()
+                cy.get('button[aria-label="Agregar Aguacate"]').click()
+                cy.get('button[aria-label="Agregar Aguacate"]').should('be.disabled')
+                cy.get('button[aria-label="Agregar Tocino"]').click()
+                cy.get('button[aria-label="Agregar Tocino"]').should('be.disabled')
                 cy.contains('button', 'Agregar al pedido').should('not.be.disabled').click()
             })
 
@@ -270,7 +282,8 @@ describe('Catálogo público', () => {
             .should('be.visible')
             .and('contain', 'Taco de asada')
             .and('contain', 'Extras: Aguacate')
-            .and('contain', '$109')
+            .and('contain', 'Extras: Tocino')
+            .and('contain', '$154')
     })
 
     it('agrega productos, cambia cantidades, actualiza el total y elimina el producto', () => {
@@ -386,6 +399,30 @@ describe('Catálogo público', () => {
             .and('contain', 'Esta sección está entre bastidores.')
             .and('contain', '“Tacos”')
         cy.get('nav[aria-label="Categorías del menú"]').should('contain', 'Tacos')
+    })
+
+    it('aplica mínimos y máximos individuales sin mezclarlos entre opciones', () => {
+        const independentLimitsCatalog = structuredClone(catalog)
+        const options = independentLimitsCatalog.menus[0].categories[0].products[0].optionGroups[0]
+            .options
+        options[0] = { ...options[0], minSelections: 1, maxSelections: 2 }
+        options[1] = { ...options[1], minSelections: 0, maxSelections: 1 }
+        installPublicCatalogApi(independentLimitsCatalog)
+
+        cy.visit(`/${slug}`)
+        cy.wait('@getPublicCatalog')
+        cy.contains('button', 'Seleccionar opciones').click()
+        cy.get('[role="dialog"]').within(() => {
+            cy.contains('button', 'Agregar al pedido').should('be.disabled')
+            cy.get('button[aria-label="Agregar Aguacate"]').click()
+            cy.contains('button', 'Agregar al pedido').should('not.be.disabled')
+            cy.get('button[aria-label="Agregar Aguacate"]').click()
+            cy.get('button[aria-label="Agregar Aguacate"]').should('be.disabled')
+            cy.get('button[aria-label="Agregar Tocino"]').click()
+            cy.get('button[aria-label="Agregar Tocino"]').should('be.disabled')
+            cy.get('button[aria-label="Quitar Aguacate"]').click()
+            cy.contains('button', 'Agregar al pedido').should('not.be.disabled')
+        })
     })
 })
 
