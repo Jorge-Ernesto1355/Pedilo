@@ -8,7 +8,7 @@ import { z } from 'zod'
 import { Modal } from '@/app/components/ui/Modal'
 import { friendlyNotificationError, notify } from '@/src/lib/notifications/notify'
 import { useOptionGroups, useOptionManagement, useOptions } from './useOptionManagement'
-import type { OptionGroup, ProductOption } from './option.types'
+import { normalizeProductOption, type OptionGroup, type ProductOption } from './option.types'
 
 const inputClass =
     'w-full rounded-xl border border-[#D7E1EF] bg-white px-3.5 py-2.5 text-sm text-[#12234A] outline-none focus:border-[#2451C5] focus:ring-4 focus:ring-[#2451C5]/10'
@@ -99,8 +99,8 @@ export function OptionModal({
             reset({
                 name: option?.name ?? '',
                 price: option ? String(option.price) : '',
-                minSelections: option ? String(option.minSelections) : '',
-                maxSelections: option ? String(option.maxSelections) : '',
+                minSelections: option ? String(option.minSelections ?? 0) : '',
+                maxSelections: option ? String(option.maxSelections ?? 1) : '',
             })
     }, [open, option, reset])
     return (
@@ -566,7 +566,9 @@ export function OptionGroupCard({
         mutations.removeOpt.isPending ||
         mutations.statusOpt.isPending ||
         mutations.reorderOpts.isPending
-    const options = optionsQuery.data?.length ? optionsQuery.data : (group.options ?? [])
+    const options = (optionsQuery.data?.length ? optionsQuery.data : (group.options ?? [])).map(
+        normalizeProductOption,
+    )
     const reorderOption = (targetId: string) => {
         if (!draggedOptionId || draggedOptionId === targetId || mutations.reorderOpts.isPending)
             return

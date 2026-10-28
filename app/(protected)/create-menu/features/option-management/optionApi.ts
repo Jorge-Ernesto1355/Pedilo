@@ -1,5 +1,6 @@
 import { normalizeApiError } from '@/app/auth/lib/client/api-error'
 import { apiClient } from '@/src/lib/api/client'
+import { normalizeOptionGroup, normalizeProductOption } from './option.types'
 import type {
     OptionGroup,
     OptionGroupInput,
@@ -47,7 +48,11 @@ export async function getOptionGroups(productId: string): Promise<OptionGroup[]>
             `/businesses/products/${productId}/option-groups`,
             credentials,
         ),
-    ).then((body) => (Array.isArray(body) ? body : (body.optionGroups ?? body.data ?? [])))
+    ).then((body) =>
+        (Array.isArray(body) ? body : (body.optionGroups ?? body.data ?? [])).map(
+            normalizeOptionGroup,
+        ),
+    )
 }
 export async function getOptionGroup(id: string) {
     return request(() =>
@@ -55,7 +60,7 @@ export async function getOptionGroup(id: string) {
             `/businesses/option-groups/${id}`,
             credentials,
         ),
-    ).then(unwrap)
+    ).then(unwrap).then(normalizeOptionGroup)
 }
 export async function createOptionGroup(productId: string, input: OptionGroupInput) {
     return request(() =>
@@ -64,7 +69,7 @@ export async function createOptionGroup(productId: string, input: OptionGroupInp
             input,
             credentials,
         ),
-    ).then(unwrap)
+    ).then(unwrap).then(normalizeOptionGroup)
 }
 export async function updateOptionGroup(
     productId: string,
@@ -77,7 +82,7 @@ export async function updateOptionGroup(
             input,
             credentials,
         ),
-    ).then(unwrap)
+    ).then(unwrap).then(normalizeOptionGroup)
 }
 export async function updateOptionGroupStatus(id: string, isActive: boolean) {
     return request(() =>
@@ -86,7 +91,7 @@ export async function updateOptionGroupStatus(id: string, isActive: boolean) {
             { isActive },
             credentials,
         ),
-    ).then(unwrap)
+    ).then(unwrap).then(normalizeOptionGroup)
 }
 export async function deleteOptionGroup(id: string) {
     await request(() => apiClient.delete<void>(`/businesses/option-groups/${id}`, credentials))
@@ -107,7 +112,11 @@ export async function getOptions(optionGroupId: string): Promise<ProductOption[]
             `/businesses/option-groups/${optionGroupId}/options`,
             credentials,
         ),
-    ).then((body) => (Array.isArray(body) ? body : (body.options ?? body.data ?? [])))
+    ).then((body) =>
+        (Array.isArray(body) ? body : (body.options ?? body.data ?? [])).map(
+            normalizeProductOption,
+        ),
+    )
 }
 export async function getOption(id: string) {
     return request(() =>
@@ -115,7 +124,7 @@ export async function getOption(id: string) {
             `/businesses/options/${id}`,
             credentials,
         ),
-    ).then(unwrap)
+    ).then(unwrap).then(normalizeProductOption)
 }
 export async function createOption(optionGroupId: string, input: OptionInput) {
     return request(() =>
@@ -124,7 +133,7 @@ export async function createOption(optionGroupId: string, input: OptionInput) {
             input,
             credentials,
         ),
-    ).then(unwrap)
+    ).then(unwrap).then(normalizeProductOption)
 }
 export async function updateOption(id: string, input: OptionUpdateInput) {
     return request(() =>
@@ -133,7 +142,7 @@ export async function updateOption(id: string, input: OptionUpdateInput) {
             input,
             credentials,
         ),
-    ).then(unwrap)
+    ).then(unwrap).then(normalizeProductOption)
 }
 export async function updateOptionStatus(id: string, isAvailable: boolean) {
     return request(() =>
@@ -142,7 +151,7 @@ export async function updateOptionStatus(id: string, isAvailable: boolean) {
             { isAvailable },
             credentials,
         ),
-    ).then(unwrap)
+    ).then(unwrap).then(normalizeProductOption)
 }
 export async function deleteOption(id: string) {
     await request(() => apiClient.delete<void>(`/businesses/options/${id}`, credentials))
