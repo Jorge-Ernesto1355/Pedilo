@@ -821,7 +821,10 @@ export function OptionGroupsEditor({
         setDraggedId(null)
     }
     return (
-        <section className="mt-5 rounded-xl border border-[#DCE5F3] bg-[#F8FAFE] p-4">
+        <section
+            id={`product-options-${productId}`}
+            className="mt-5 scroll-mt-4 rounded-xl border border-[#DCE5F3] bg-[#F8FAFE] p-4"
+        >
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <div className="flex items-center gap-2">

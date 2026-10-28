@@ -13,7 +13,7 @@ import { OptionGroupsEditor } from '../option-management/OptionGroupsEditor'
 import { useProduct } from './useProductManagement'
 import { ApiError } from '@/app/auth/lib/client/api-error'
 import { notify } from '@/src/lib/notifications/notify'
-import { ImagePlus } from 'lucide-react'
+import { ImagePlus, ListPlus } from 'lucide-react'
 import Link from 'next/link'
 import { PRODUCT_DESCRIPTION_MAX_LENGTH } from '../../description-limits'
 
@@ -117,6 +117,12 @@ export function AddProductModal({
                         : 'Inténtalo nuevamente.',
             })
     }
+    function goToOptions() {
+        if (!currentProduct) return
+        document
+            .getElementById(`product-options-${currentProduct.id}`)
+            ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
     return (
         <Modal
             open={open}
@@ -156,6 +162,48 @@ export function AddProductModal({
                         .
                     </p>
                 </div>
+                <section
+                    aria-labelledby="product-options-prompt-title"
+                    className="flex flex-col gap-4 rounded-2xl border border-[#BFD2FF] bg-[#F1F5FF] p-4 sm:flex-row sm:items-center sm:justify-between"
+                >
+                    <div className="flex items-start gap-3">
+                        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#DCE7FF] text-[#1E40AF]">
+                            <ListPlus className="size-5" aria-hidden="true" />
+                        </span>
+                        <div>
+                            <p className="text-xs font-bold uppercase tracking-[.12em] text-[#2451C5]">
+                                Opciones y extras
+                            </p>
+                            <h3
+                                id="product-options-prompt-title"
+                                className="mt-1 text-sm font-bold text-[#12234A]"
+                            >
+                                {currentProduct
+                                    ? 'Haz que tu producto sea personalizable'
+                                    : '¿Tu producto lleva extras o variantes?'}
+                            </h3>
+                            <p className="mt-1 text-xs leading-5 text-[#53617A]">
+                                {currentProduct
+                                    ? 'Agrega tamaños, ingredientes o complementos que tus clientes puedan elegir al pedir.'
+                                    : 'Primero guarda el producto y después podrás agregar tamaños, ingredientes o complementos.'}
+                            </p>
+                        </div>
+                    </div>
+                    {currentProduct ? (
+                        <button
+                            type="button"
+                            onClick={goToOptions}
+                            aria-controls={`product-options-${currentProduct.id}`}
+                            className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-xl bg-[#1E40AF] px-3.5 py-2 text-xs font-bold text-white shadow-[0_8px_18px_-10px_rgba(30,64,175,.75)] transition hover:bg-[#183991] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#2451C5]/20"
+                        >
+                            Configurar opciones
+                        </button>
+                    ) : (
+                        <span className="shrink-0 text-xs font-semibold text-[#5572B8]">
+                            Disponible al guardar
+                        </span>
+                    )}
+                </section>
                 <div>
                     <label
                         htmlFor="product-name"
