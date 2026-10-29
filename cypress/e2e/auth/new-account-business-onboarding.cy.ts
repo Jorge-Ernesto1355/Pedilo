@@ -12,7 +12,7 @@ describe('Auth · acceso condicionado a negocio', () => {
         cy.get('[data-testid="register-email"]').type(email)
         cy.get('[data-testid="register-password"]').type(password)
         cy.get('[data-testid="register-confirm-password"]').type(password)
-        cy.get('[data-testid="register-terms"]').check()
+    cy.get('[data-testid="register-legal"]').check()
         cy.get('[data-testid="register-submit"]').click()
 
         cy.location('pathname', { timeout: 15_000 }).should('eq', '/auth/login')

@@ -298,7 +298,7 @@ const knownErrors: Record<string, UserFriendlyError> = {
 }
 
 const technicalMessage =
-    /(axios|fetch|request failed|network error|unknown error|bad request|unauthorized|forbidden|not found|internal server|stack|prisma|sqlstate|status code|\b(error|failed|failure)\b|^[A-Z][A-Z0-9_]+$)/i
+    /(axios|fetch|request failed|network error|unknown error|bad request|unauthorized|forbidden|not found|internal server|stack|prisma|sqlstate|status code|token|secret|password|database|\b(error|failed|failure)\b|^[A-Z][A-Z0-9_]+$)/i
 const englishMessage =
     /\b(the|this|that|with|from|for|invalid|cannot|could|please|already|does|is|are|has|have|was|were|your|email|password|business|product|order|selected|available|unavailable|server|internal|unexpected|request|user|access|denied|exists|wrong)\b/i
 

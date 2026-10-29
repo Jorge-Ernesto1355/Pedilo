@@ -22,7 +22,7 @@ describe('Responsive · tablet y registro', () => {
             cy.get('[data-testid="register-email"]').should('be.visible')
             cy.get('[data-testid="register-password"]').should('be.visible')
             cy.get('[data-testid="register-confirm-password"]').should('be.visible')
-            cy.get('[data-testid="register-terms"]').should('be.visible')
+            cy.get('[data-testid="register-legal"]').should('be.visible')
             cy.get('[data-testid="register-submit"]').should('be.visible')
             assertNoHorizontalOverflow()
         }

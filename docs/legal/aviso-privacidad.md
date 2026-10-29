@@ -1,6 +1,6 @@
 AVISO DE PRIVACIDAD INTEGRAL DE PEDILO
 
-Versión: 1.1
+Versión: 1.2
 Fecha de entrada en vigor: 15 de septiembre
 
 1. Responsable
@@ -33,6 +33,8 @@ Podemos tratar:
 - Información relacionada con sesiones y seguridad de la cuenta.
 - Información necesaria para recuperar o proteger la cuenta.
 - Identificador de usuario, correo electrónico y nombre asociados a eventos de uso cuando se encuentra activa una sesión autenticada.
+- La declaración de que la persona tiene al menos 18 años.
+- La aceptación de los Términos y Condiciones para Clientes y de este Aviso de Privacidad, incluyendo las versiones aceptadas y la fecha y hora de la aceptación.
 
 Si utilizas Google para registrarte o iniciar sesión, Pedilo recibirá la información que resulte necesaria para autenticar tu cuenta mediante Google.
 
@@ -72,6 +74,8 @@ Dependiendo de la configuración de las herramientas y del evento que se produzc
 Los eventos de uso registrados por las herramientas de analítica pueden incluir acciones dentro de la plataforma y datos agregados del pedido, como cantidad de productos, importe total y existencia de notas. Pedilo procura no enviar a estas herramientas el contenido completo de las notas del pedido ni datos de pago.
 
 Actualmente Pedilo no solicita como requisito general datos personales sensibles para realizar pedidos.
+
+La declaración de mayoría de edad y la evidencia de aceptación se tratan para gestionar el registro, aplicar el requisito de elegibilidad de los Términos, mantener evidencia de los documentos aceptados y proteger la cuenta. La declaración es una manifestación de la persona usuaria; Pedilo no realiza mediante este proceso una verificación independiente de identidad o edad.
 
 Pedilo tampoco solicita actualmente información de tarjetas bancarias ni procesa directamente pagos.
 

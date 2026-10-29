@@ -71,7 +71,12 @@ export const registerSchema = z
             .string()
             .min(1, 'Confirma tu contraseña.')
             .max(128, 'La contraseña es demasiado larga.'),
-        terms: z.boolean().refine((value) => value, 'Debes aceptar los términos para continuar.'),
+        acceptLegalDocuments: z
+            .boolean()
+            .refine((value) => value, 'Debes aceptar los documentos legales para continuar.'),
+        ageDeclaration: z
+            .boolean()
+            .refine((value) => value, 'Debes declarar que tienes al menos 18 años para continuar.'),
     })
     .strict()
     .superRefine((values, context) => {

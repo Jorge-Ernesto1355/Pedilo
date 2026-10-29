@@ -42,7 +42,7 @@ function registerAndLogin(email: string, testPassword: string) {
     cy.get('[data-testid="register-email"]').type(email)
     cy.get('[data-testid="register-password"]').type(testPassword)
     cy.get('[data-testid="register-confirm-password"]').type(testPassword)
-    cy.get('[data-testid="register-terms"]').check()
+    cy.get('[data-testid="register-legal"]').check()
     cy.get('[data-testid="register-submit"]').click()
     cy.location('pathname', { timeout: 15_000 }).should('eq', '/auth/login')
     cy.get('[data-testid="login-email"]').type(email)

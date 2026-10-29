@@ -3,10 +3,10 @@ describe('Auth · Register', () => {
 
     function fillRegistration(email = `cypress-${Date.now()}@example.test`) {
         cy.get('[data-testid="register-name"]').type('Cypress Test User')
-        cy.get('[data-testid="register-email"]').type(email) 
+        cy.get('[data-testid="register-email"]').type(email)
         cy.get('[data-testid="register-password"]').type('Strong-pass-123')
         cy.get('[data-testid="register-confirm-password"]').type('Strong-pass-123')
-        cy.get('[data-testid="register-terms"]').check()
+        cy.get('[data-testid="register-legal"]').check()
     }
 
     it('renderiza nombre, email, passwords y términos', () => {
@@ -38,7 +38,7 @@ describe('Auth · Register', () => {
         cy.get('[data-testid="register-email"]').type('valid@example.test')
         cy.get('[data-testid="register-password"]').type('short')
         cy.get('[data-testid="register-confirm-password"]').type('different')
-        cy.get('[data-testid="register-terms"]').check()
+        cy.get('[data-testid="register-legal"]').check()
         cy.get('[data-testid="register-submit"]').click()
         cy.get('p').filter(':visible').should('have.length.at.least', 1)
     })
@@ -49,7 +49,8 @@ describe('Auth · Register', () => {
                 name: 'Cypress Test User',
                 email: 'registered@example.test',
                 password: 'Strong-pass-123',
-                terms: true,
+                acceptLegalDocuments: true,
+                ageDeclaration: true,
             })
             request.reply({
                 statusCode: 409,

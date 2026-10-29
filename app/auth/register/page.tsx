@@ -17,7 +17,8 @@ type FieldErrors = {
     email?: boolean
     password?: boolean
     confirm?: boolean
-    terms?: boolean
+    acceptLegalDocuments?: boolean
+    ageDeclaration?: boolean
 }
 
 const STRENGTH_COLORS = ['#DC2626', '#DC2626', '#F59E0B', '#3B82F6', '#16A34A']
@@ -70,7 +71,8 @@ export default function RegisterPage() {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [confirm, setConfirm] = useState('')
-    const [terms, setTerms] = useState(false)
+    const [acceptLegalDocuments, setAcceptLegalDocuments] = useState(false)
+    const [ageDeclaration, setAgeDeclaration] = useState(false)
     const [errors, setErrors] = useState<FieldErrors>({})
     const [authError, setAuthError] = useState('')
     const [success, setSuccess] = useState(false)
@@ -90,6 +92,13 @@ export default function RegisterPage() {
 
     async function handleGoogleClick() {
         if (loading) return
+        if (!acceptLegalDocuments || !ageDeclaration) {
+            setErrors({ acceptLegalDocuments: true, ageDeclaration: true })
+            setAuthError(
+                'Debes declarar que tienes al menos 18 años y aceptar los documentos legales para continuar.',
+            )
+            return
+        }
         setGoogleLoading(true)
         setAuthError('')
         try {
@@ -107,7 +116,14 @@ export default function RegisterPage() {
         e.preventDefault()
         if (loading) return
 
-        const parsed = registerSchema.safeParse({ name, email, password, confirm, terms })
+        const parsed = registerSchema.safeParse({
+            name,
+            email,
+            password,
+            confirm,
+            acceptLegalDocuments,
+            ageDeclaration,
+        })
         if (!parsed.success) {
             const newErrors: FieldErrors = {}
             for (const issue of parsed.error.issues) {
@@ -120,7 +136,8 @@ export default function RegisterPage() {
                             email: true,
                             password: true,
                             confirm: true,
-                            terms: true,
+                            acceptLegalDocuments: true,
+                            ageDeclaration: true,
                         }
                 ) {
                     newErrors[field as keyof FieldErrors] = true
@@ -420,19 +437,29 @@ export default function RegisterPage() {
 
                                 <label className="mt-[18px] flex items-start gap-[10px] text-[13.5px] text-slate-500">
                                     <input
-                                        data-testid="register-terms"
+                                        data-testid="register-legal"
                                         type="checkbox"
-                                        name="terms"
-                                        checked={terms}
-                                        onChange={(e) => setTerms(e.target.checked)}
-                                        aria-invalid={Boolean(errors.terms)}
+                                        name="acceptLegalDocuments"
+                                        checked={acceptLegalDocuments}
+                                        onChange={(e) => {
+                                            const checked = e.target.checked
+                                            setAcceptLegalDocuments(checked)
+                                            setAgeDeclaration(checked)
+                                        }}
+                                        aria-invalid={Boolean(
+                                            errors.acceptLegalDocuments || errors.ageDeclaration,
+                                        )}
                                         aria-describedby={
-                                            errors.terms ? 'register-terms-error' : undefined
+                                            errors.acceptLegalDocuments || errors.ageDeclaration
+                                                ? 'register-terms-error'
+                                                : undefined
                                         }
                                         className="mt-[3px] h-4 w-4 flex-shrink-0 accent-blue-800"
+                                        required
                                     />
                                     <span>
-                                        Al crear una cuenta, aceptas los{' '}
+                                        Declaro que tengo al menos 18 años y, al crear una cuenta,
+                                        acepto los{' '}
                                         <Link
                                             href="/terminos"
                                             className="font-semibold text-blue-800 hover:underline"
@@ -450,7 +477,7 @@ export default function RegisterPage() {
                                     </span>
                                 </label>
                                 <AnimatePresence initial={false}>
-                                    {errors.terms && (
+                                    {(errors.acceptLegalDocuments || errors.ageDeclaration) && (
                                         <motion.p
                                             id="register-terms-error"
                                             variants={errorVariants}
@@ -459,7 +486,8 @@ export default function RegisterPage() {
                                             exit="exit"
                                             className="overflow-hidden text-[12.5px] font-medium text-red-600"
                                         >
-                                            Debes aceptar los términos para continuar.
+                                            Debes declarar que tienes al menos 18 años y aceptar los
+                                            documentos legales para continuar.
                                         </motion.p>
                                     )}
                                 </AnimatePresence>

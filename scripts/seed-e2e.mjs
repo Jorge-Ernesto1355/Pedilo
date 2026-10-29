@@ -110,7 +110,13 @@ async function ensureAccount() {
 
     await request('/auth/register', {
         method: 'POST',
-        body: { name: 'E2E Dashboard User', email, password },
+        body: {
+            name: 'E2E Dashboard User',
+            email,
+            password,
+            acceptLegalDocuments: true,
+            ageDeclaration: true,
+        },
     })
     await request('/auth/login', {
         method: 'POST',
