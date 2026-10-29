@@ -38,15 +38,17 @@ function sanitizeNumericInput(event: React.FormEvent<HTMLElement>) {
             .replace(/(\..*)\./g, '$1')
             .replace(/(\.\d{2}).*/g, '$1')
 }
-const groupSchema = z
-    .object({
-        name: z.string().trim().min(1, 'Escribe el nombre del grupo.'),
-        isRequired: z.boolean(),
-        optionName: z.string().trim(),
-        optionPrice: z.string().regex(/^\d+(\.\d{1,2})?$/, 'Usa un precio válido.').or(z.literal('')),
-        optionMinSelections: z.string().regex(/^\d+$/, 'Usa un número entero.').or(z.literal('')),
-        optionMaxSelections: z.string().regex(/^\d+$/, 'Usa un número entero.').or(z.literal('')),
-    })
+const groupSchema = z.object({
+    name: z.string().trim().min(1, 'Escribe el nombre del grupo.'),
+    isRequired: z.boolean(),
+    optionName: z.string().trim(),
+    optionPrice: z
+        .string()
+        .regex(/^\d+(\.\d{1,2})?$/, 'Usa un precio válido.')
+        .or(z.literal('')),
+    optionMinSelections: z.string().regex(/^\d+$/, 'Usa un número entero.').or(z.literal('')),
+    optionMaxSelections: z.string().regex(/^\d+$/, 'Usa un número entero.').or(z.literal('')),
+})
 const optionSchema = z
     .object({
         name: z.string().trim().min(1, 'Escribe el nombre de la opción.'),
@@ -109,9 +111,31 @@ export function OptionModal({
             onClose={isSaving ? () => undefined : onClose}
             title={option ? 'Editar opción' : 'Agregar opción'}
             description="El precio se suma al precio base del producto."
+            footer={
+                <div className="flex justify-end gap-2">
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        disabled={isSaving}
+                        className="rounded-xl border border-[#D7E1EF] px-4 py-2 text-sm font-semibold text-[#65738A]"
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        type="submit"
+                        form="option-form"
+                        disabled={isSaving}
+                        aria-busy={isSaving}
+                        className="inline-flex items-center gap-2 rounded-xl bg-[#1E40AF] px-4 py-2 text-sm font-bold text-white shadow-[0_8px_18px_-10px_rgba(30,64,175,.75)] disabled:cursor-wait disabled:opacity-60"
+                    >
+                        {isSaving && <LoaderCircle className="size-4 animate-spin" />}
+                        {isSaving ? 'Guardando…' : option ? 'Guardar opción' : 'Agregar opción'}
+                    </button>
+                </div>
+            }
         >
             <div onInputCapture={sanitizeNumericInput}>
-                <form onSubmit={handleSubmit(onDone)} className="space-y-4">
+                <form id="option-form" onSubmit={handleSubmit(onDone)} className="space-y-4">
                     <div>
                         <label className="mb-1.5 block text-sm font-semibold text-[#243556]">
                             Nombre <span className="text-[#B42318]">*</span>
@@ -131,7 +155,7 @@ export function OptionModal({
                     <div className="grid gap-3 sm:grid-cols-2">
                         <div>
                             <label className="mb-1.5 block text-sm font-semibold text-[#243556]">
-                            Mínimo de unidades
+                                Mínimo de unidades
                             </label>
                             <input
                                 className={inputClass}
@@ -147,7 +171,7 @@ export function OptionModal({
                         </div>
                         <div>
                             <label className="mb-1.5 block text-sm font-semibold text-[#243556]">
-                            Máximo de unidades
+                                Máximo de unidades
                             </label>
                             <input
                                 className={inputClass}
@@ -163,8 +187,8 @@ export function OptionModal({
                         </div>
                     </div>
                     <p className="-mt-2 text-xs text-[#8996A9]">
-                        Define cuántas unidades de esta opción puede agregar el cliente. Por ejemplo,
-                        mínimo 0 y máximo 2 permite agregar hasta dos.
+                        Define cuántas unidades de esta opción puede agregar el cliente. Por
+                        ejemplo, mínimo 0 y máximo 2 permite agregar hasta dos.
                     </p>
                     <div>
                         <label className="mb-1.5 block text-sm font-semibold text-[#243556]">
@@ -189,25 +213,6 @@ export function OptionModal({
                         <p className="mt-1.5 text-xs text-[#8996A9]">
                             Costo adicional por cada unidad. Escribe 0 si no tiene costo.
                         </p>
-                    </div>
-                    <div className="flex justify-end gap-2 border-t border-[#E8EEF6] pt-4">
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            disabled={isSaving}
-                            className="rounded-xl border border-[#D7E1EF] px-4 py-2 text-sm font-semibold text-[#65738A]"
-                        >
-                            Cancelar
-                        </button>
-                        <button
-                            type="submit"
-                            disabled={isSaving}
-                            aria-busy={isSaving}
-                            className="inline-flex items-center gap-2 rounded-xl bg-[#1E40AF] px-4 py-2 text-sm font-bold text-white shadow-[0_8px_18px_-10px_rgba(30,64,175,.75)] disabled:cursor-wait disabled:opacity-60"
-                        >
-                            {isSaving && <LoaderCircle className="size-4 animate-spin" />}
-                            {isSaving ? 'Guardando…' : option ? 'Guardar opción' : 'Agregar opción'}
-                        </button>
                     </div>
                 </form>
             </div>
@@ -273,13 +278,15 @@ export function GroupModal({
             // The modal is reused for different groups and needs a clean local draft.
             // eslint-disable-next-line react-hooks/set-state-in-effect
             setDraftOptions(
-                group?.options?.map(({ name, price, minSelections, maxSelections, isAvailable }) => ({
-                    name,
-                    price: Number(price),
-                    minSelections: minSelections ?? 0,
-                    maxSelections: maxSelections ?? 1,
-                    isAvailable,
-                })) ?? [],
+                group?.options?.map(
+                    ({ name, price, minSelections, maxSelections, isAvailable }) => ({
+                        name,
+                        price: Number(price),
+                        minSelections: minSelections ?? 0,
+                        maxSelections: maxSelections ?? 1,
+                        isAvailable,
+                    }),
+                ) ?? [],
             )
         }
     }, [open, group, reset])
@@ -288,13 +295,15 @@ export function GroupModal({
         // The group response may not include options; hydrate the editor from its options query.
         // eslint-disable-next-line react-hooks/set-state-in-effect
         setDraftOptions(
-            existingOptionsQuery.data.map(({ name, price, minSelections, maxSelections, isAvailable }) => ({
-                name,
-                price: Number(price),
-                minSelections: minSelections ?? 0,
-                maxSelections: maxSelections ?? 1,
-                isAvailable,
-            })),
+            existingOptionsQuery.data.map(
+                ({ name, price, minSelections, maxSelections, isAvailable }) => ({
+                    name,
+                    price: Number(price),
+                    minSelections: minSelections ?? 0,
+                    maxSelections: maxSelections ?? 1,
+                    isAvailable,
+                }),
+            ),
         )
     }, [existingOptionsQuery.data, group, open])
     const addDraft = () => {
@@ -369,9 +378,31 @@ export function GroupModal({
             title={group ? 'Editar grupo de opciones' : 'Crear grupo de opciones'}
             description="Define los extras o variantes que puede elegir el cliente."
             size="lg"
+            footer={
+                <div className="flex justify-end gap-2">
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        disabled={isSaving}
+                        className="rounded-xl px-4 py-2 text-sm font-semibold text-[#65738A]"
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        type="submit"
+                        form="group-form"
+                        disabled={isSaving}
+                        aria-busy={isSaving}
+                        className="inline-flex items-center gap-2 rounded-xl bg-[#1E40AF] px-4 py-2 text-sm font-bold text-white disabled:cursor-wait disabled:opacity-60"
+                    >
+                        {isSaving && <LoaderCircle className="size-4 animate-spin" />}
+                        {isSaving ? 'Guardando…' : group ? 'Guardar cambios' : 'Crear grupo'}
+                    </button>
+                </div>
+            }
         >
             <div onInputCapture={sanitizeNumericInput}>
-                <form onSubmit={handleSubmit(submit)} className="space-y-4">
+                <form id="group-form" onSubmit={handleSubmit(submit)} className="space-y-4">
                     <div>
                         <label className="mb-1.5 block text-sm font-semibold text-[#243556]">
                             Nombre del grupo
@@ -500,8 +531,8 @@ export function GroupModal({
                                         <span>
                                             {option.name}{' '}
                                             <span className="text-[#65738A]">
-                                                +${option.price.toFixed(2)} · {option.minSelections}–
-                                                {option.maxSelections}
+                                                +${option.price.toFixed(2)} · {option.minSelections}
+                                                –{option.maxSelections}
                                             </span>
                                         </span>
                                         <button
@@ -522,25 +553,6 @@ export function GroupModal({
                             </div>
                         </div>
                     )}
-                    <div className="flex justify-end gap-2 border-t border-[#E8EEF6] pt-4">
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            disabled={isSaving}
-                            className="rounded-xl px-4 py-2 text-sm font-semibold text-[#65738A]"
-                        >
-                            Cancelar
-                        </button>
-                        <button
-                            type="submit"
-                            disabled={isSaving}
-                            aria-busy={isSaving}
-                            className="inline-flex items-center gap-2 rounded-xl bg-[#1E40AF] px-4 py-2 text-sm font-bold text-white disabled:cursor-wait disabled:opacity-60"
-                        >
-                            {isSaving && <LoaderCircle className="size-4 animate-spin" />}
-                            {isSaving ? 'Guardando…' : group ? 'Guardar cambios' : 'Crear grupo'}
-                        </button>
-                    </div>
                 </form>
             </div>
         </Modal>

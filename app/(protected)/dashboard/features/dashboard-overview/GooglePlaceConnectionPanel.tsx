@@ -189,6 +189,29 @@ function ConnectedPlace({
                 description="Dejarás de ver la calificación y el total de reseñas de este establecimiento en el dashboard."
                 onClose={() => !disconnect.isPending && setConfirmDisconnect(false)}
                 closeDisabled={disconnect.isPending}
+                footer={
+                    <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                        <button
+                            type="button"
+                            onClick={() => setConfirmDisconnect(false)}
+                            disabled={disconnect.isPending}
+                            className="min-h-10 rounded-xl px-4 py-2 text-sm font-semibold text-[#65738A] hover:bg-[#F5F8FC] disabled:opacity-60"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            type="button"
+                            onClick={confirmRemove}
+                            disabled={disconnect.isPending}
+                            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-[#9A3D3D] px-4 py-2 text-sm font-semibold text-white hover:bg-[#843232] disabled:opacity-60"
+                        >
+                            {disconnect.isPending && (
+                                <LoaderCircle className="size-4 animate-spin" />
+                            )}
+                            Sí, desvincular
+                        </button>
+                    </div>
+                }
             >
                 {disconnect.isError && (
                     <div
@@ -211,25 +234,6 @@ function ConnectedPlace({
                         </button>
                     </div>
                 )}
-                <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                    <button
-                        type="button"
-                        onClick={() => setConfirmDisconnect(false)}
-                        disabled={disconnect.isPending}
-                        className="min-h-10 rounded-xl px-4 py-2 text-sm font-semibold text-[#65738A] hover:bg-[#F5F8FC] disabled:opacity-60"
-                    >
-                        Cancelar
-                    </button>
-                    <button
-                        type="button"
-                        onClick={confirmRemove}
-                        disabled={disconnect.isPending}
-                        className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-[#9A3D3D] px-4 py-2 text-sm font-semibold text-white hover:bg-[#843232] disabled:opacity-60"
-                    >
-                        {disconnect.isPending && <LoaderCircle className="size-4 animate-spin" />}
-                        Sí, desvincular
-                    </button>
-                </div>
             </Modal>
         </>
     )

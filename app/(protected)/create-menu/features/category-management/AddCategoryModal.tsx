@@ -115,8 +115,28 @@ export function AddCategoryModal({
             onClose={isSaving ? () => undefined : onClose}
             title="Crear menú"
             description="Crea un menú y organiza sus categorías desde un solo lugar."
+            footer={
+                <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        disabled={isSaving}
+                        className="rounded-xl px-4 py-2.5 text-sm font-semibold text-[#65738A] transition hover:bg-[#F2F5FA] disabled:opacity-50"
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        type="submit"
+                        form="create-menu-form"
+                        disabled={isSaving}
+                        className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#1E40AF] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#183991] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#1E40AF]/20 disabled:cursor-wait disabled:opacity-60"
+                    >
+                        {isSaving ? 'Creando menú…' : 'Crear menú'}
+                    </button>
+                </div>
+            }
         >
-            <form onSubmit={handleSubmit(submit)} className="space-y-5">
+            <form id="create-menu-form" onSubmit={handleSubmit(submit)} className="space-y-5">
                 <div>
                     <label
                         htmlFor="menu-name"
@@ -259,23 +279,6 @@ export function AddCategoryModal({
                         {errorMessage}
                     </p>
                 )}
-                <div className="flex flex-col-reverse gap-2 border-t border-[#E8EEF6] pt-5 sm:flex-row sm:justify-end">
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        disabled={isSaving}
-                        className="rounded-xl px-4 py-2.5 text-sm font-semibold text-[#65738A] transition hover:bg-[#F2F5FA] disabled:opacity-50"
-                    >
-                        Cancelar
-                    </button>
-                    <button
-                        type="submit"
-                        disabled={isSaving}
-                        className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#1E40AF] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#183991] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#1E40AF]/20 disabled:cursor-wait disabled:opacity-60"
-                    >
-                        {isSaving ? 'Creando menú…' : 'Crear menú'}
-                    </button>
-                </div>
             </form>
         </Modal>
     )

@@ -175,6 +175,24 @@ export function BusinessSettingsModal({ open, onClose }: BusinessSettingsModalPr
             title="Business Settings"
             description="Configura la información y preferencias principales de tu negocio, como datos de contacto, dirección, moneda y zona horaria."
             size="lg"
+            footer={
+                !isLoading && !settings.isError ? (
+                    <button
+                        type="submit"
+                        form="business-settings-form"
+                        disabled={isSaving}
+                        aria-busy={isSaving}
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#1E40AF] px-4 py-3 text-sm font-bold text-white shadow-[0_10px_22px_rgb(30_64_175_/_0.18)] transition hover:-translate-y-0.5 hover:bg-[#183991] disabled:cursor-wait disabled:opacity-60"
+                    >
+                        {isSaving ? (
+                            <LoaderCircle className="size-4 animate-spin" />
+                        ) : (
+                            <Save className="size-4" />
+                        )}
+                        {isSaving ? 'Guardando…' : 'Guardar cambios'}
+                    </button>
+                ) : undefined
+            }
         >
             {isLoading ? (
                 <div
@@ -194,7 +212,7 @@ export function BusinessSettingsModal({ open, onClose }: BusinessSettingsModalPr
                     {errorMessage(settings.error, 'No pudimos cargar la configuración.')}
                 </div>
             ) : (
-                <form onSubmit={submit} className="space-y-5">
+                <form id="business-settings-form" onSubmit={submit} className="space-y-5">
                     <SettingsField
                         id="settings-currency"
                         label="Moneda"
@@ -281,19 +299,6 @@ export function BusinessSettingsModal({ open, onClose }: BusinessSettingsModalPr
                             {validationError}
                         </p>
                     )}
-                    <button
-                        type="submit"
-                        disabled={isSaving}
-                        aria-busy={isSaving}
-                        className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#1E40AF] px-4 py-3 text-sm font-bold text-white shadow-[0_10px_22px_rgb(30_64_175_/_0.18)] transition hover:-translate-y-0.5 hover:bg-[#183991] disabled:cursor-wait disabled:opacity-60"
-                    >
-                        {isSaving ? (
-                            <LoaderCircle className="size-4 animate-spin" />
-                        ) : (
-                            <Save className="size-4" />
-                        )}
-                        {isSaving ? 'Guardando…' : 'Guardar cambios'}
-                    </button>
                 </form>
             )}
         </Modal>

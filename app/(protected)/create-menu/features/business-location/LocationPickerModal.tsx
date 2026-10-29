@@ -97,11 +97,7 @@ export function LocationPickerModal({
         const session = ++geocodeSession.current
         void geocode(locationText).then((result) => {
             const next = result ? parseResultCoordinates(result) : null
-            if (
-                next &&
-                session === geocodeSession.current &&
-                !hasManuallyEditedCoordinates.current
-            )
+            if (next && session === geocodeSession.current && !hasManuallyEditedCoordinates.current)
                 updateDraft(next, setDraft, setValue)
         })
     }, [coordinates, geocode, locationText, open, setValue])
@@ -139,8 +135,30 @@ export function LocationPickerModal({
             title="Ubicación exacta"
             description="Busca tu dirección y ajusta el pin para marcar el punto preciso de tu negocio."
             size="lg"
+            footer={
+                <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
+                    <p className="mr-auto flex items-center gap-1.5 text-xs text-[#8996A9]">
+                        <LocateFixed className="size-3.5" />
+                        El pin final se guardará con este perfil.
+                    </p>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="rounded-xl px-4 py-2.5 text-sm font-semibold text-[#65738A] transition hover:bg-[#F2F5FA]"
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        type="submit"
+                        form="location-picker-form"
+                        className="rounded-xl bg-[#1E40AF] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#183991]"
+                    >
+                        Guardar ubicación
+                    </button>
+                </div>
+            }
         >
-            <form onSubmit={handleSubmit(submit)} className="space-y-5">
+            <form id="location-picker-form" onSubmit={handleSubmit(submit)} className="space-y-5">
                 <div className="overflow-hidden rounded-2xl border border-[#CBD8EA]">
                     <div className="relative border-b border-[#E4EBF4] bg-white p-3">
                         <Search
@@ -237,27 +255,6 @@ export function LocationPickerModal({
                                 {errors.longitude.message}
                             </p>
                         )}
-                    </div>
-                </div>
-                <div className="flex flex-col-reverse gap-2 border-t border-[#E8EEF6] pt-5 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="flex items-center gap-1.5 text-xs text-[#8996A9]">
-                        <LocateFixed className="size-3.5" />
-                        El pin final se guardará con este perfil.
-                    </p>
-                    <div className="flex gap-2">
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            className="rounded-xl px-4 py-2.5 text-sm font-semibold text-[#65738A] transition hover:bg-[#F2F5FA]"
-                        >
-                            Cancelar
-                        </button>
-                        <button
-                            type="submit"
-                            className="rounded-xl bg-[#1E40AF] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#183991]"
-                        >
-                            Guardar ubicación
-                        </button>
                     </div>
                 </div>
             </form>
