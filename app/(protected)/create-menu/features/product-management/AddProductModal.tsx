@@ -136,71 +136,38 @@ export function AddProductModal({
                 onSubmit={handleSubmit(submit)}
                 className="space-y-6"
             >
-                <div className="rounded-2xl border border-[#DCE5F3] bg-[#F8FAFE] p-4">
-                    <p className="text-xs font-bold uppercase tracking-[.14em] text-[#2451C5]">
-                        Información principal
-                    </p>
-                    <p className="mt-1 text-sm leading-6 text-[#65738A]">
-                        El nombre, descripción y precio ayudan a tus clientes a decidir rápidamente
-                        qué pedir.
-                    </p>
-                    <p className="mt-2 text-xs leading-5 text-[#65738A]">
-                        Publica únicamente alimentos y bebidas permitidos por la{' '}
-                        <Link
-                            href="/productos-y-contenido"
-                            className="font-semibold text-[#2451C5] underline underline-offset-2"
-                        >
-                            Política de Productos y Contenido
-                        </Link>
-                        . Para imágenes, revisa la{' '}
-                        <Link
-                            href="/propiedad-intelectual"
-                            className="font-semibold text-[#2451C5] underline underline-offset-2"
-                        >
-                            Política de Propiedad Intelectual
-                        </Link>
-                        .
-                    </p>
-                </div>
                 <section
                     aria-labelledby="product-options-prompt-title"
-                    className="flex flex-col gap-4 rounded-2xl border border-[#BFD2FF] bg-[#F1F5FF] p-4 sm:flex-row sm:items-center sm:justify-between"
+                    className="flex items-center gap-3 rounded-xl border border-[#BFD2FF] bg-[#F1F5FF] px-3 py-2.5"
                 >
-                    <div className="flex items-start gap-3">
-                        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#DCE7FF] text-[#1E40AF]">
-                            <ListPlus className="size-5" aria-hidden="true" />
-                        </span>
-                        <div>
-                            <p className="text-xs font-bold uppercase tracking-[.12em] text-[#2451C5]">
-                                Opciones y extras
-                            </p>
-                            <h3
-                                id="product-options-prompt-title"
-                                className="mt-1 text-sm font-bold text-[#12234A]"
-                            >
-                                {currentProduct
-                                    ? 'Haz que tu producto sea personalizable'
-                                    : '¿Tu producto lleva extras o variantes?'}
-                            </h3>
-                            <p className="mt-1 text-xs leading-5 text-[#53617A]">
-                                {currentProduct
-                                    ? 'Agrega tamaños, ingredientes o complementos que tus clientes puedan elegir al pedir.'
-                                    : 'Primero guarda el producto y después podrás agregar tamaños, ingredientes o complementos.'}
-                            </p>
-                        </div>
+                    <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-[#DCE7FF] text-[#1E40AF]">
+                        <ListPlus className="size-4" aria-hidden="true" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                        <h3
+                            id="product-options-prompt-title"
+                            className="text-xs font-bold text-[#12234A]"
+                        >
+                            Opciones y extras
+                        </h3>
+                        <p className="mt-0.5 text-[11px] leading-4 text-[#53617A]">
+                            {currentProduct
+                                ? 'Agrega tamaños, ingredientes o complementos.'
+                                : 'Podrás agregarlos después de crear el producto.'}
+                        </p>
                     </div>
                     {currentProduct ? (
                         <button
                             type="button"
                             onClick={goToOptions}
                             aria-controls={`product-options-${currentProduct.id}`}
-                            className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-xl bg-[#1E40AF] px-3.5 py-2 text-xs font-bold text-white shadow-[0_8px_18px_-10px_rgba(30,64,175,.75)] transition hover:bg-[#183991] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#2451C5]/20"
+                            className="min-h-8 shrink-0 rounded-lg bg-[#1E40AF] px-2.5 py-1.5 text-[11px] font-bold text-white transition hover:bg-[#183991] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#2451C5]/20"
                         >
-                            Configurar opciones
+                            Configurar
                         </button>
                     ) : (
-                        <span className="shrink-0 text-xs font-semibold text-[#5572B8]">
-                            Disponible al guardar
+                        <span className="shrink-0 text-[11px] font-semibold text-[#5572B8]">
+                            Después de guardar
                         </span>
                     )}
                 </section>
@@ -356,7 +323,33 @@ export function AddProductModal({
                         No se pudo sincronizar el detalle del producto. Ver respuesta del servidor.
                     </button>
                 )}
-                <div className="flex flex-col-reverse gap-3 border-t border-[#E8EEF6] pt-5 sm:flex-row sm:items-center sm:justify-between">
+                <div className="rounded-2xl border border-[#DCE5F3] bg-[#F8FAFE] p-4">
+                    <p className="text-xs font-bold uppercase tracking-[.14em] text-[#2451C5]">
+                        Información principal
+                    </p>
+                    <p className="mt-1 text-sm leading-6 text-[#65738A]">
+                        El nombre, descripción y precio ayudan a tus clientes a decidir rápidamente
+                        qué pedir.
+                    </p>
+                    <p className="mt-2 text-xs leading-5 text-[#65738A]">
+                        Publica únicamente alimentos y bebidas permitidos por la{' '}
+                        <Link
+                            href="/productos-y-contenido"
+                            className="font-semibold text-[#2451C5] underline underline-offset-2"
+                        >
+                            Política de Productos y Contenido
+                        </Link>
+                        . Para imágenes, revisa la{' '}
+                        <Link
+                            href="/propiedad-intelectual"
+                            className="font-semibold text-[#2451C5] underline underline-offset-2"
+                        >
+                            Política de Propiedad Intelectual
+                        </Link>
+                        .
+                    </p>
+                </div>
+                <div className="sticky bottom-0 z-10 -mx-4 flex flex-col-reverse gap-3 border-t border-[#E8EEF6] bg-white px-4 pb-1 pt-4 sm:-mx-7 sm:flex-row sm:items-center sm:justify-between sm:px-7">
                     <p className="text-xs leading-5 text-[#8996A9]">
                         {product
                             ? 'Los cambios se guardan en tu menú al confirmar.'
