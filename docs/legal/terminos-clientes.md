@@ -157,6 +157,8 @@ El teléfono puede ser comunicado al restaurante para atender el pedido.
 
 El tratamiento de datos personales se encuentra regulado por el Aviso de Privacidad de Pedilo.
 
+Pedilo también puede utilizar herramientas de diagnóstico y analítica, como Sentry y PostHog, para detectar errores, proteger la plataforma, medir el uso de funcionalidades y mejorar el servicio. Cuando Session Replay se encuentre habilitado, su uso estará sujeto a las condiciones, controles y opciones informadas en el Aviso de Privacidad. Estos Términos no sustituyen los mecanismos de información, consentimiento u oposición que resulten aplicables al tratamiento de datos personales.
+
 ⸻
 
 13. Responsabilidad del restaurante
