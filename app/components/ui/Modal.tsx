@@ -10,6 +10,7 @@ type ModalProps = {
     description?: string
     onClose: () => void
     children: ReactNode
+    footer?: ReactNode
     size?: 'sm' | 'lg' | 'xl'
     closeDisabled?: boolean
 }
@@ -20,6 +21,7 @@ export function Modal({
     description,
     onClose,
     children,
+    footer,
     size = 'sm',
     closeDisabled = false,
 }: ModalProps) {
@@ -122,6 +124,11 @@ export function Modal({
                         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-7 sm:py-5">
                             {children}
                         </div>
+                        {footer && (
+                            <div className="shrink-0 border-t border-[#E8EEF6] bg-white px-4 py-4 sm:px-7 sm:py-5">
+                                {footer}
+                            </div>
+                        )}
                     </motion.div>
                 </motion.div>
             )}

@@ -130,8 +130,40 @@ export function AddProductModal({
             title={product ? 'Editar producto' : 'Agregar producto'}
             description={`${product ? 'Actualiza' : 'Crea'} la información que tus clientes verán en el menú.`}
             size="lg"
+            footer={
+                <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-xs leading-5 text-[#8996A9]">
+                        {product
+                            ? 'Los cambios se guardan en tu menú al confirmar.'
+                            : 'Después de crear el producto podrás agregar opciones y extras.'}
+                    </p>
+                    <div className="flex justify-end gap-2">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            disabled={isSaving}
+                            className="rounded-xl border border-[#D7E1EF] px-4 py-2.5 text-sm font-semibold text-[#65738A] transition hover:bg-[#F2F5FA]"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            type="submit"
+                            form="product-form"
+                            disabled={isSaving}
+                            className="inline-flex min-w-40 items-center justify-center rounded-xl bg-[#1E40AF] px-5 py-2.5 text-sm font-bold text-white shadow-[0_8px_18px_-10px_rgba(30,64,175,.75)] transition hover:bg-[#183991] disabled:cursor-wait disabled:opacity-60"
+                        >
+                            {isSaving
+                                ? 'Guardando producto…'
+                                : product
+                                  ? 'Guardar cambios'
+                                  : 'Crear producto'}
+                        </button>
+                    </div>
+                </div>
+            }
         >
             <form
+                id="product-form"
                 onInputCapture={sanitizeNumericInput}
                 onSubmit={handleSubmit(submit)}
                 className="space-y-6"
@@ -348,34 +380,6 @@ export function AddProductModal({
                         </Link>
                         .
                     </p>
-                </div>
-                <div className="sticky bottom-0 z-10 -mx-4 -mb-4 flex flex-col-reverse gap-3 border-t border-[#E8EEF6] bg-white px-4 pb-4 pt-4 shadow-[0_-10px_24px_rgb(255_255_255_/_0.96)] sm:-mx-7 sm:-mb-5 sm:flex-row sm:items-center sm:justify-between sm:px-7 sm:pb-5">
-                    <p className="text-xs leading-5 text-[#8996A9]">
-                        {product
-                            ? 'Los cambios se guardan en tu menú al confirmar.'
-                            : 'Después de crear el producto podrás agregar opciones y extras.'}
-                    </p>
-                    <div className="flex justify-end gap-2">
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            disabled={isSaving}
-                            className="rounded-xl border border-[#D7E1EF] px-4 py-2.5 text-sm font-semibold text-[#65738A] transition hover:bg-[#F2F5FA]"
-                        >
-                            Cancelar
-                        </button>
-                        <button
-                            type="submit"
-                            disabled={isSaving}
-                            className="inline-flex min-w-40 items-center justify-center rounded-xl bg-[#1E40AF] px-5 py-2.5 text-sm font-bold text-white shadow-[0_8px_18px_-10px_rgba(30,64,175,.75)] transition hover:bg-[#183991] disabled:cursor-wait disabled:opacity-60"
-                        >
-                            {isSaving
-                                ? 'Guardando producto…'
-                                : product
-                                  ? 'Guardar cambios'
-                                  : 'Crear producto'}
-                        </button>
-                    </div>
                 </div>
                 {errors.root?.server?.message && (
                     <p role="alert" className="text-center text-xs text-[#B42318]">
