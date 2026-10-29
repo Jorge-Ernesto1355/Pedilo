@@ -349,7 +349,7 @@ export function AddProductModal({
                         .
                     </p>
                 </div>
-                <div className="sticky bottom-0 z-10 -mx-4 flex flex-col-reverse gap-3 border-t border-[#E8EEF6] bg-white px-4 pb-1 pt-4 sm:-mx-7 sm:flex-row sm:items-center sm:justify-between sm:px-7">
+                <div className="sticky bottom-0 z-10 -mx-4 -mb-4 flex flex-col-reverse gap-3 border-t border-[#E8EEF6] bg-white px-4 pb-4 pt-4 shadow-[0_-10px_24px_rgb(255_255_255_/_0.96)] sm:-mx-7 sm:-mb-5 sm:flex-row sm:items-center sm:justify-between sm:px-7 sm:pb-5">
                     <p className="text-xs leading-5 text-[#8996A9]">
                         {product
                             ? 'Los cambios se guardan en tu menú al confirmar.'
