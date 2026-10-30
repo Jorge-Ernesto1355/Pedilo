@@ -17,6 +17,7 @@ function emitPostHogLoginLog(
 const AUTH_API_URL =
     process.env.BACKEND_URL ??
     (process.env.NODE_ENV === 'production' ? 'https://api.pedilo.mx' : 'http://localhost:3001')
+
 const LOGIN_TIMEOUT_MS = 8_000
 
 interface RateLimitBody {

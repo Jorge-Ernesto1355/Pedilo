@@ -1,3 +1,5 @@
+import type { Interception } from 'cypress/types/net-stubbing'
+
 type Period = 'today' | '7d' | '30d' | 'thisMonth'
 type Status = 'PREPARING' | 'READY' | 'CANCELLED'
 
@@ -301,9 +303,23 @@ function selectPeriod(period: Period) {
     cy.get('[aria-label="Periodo de ventas"]').find(`button[data-value="${period}"]`).click()
 }
 
+function waitForPeriod(
+    alias: string,
+    period: string,
+    callback: (interception: Interception) => void,
+) {
+    cy.wait(alias as `@${string}`).then((interception) => {
+        if (String(interception.request.query.period ?? '') !== period) {
+            waitForPeriod(alias, period, callback)
+            return
+        }
+        callback(interception)
+    })
+}
+
 function assertPeriod(period: Period, scenario: Scenario) {
     const expectedChange = percentage(scenario.current.total, scenario.previous.total)
-    cy.wait('@sales').then(({ request, response }) => {
+    waitForPeriod('@sales', period, ({ request, response }) => {
         expect(request.query.period).to.eq(period)
         expect(response?.body.total).to.eq(scenario.current.total)
         expect(
@@ -313,13 +329,13 @@ function assertPeriod(period: Period, scenario: Scenario) {
             ),
         ).to.eq(scenario.current.total)
     })
-    cy.wait('@ticket').then(({ request, response }) => {
+    waitForPeriod('@ticket', averagePeriod[period], ({ request, response }) => {
         expect(request.query.period).to.eq(averagePeriod[period])
         expect(response?.body.data.current.average_ticket).to.eq(
             average(scenario.current.total, scenario.current.orders),
         )
     })
-    cy.wait('@trend').then(({ request, response }) => {
+    waitForPeriod('@trend', period, ({ request, response }) => {
         expect(request.query.period).to.eq(period)
         expect(response?.body.trend).to.eq(expectedChange ?? 0)
         expect(response?.body.series.current).to.be.an('array')
@@ -410,12 +426,38 @@ describe('Dashboard · auditoría exhaustiva de ventas, ticket y tendencia', () 
         cy.visit('/dashboard/sales')
         cy.wait('@sales')
         cy.wait('@ticket')
+        cy.wait('@trend')
         selectPeriod('7d')
-        selectPeriod('thisMonth')
-        cy.wait('@sales').its('request.query.period').should('eq', '7d')
-        cy.wait('@sales').its('request.query.period').should('eq', 'thisMonth')
-        cy.wait('@ticket').its('request.query.period').should('eq', '7d')
-        cy.wait('@ticket').its('request.query.period').should('eq', 'this_month')
+        cy.get('@sales.all').should((requests) => {
+            const recorded = requests as unknown as Array<Interception>
+            expect(recorded.some(({ request }) => request.query.period === '7d')).to.eq(true)
+        })
+        cy.get('@ticket.all').should((requests) => {
+            const recorded = requests as unknown as Array<Interception>
+            expect(recorded.some(({ request }) => request.query.period === '7d')).to.eq(true)
+        })
+        cy.get('@trend.all').should((requests) => {
+            const recorded = requests as unknown as Array<Interception>
+            expect(recorded.some(({ request }) => request.query.period === '7d')).to.eq(true)
+        })
+        cy.get('[aria-label="Periodo de ventas"] button[data-value="7d"]').should(
+            'have.attr',
+            'aria-checked',
+            'true',
+        )
+        cy.get('[aria-label="Periodo de ventas"] button[data-value="thisMonth"]').click({ force: true })
+        waitForPeriod('@sales', '7d', ({ request }) => {
+            expect(request.query.period).to.eq('7d')
+        })
+        waitForPeriod('@sales', 'thisMonth', ({ request }) => {
+            expect(request.query.period).to.eq('thisMonth')
+        })
+        waitForPeriod('@ticket', '7d', ({ request }) => {
+            expect(request.query.period).to.eq('7d')
+        })
+        waitForPeriod('@ticket', 'this_month', ({ request }) => {
+            expect(request.query.period).to.eq('this_month')
+        })
         cy.contains(money(scenarios.thisMonth.current.total)).should('be.visible')
         cy.reload()
         assertPeriod('thisMonth', scenarios.thisMonth)

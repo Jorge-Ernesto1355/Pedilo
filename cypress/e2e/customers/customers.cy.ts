@@ -138,7 +138,10 @@ describe('Clientes · gestión completa', () => {
         cy.get('a[href="/dashboard/customers"]').should('not.contain.text', 'Customers')
         cy.contains('Ana García').should('be.visible')
         cy.contains('6681234567').should('be.visible')
-        cy.contains('2 pedidos').should('be.visible')
+        cy.contains('Ana García')
+            .closest('div.flex.flex-col')
+            .should('contain', 'Pedidos')
+            .and('contain', '2')
     })
 
     it('busca en backend y conserva el contrato de búsqueda', () => {
