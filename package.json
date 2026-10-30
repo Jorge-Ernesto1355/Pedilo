@@ -13,7 +13,7 @@
         "test": "vitest run",
         "test:watch": "vitest",
         "test:e2e": "cypress run",
-        "test:e2e:chrome:headed": "CYPRESS_BASE_URL=http://localhost:3000 cypress run --browser chrome --headed",
+        "test:e2e:chrome:headed": "CYPRESS_BASE_URL=https://pedilo.mx cypress run --browser chrome --headed",
         "test:e2e:open": "cypress open",
         "test:e2e:open:local": "CYPRESS_BASE_URL=http://localhost:3000 cypress open --e2e",
         "test:e2e:open:prod": "CYPRESS_BASE_URL=https://pedilo.mx cypress open --e2e",
