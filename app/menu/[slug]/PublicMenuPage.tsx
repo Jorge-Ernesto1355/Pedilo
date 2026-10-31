@@ -539,7 +539,9 @@ export default function PublicMenuPage({ slug }: { slug: string }) {
                 items: cart.lines.map((line) => ({
                     productId: line.product.id,
                     quantity: line.quantity,
-                    optionIds: line.selections.map((selection) => selection.id),
+                    optionIds: line.selections.flatMap((selection) =>
+                        Array.from({ length: selection.quantity }, () => selection.id),
+                    ),
                 })),
                 ...(notes ? { notes } : {}),
             })

@@ -7,6 +7,7 @@ export type OrderItem = {
     productId: string
     productName?: string
     name?: string
+    productImageUrl?: string | null
     quantity: number
     unitPrice?: number
     subtotal?: number

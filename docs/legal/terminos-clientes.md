@@ -1,6 +1,6 @@
 TÉRMINOS Y CONDICIONES PARA CLIENTES DE PEDILO
 
-Versión: 1.0
+Versión: 1.1
 Fecha de entrada en vigor: [POR COMPLETAR]
 
 1. Identificación
@@ -27,7 +27,17 @@ Nada de estos términos pretende limitar derechos que legalmente sean irrenuncia
 
 ⸻
 
-3. Naturaleza de Pedilo
+3. Requisito de mayoría de edad
+
+Para registrarse y utilizar las funcionalidades de Pedilo que requieren una cuenta, la persona debe tener al menos 18 años y declarar que cumple este requisito.
+
+La declaración de edad es una manifestación de la persona usuaria. Pedilo no realiza una verificación independiente de identidad o edad mediante este proceso.
+
+Si la persona no tiene al menos 18 años, no debe crear una cuenta ni utilizar dichas funcionalidades.
+
+⸻
+
+4. Naturaleza de Pedilo
 
 Pedilo es una plataforma tecnológica.
 
@@ -46,7 +56,7 @@ El restaurante correspondiente es quien ofrece los alimentos y bebidas.
 
 ⸻
 
-4. Información del restaurante
+5. Información del restaurante
 
 Los restaurantes son responsables de la información que publican, incluyendo:
 
@@ -67,7 +77,7 @@ Pedilo proporciona las herramientas tecnológicas para publicar dicha informaci�
 
 ⸻
 
-5. Productos
+6. Productos
 
 Pedilo está destinado a pedidos de alimentos y bebidas.
 
@@ -75,7 +85,7 @@ Cada restaurante es responsable de determinar los productos que ofrece y de cump
 
 ⸻
 
-6. Realización del pedido
+7. Realización del pedido
 
 El usuario deberá revisar antes de confirmar:
 
@@ -93,7 +103,7 @@ La aceptación del pedido depende del restaurante.
 
 ⸻
 
-7. Aceptación, rechazo o cancelación
+8. Aceptación, rechazo o cancelación
 
 El restaurante puede aceptar, rechazar o cancelar pedidos conforme a las circunstancias de su operación y a la legislación aplicable.
 
@@ -103,7 +113,7 @@ Pedilo no garantiza tiempos determinados de preparación.
 
 ⸻
 
-8. Precios
+9. Precios
 
 Los precios son establecidos por los restaurantes.
 
@@ -113,7 +123,7 @@ Pedilo no establece unilateralmente los precios de los restaurantes.
 
 ⸻
 
-9. Pagos
+10. Pagos
 
 Actualmente Pedilo no procesa directamente pagos de los clientes.
 
@@ -123,7 +133,7 @@ Si Pedilo incorpora pagos en el futuro, se publicarán las condiciones aplicable
 
 ⸻
 
-10. Entrega
+11. Entrega
 
 Pedilo actualmente no proporciona un servicio propio de reparto.
 
@@ -131,7 +141,7 @@ La entrega, recogida o puesta a disposición del pedido depende de cada restaura
 
 ⸻
 
-11. Comunicación con el restaurante
+12. Comunicación con el restaurante
 
 El restaurante puede publicar un teléfono o WhatsApp.
 
@@ -141,7 +151,7 @@ Las comunicaciones realizadas fuera de Pedilo se realizan directamente entre las
 
 ⸻
 
-12. Datos personales
+13. Datos personales
 
 Para realizar un pedido Pedilo puede solicitar:
 
@@ -157,9 +167,11 @@ El teléfono puede ser comunicado al restaurante para atender el pedido.
 
 El tratamiento de datos personales se encuentra regulado por el Aviso de Privacidad de Pedilo.
 
+Pedilo también puede utilizar herramientas de diagnóstico y analítica, como Sentry y PostHog, para detectar errores, proteger la plataforma, medir el uso de funcionalidades y mejorar el servicio. Cuando Session Replay se encuentre habilitado, su uso estará sujeto a las condiciones, controles y opciones informadas en el Aviso de Privacidad. Estos Términos no sustituyen los mecanismos de información, consentimiento u oposición que resulten aplicables al tratamiento de datos personales.
+
 ⸻
 
-13. Responsabilidad del restaurante
+14. Responsabilidad del restaurante
 
 El restaurante es responsable de:
 
@@ -181,7 +193,7 @@ Esto no limita los derechos que legalmente correspondan al consumidor ni excluye
 
 ⸻
 
-14. Uso permitido
+15. Uso permitido
 
 El usuario no deberá:
 
@@ -196,7 +208,7 @@ El usuario no deberá:
 
 ⸻
 
-15. Cuentas
+16. Cuentas
 
 El usuario deberá proporcionar información razonablemente exacta cuando cree una cuenta.
 
@@ -206,7 +218,7 @@ No deberá compartir sus credenciales cuando ello pueda comprometer la seguridad
 
 ⸻
 
-16. Propiedad intelectual de Pedilo
+17. Propiedad intelectual de Pedilo
 
 El software, diseño, interfaz, marca, logotipos, textos y elementos originales de Pedilo están protegidos por la legislación aplicable.
 
@@ -214,7 +226,7 @@ El uso de Pedilo no concede una licencia para copiar, reproducir, distribuir, ve
 
 ⸻
 
-17. Contenido de terceros
+18. Contenido de terceros
 
 Los restaurantes pueden proporcionar información e imágenes.
 
@@ -224,7 +236,7 @@ Pedilo puede retirar contenido que infrinja estos términos, derechos de tercero
 
 ⸻
 
-18. Disponibilidad
+19. Disponibilidad
 
 Pedilo procura mantener disponible la plataforma, pero no garantiza disponibilidad ininterrumpida.
 
@@ -240,7 +252,7 @@ Pueden existir interrupciones por:
 
 ⸻
 
-19. Suspensión
+20. Suspensión
 
 Pedilo podrá suspender o limitar una cuenta cuando existan razones relacionadas con:
 
@@ -256,7 +268,7 @@ Pedilo podrá suspender o limitar una cuenta cuando existan razones relacionadas
 
 ⸻
 
-20. Eliminación
+21. Eliminación
 
 El usuario podrá solicitar la eliminación de su cuenta.
 
@@ -266,7 +278,7 @@ Determinada información podrá conservarse o bloquearse cuando exista una oblig
 
 ⸻
 
-21. Modificaciones
+22. Modificaciones
 
 Pedilo puede modificar estos términos cuando cambie:
 
@@ -282,7 +294,7 @@ https://pedilo.mx/terminos
 
 ⸻
 
-22. Legislación
+23. Legislación
 
 Estos términos se regirán por las leyes aplicables de los Estados Unidos Mexicanos.
 
@@ -292,7 +304,7 @@ Las controversias se someterán a las autoridades y tribunales que resulten lega
 
 ⸻
 
-23. Contacto
+24. Contacto
 
 Pedilo
 
@@ -306,7 +318,7 @@ Domicilio: [POR COMPLETAR]
 
 ⸻
 
-24. Entrada en vigor
+25. Entrada en vigor
 
 Versión: 1.0
 

@@ -155,4 +155,35 @@ describe('Nueva orden desde el dashboard', () => {
         cy.contains('Orden #31').should('be.visible')
         cy.contains('Total confirmado:').should('contain', '$240.00')
     })
+
+    it('muestra el estado vacío cuando el restaurante todavía no tiene catálogo', () => {
+        cy.intercept('GET', '**/businesses/mine/menus', {
+            statusCode: 200,
+            body: [],
+        }).as('emptyRestaurantMenus')
+        cy.intercept('GET', '**/businesses/*/products*', {
+            statusCode: 200,
+            body: { products: [], page: 1, limit: 100, total: 0 },
+        }).as('emptyRestaurantProducts')
+
+        cy.contains('button', '+ Nueva orden').click()
+        cy.wait('@emptyRestaurantMenus')
+        cy.wait('@emptyRestaurantProducts')
+        cy.contains('[role="dialog"]', 'Tu catálogo está vacío').should('be.visible')
+        cy.contains('Agrega un menú y sus categorías para empezar a crear la orden.').should('be.visible')
+        cy.get('button[aria-label="Cerrar nueva orden"]').should('be.visible')
+    })
+
+    it('muestra el estado vacío cuando el menú no tiene categorías', () => {
+        cy.intercept('GET', '**/businesses/mine/menus', {
+            statusCode: 200,
+            body: [{ ...catalog.menus[0], categories: [] }],
+        }).as('menuWithoutCategories')
+
+        cy.contains('button', '+ Nueva orden').click()
+        cy.wait('@menuWithoutCategories')
+        cy.wait('@restaurantProducts')
+        cy.contains('[role="dialog"]', 'Este menú aún no tiene categorías').should('be.visible')
+        cy.contains('Agrega una categoría para empezar a crear la orden.').should('be.visible')
+    })
 })

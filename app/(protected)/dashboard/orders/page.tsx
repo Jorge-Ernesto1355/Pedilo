@@ -2,16 +2,25 @@
 
 import { useEffect, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
+import Image from 'next/image'
 import {
     ArrowRight,
     BellRing,
+    CalendarDays,
     ChefHat,
+    ChevronDown,
+    ClipboardList,
     CircleCheck,
     CircleX,
+    Clock3,
     LoaderCircle,
+    Phone,
     RefreshCw,
     Search,
     ShoppingBag,
+    StickyNote,
+    Utensils,
+    UserRound,
     X,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
@@ -23,7 +32,12 @@ import {
     type OrderPeriod,
     type OrderStatus,
 } from '@/src/lib/api/order-types'
-import { useOrder, useOrders, useOrderStatusMutation } from '../features/orders/useOrders'
+import {
+    useOrder,
+    useOrders,
+    useOrderStatusCounts,
+    useOrderStatusMutation,
+} from '../features/orders/useOrders'
 import { DashboardErrorState } from '../components/DashboardErrorState'
 import { OrdersSkeleton } from '../components/DashboardSkeletons'
 import { EmptyState } from '../components/EmptyState'
@@ -55,42 +69,42 @@ type StatusMeta = {
 
 const statusMeta: Record<OrderStatus, StatusMeta> = {
     PENDING: {
-        label: 'Nueva',
+        label: 'Pendiente',
         description: 'Orden recibida',
-        actionLabel: 'Empezar a preparar',
+        actionLabel: 'Preparar',
         icon: BellRing,
-        badge: 'border-[#F4D99B] bg-[#FFF8E8] text-[#9A6500]',
-        dot: 'bg-[#D59A21]',
-        panel: 'border-[#F4D99B] bg-[#FFFCF4]',
-        button: 'bg-[#C88713] text-white hover:bg-[#AE7008]',
+        badge: 'border-[#F3C56B] bg-[#FFF7D6] text-[#9A6700]',
+        dot: 'bg-[#F5A000]',
+        panel: 'border-[#F3C56B] bg-[#FFFCF0]',
+        button: 'bg-[#F5A000] text-white hover:bg-[#D98900]',
     },
     PREPARING: {
-        label: 'Preparando',
+        label: 'En preparación',
         description: 'El restaurante está preparando la orden',
-        actionLabel: 'Marcar como lista',
+        actionLabel: 'Marcar listo',
         icon: ChefHat,
         badge: 'border-[#B9CDFD] bg-[#EEF3FF] text-[#2451C5]',
         dot: 'bg-[#315FE8]',
         panel: 'border-[#C8D8FF] bg-[#F7F9FF]',
-        button: 'bg-[#2451C5] text-white hover:bg-[#1E40AF]',
+        button: 'bg-[#23814C] text-white hover:bg-[#1D6B3F]',
     },
     READY: {
-        label: '¡Lista!',
+        label: 'Lista',
         description: 'La orden está lista para entregar',
         icon: CircleCheck,
         badge: 'border-[#B8E2C8] bg-[#EEF8F2] text-[#23794A]',
         dot: 'bg-[#39A86B]',
         panel: 'border-[#B8E2C8] bg-[#F7FCF8]',
-        button: 'bg-[#23814C] text-white hover:bg-[#1D6B3F]',
+        button: 'bg-[#A8E7BF] text-[#17643A] hover:bg-[#8DD9A9]',
     },
     CANCELLED: {
-        label: 'Cancelada',
+        label: 'Cancelado',
         description: 'La orden fue cancelada',
         icon: CircleX,
         badge: 'border-[#F3C2BD] bg-[#FFF3F1] text-[#B42318]',
         dot: 'bg-[#C94B4B]',
-        panel: 'border-[#F3C2BD] bg-[#FFF9F8]',
-        button: 'bg-[#B42318] text-white hover:bg-[#921C14]',
+        panel: 'border-[#CBD5E1] bg-[#F2F5F8]',
+        button: 'bg-[#94A3B8] text-white hover:bg-[#7C8BA0]',
     },
 }
 
@@ -119,6 +133,40 @@ function statusErrorMessage(error: unknown) {
     return 'No pudimos actualizar el estado. Inténtalo nuevamente.'
 }
 
+function displayCustomerName(name: string | null) {
+    if (!name) return 'Cliente sin nombre'
+    return name
+        .trim()
+        .split(/\s+/)
+        .map((part) =>
+            part ? `${part[0]?.toUpperCase() ?? ''}${part.slice(1).toLowerCase()}` : part,
+        )
+        .join(' ')
+}
+
+function displayPhone(phone: string | null) {
+    if (!phone) return null
+    const digits = phone.replace(/\D/g, '')
+    if (digits.length === 10)
+        return `+52 ${digits.slice(0, 2)} ${digits.slice(2, 6)} ${digits.slice(6)}`
+    if (digits.length === 12 && digits.startsWith('52'))
+        return `+52 ${digits.slice(2, 4)} ${digits.slice(4, 8)} ${digits.slice(8)}`
+    return phone
+}
+
+function averagePreparationMinutes(orders: Order[]) {
+    const durations = orders.flatMap((order) => {
+        const preparing = order.statusHistory.find((entry) => entry.status === 'PREPARING')
+        const ready = order.statusHistory.find((entry) => entry.status === 'READY')
+        if (!preparing || !ready) return []
+        const minutes =
+            (new Date(ready.createdAt).getTime() - new Date(preparing.createdAt).getTime()) / 60000
+        return minutes >= 0 ? [minutes] : []
+    })
+    if (!durations.length) return null
+    return Math.round(durations.reduce((sum, value) => sum + value, 0) / durations.length)
+}
+
 export default function OrdersPage() {
     const [page, setPage] = useState(1)
     const [status, setStatus] = useState<OrderStatus | undefined>()
@@ -129,7 +177,7 @@ export default function OrdersPage() {
     const [newOrderOpen, setNewOrderOpen] = useState(false)
     const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null)
     const [mutationErrorOrderId, setMutationErrorOrderId] = useState<string | null>(null)
-    const [limit] = useState(20)
+    const [limit] = useState(10)
     const refetchAfterClear = useRef(false)
     useEffect(() => {
         const timer = window.setTimeout(() => {
@@ -146,6 +194,7 @@ export default function OrdersPage() {
         search: debouncedSearch || undefined,
         period,
     })
+    const statusCounts = useOrderStatusCounts({ period, search: debouncedSearch || undefined })
     const refetchOrders = query.refetch
     useEffect(() => {
         if (!refetchAfterClear.current || debouncedSearch !== '') return
@@ -186,204 +235,318 @@ export default function OrdersPage() {
 
     if (query.isLoading) return <OrdersSkeleton />
 
+    const averageMinutes = averagePreparationMinutes(query.data?.orders ?? [])
+    const countFor = (index: number) => statusCounts[index]?.data?.total ?? 0
+    const allStatusesCount = statusCounts.reduce((sum, item) => sum + (item.data?.total ?? 0), 0)
+    const updateStatusFilter = (nextStatus?: OrderStatus) => {
+        setPage(1)
+        setStatus(nextStatus)
+    }
+
     return (
-        <main className="mx-auto max-w-[1200px] space-y-6 px-5 py-8 sm:px-8 lg:py-10">
-            <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-                <div>
-                    <p className="text-sm text-[#65738A]">Operación diaria</p>
-                    <h1 className="mt-2 font-display text-3xl tracking-[-.06em] text-[#12234A]">
-                        Pedidos
-                    </h1>
-                    <p className="mt-2 max-w-xl text-sm text-[#65738A]">
-                        Avanza cada orden desde aquí mientras la preparas.
-                    </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                    <button
-                        type="button"
-                        onClick={() => setNewOrderOpen(true)}
-                        className="inline-flex min-h-11 items-center justify-center rounded-xl bg-[#2451C5] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#1E40AF] focus:outline-none focus:ring-4 focus:ring-[#2451C5]/15"
-                    >
-                        + Nueva orden
-                    </button>
-                    <select
-                        value={period ?? ''}
-                        onChange={(event) => {
-                            setPage(1)
-                            setPeriod((event.target.value || undefined) as OrderPeriod | undefined)
-                        }}
-                        className="rounded-xl border border-[#D7E1EF] bg-white px-3 py-2.5 text-sm text-[#243556] outline-none transition focus:border-[#2451C5] focus:ring-2 focus:ring-[#2451C5]/15"
-                        aria-label="Filtrar pedidos por periodo"
-                    >
-                        <option value="">Todos los periodos</option>
-                        {ORDER_PERIODS.map((item) => (
-                            <option key={item} value={item}>
-                                {periodLabels[item]}
-                            </option>
-                        ))}
-                    </select>
-                    <select
-                        value={status ?? ''}
-                        onChange={(event) => {
-                            setPage(1)
-                            setStatus((event.target.value || undefined) as OrderStatus | undefined)
-                        }}
-                        className="rounded-xl border border-[#D7E1EF] bg-white px-3 py-2.5 text-sm text-[#243556] outline-none transition focus:border-[#2451C5] focus:ring-2 focus:ring-[#2451C5]/15"
-                        aria-label="Filtrar pedidos por estado"
-                    >
-                        <option value="">Todos los estados</option>
-                        {ORDER_STATUSES.map((item) => (
-                            <option key={item} value={item}>
-                                {statusMeta[item].label}
-                            </option>
-                        ))}
-                    </select>
-                    <button
-                        type="button"
-                        onClick={() => void query.refetch()}
-                        className="grid size-11 place-items-center rounded-xl border border-[#D7E1EF] bg-white text-[#65738A] transition hover:border-[#B9CDFD] hover:text-[#2451C5] focus:outline-none focus:ring-2 focus:ring-[#2451C5]/15"
-                        aria-label="Actualizar pedidos"
-                    >
-                        <RefreshCw className={`size-4 ${query.isFetching ? 'animate-spin' : ''}`} />
-                    </button>
-                </div>
-            </header>
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                <label className="relative block min-w-0 flex-1 sm:max-w-[520px]">
-                    <Search
-                        aria-hidden="true"
-                        className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-[#8996A9]"
-                    />
-                    <input
-                        type="search"
-                        value={search}
-                        onChange={(event) => setSearch(event.target.value)}
-                        placeholder="Buscar pedido, nombre o teléfono…"
-                        aria-label="Buscar pedidos por número, nombre o teléfono"
-                        className="h-11 w-full rounded-xl border border-[#D7E1EF] bg-white py-2.5 pl-10 pr-10 text-sm text-[#243556] outline-none transition placeholder:text-[#8996A9] focus:border-[#2451C5] focus:ring-2 focus:ring-[#2451C5]/15"
-                    />
-                    {search && (
-                        <button
-                            type="button"
-                            onClick={clearSearch}
-                            className="absolute right-1 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-lg text-[#8996A9] transition hover:bg-[#F2F5FA] hover:text-[#243556] focus:outline-none focus:ring-2 focus:ring-[#2451C5]/20 sm:right-2 sm:size-7"
-                            aria-label="Limpiar búsqueda"
-                        >
-                            <X className="size-4" />
-                        </button>
-                    )}
-                </label>
-                {query.isFetching && debouncedSearch && (
-                    <span
-                        className="inline-flex items-center gap-2 px-1 text-xs text-[#8996A9]"
-                        role="status"
-                    >
-                        <LoaderCircle className="size-3.5 animate-spin" />
-                        Buscando…
-                    </span>
-                )}
-            </div>
-            {query.isError ? (
-                <DashboardErrorState
-                    title="No pudimos cargar tus pedidos"
-                    description="No logramos consultar los pedidos de tu negocio. Inténtalo nuevamente para actualizar la operación diaria."
-                    onRetry={() => void query.refetch()}
-                />
-            ) : query.data?.orders.length === 0 ? (
-                <EmptyState
-                    icon={ShoppingBag}
-                    title={debouncedSearch ? 'No encontramos pedidos' : 'Aún no tienes pedidos'}
-                    description={
-                        debouncedSearch
-                            ? 'Prueba con otro número, nombre o teléfono.'
-                            : 'Cuando tus clientes realicen un pedido, aparecerá aquí.'
-                    }
-                />
-            ) : (
-                <div className="space-y-3">
-                    <div className="flex items-center justify-between px-1">
-                        <p className="text-xs font-semibold uppercase tracking-[.14em] text-[#8996A9]">
-                            Cola de trabajo
-                        </p>
-                        <p className="text-xs text-[#8996A9]">
-                            {query.data?.total ?? 0} {query.data?.total === 1 ? 'orden' : 'órdenes'}
-                        </p>
+        <main className="min-h-[calc(100svh-85px)] bg-[#F3F7FB]">
+            <div className="mx-auto max-w-[1440px] space-y-7 px-5 py-8 sm:px-8 lg:px-12 lg:py-10">
+                <header className="flex flex-col gap-7 xl:flex-row xl:items-start xl:justify-between">
+                    <div className="flex min-w-0 gap-4">
+                        <span className="grid size-14 shrink-0 place-items-center rounded-2xl bg-[#E4EDFF] text-[#1D5BFF]">
+                            <ChefHat className="size-7" aria-hidden="true" />
+                        </span>
+                        <div>
+                            <p className="text-xs font-bold uppercase tracking-[.24em] text-[#71819A]">
+                                Comanda de cocina
+                            </p>
+                            <h1 className="mt-2 font-display text-4xl font-bold tracking-[-.055em] text-[#12234A]">
+                                Pedidos
+                            </h1>
+                            <p className="mt-2 max-w-xl text-sm text-[#65738A]">
+                                Aquí tienes todos los pedidos en curso. Solo presiona “Preparar”
+                                cuando estés listo.
+                            </p>
+                        </div>
                     </div>
-                    {query.data?.orders.map((order) => (
-                        <OrderCard
-                            key={order.id}
-                            order={order}
-                            currency={currency}
-                            timezone={timezone}
-                            isUpdating={updatingOrderId === order.id}
-                            hasMutationError={mutationErrorOrderId === order.id}
-                            errorMessage={
-                                mutation.error ? statusErrorMessage(mutation.error) : undefined
-                            }
-                            onOpen={() => setSelectedId(order.id)}
-                            onStatusChange={changeStatus}
+                    <div className="flex flex-wrap items-center gap-2 xl:max-w-[620px] xl:justify-end">
+                        <StatusPill
+                            label="Todos"
+                            count={allStatusesCount || query.data?.total || 0}
+                            active={!status}
+                            onClick={() => updateStatusFilter()}
                         />
-                    ))}
-                </div>
-            )}
-            {query.data && totalPages > 1 && (
-                <div className="flex items-center justify-between gap-4">
-                    <p className="text-xs text-[#8996A9]">
-                        Página {page} de {totalPages}
-                    </p>
-                    <div className="flex flex-wrap justify-end gap-2">
-                        <button
-                            type="button"
-                            disabled={page <= 1}
-                            onClick={() => setPage((value) => value - 1)}
-                            className="rounded-lg border border-[#D7E1EF] px-3 py-2 text-sm text-[#243556] transition hover:border-[#B9CDFD] disabled:opacity-40"
-                        >
-                            Anterior
-                        </button>
-                        {visiblePages.map((value) => (
+                        <StatusPill
+                            label="Pendientes"
+                            count={countFor(0)}
+                            dot="bg-[#F5A000]"
+                            active={status === 'PENDING'}
+                            onClick={() => updateStatusFilter('PENDING')}
+                        />
+                        <StatusPill
+                            label="En preparación"
+                            count={countFor(1)}
+                            dot="bg-[#315FE8]"
+                            active={status === 'PREPARING'}
+                            onClick={() => updateStatusFilter('PREPARING')}
+                        />
+                        <StatusPill
+                            label="Listas"
+                            count={countFor(2)}
+                            dot="bg-[#39A86B]"
+                            active={status === 'READY'}
+                            onClick={() => updateStatusFilter('READY')}
+                        />
+                        <StatusPill
+                            label="Cancelados"
+                            count={countFor(3)}
+                            dot="bg-[#D64545]"
+                            active={status === 'CANCELLED'}
+                            onClick={() => updateStatusFilter('CANCELLED')}
+                        />
+                    </div>
+                </header>
+                <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+                    <label className="relative block min-w-0 flex-1 sm:max-w-[520px]">
+                        <Search
+                            aria-hidden="true"
+                            className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-[#8996A9]"
+                        />
+                        <input
+                            type="search"
+                            value={search}
+                            onChange={(event) => setSearch(event.target.value)}
+                            placeholder="Buscar pedido, nombre o teléfono..."
+                            aria-label="Buscar pedidos por número, nombre o teléfono"
+                            className="h-11 w-full rounded-xl border border-[#D7E1EF] bg-white py-2.5 pl-10 pr-10 text-sm text-[#243556] outline-none transition placeholder:text-[#8996A9] focus:border-[#2451C5] focus:ring-2 focus:ring-[#2451C5]/15"
+                        />
+                        {search && (
                             <button
-                                key={value}
                                 type="button"
-                                aria-current={value === page ? 'page' : undefined}
-                                onClick={() => setPage(value)}
-                                className={`min-w-9 rounded-lg border px-3 py-2 text-sm transition ${value === page ? 'border-[#2451C5] bg-[#2451C5] font-bold text-white' : 'border-[#D7E1EF] text-[#243556] hover:border-[#B9CDFD]'}`}
+                                onClick={clearSearch}
+                                className="absolute right-1 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-lg text-[#8996A9] transition hover:bg-[#F2F5FA] hover:text-[#243556] focus:outline-none focus:ring-2 focus:ring-[#2451C5]/20 sm:right-2 sm:size-7"
+                                aria-label="Limpiar búsqueda"
                             >
-                                {value}
+                                <X className="size-4" />
                             </button>
-                        ))}
+                        )}
+                    </label>
+                    {query.isFetching && debouncedSearch && (
+                        <span
+                            className="inline-flex items-center gap-2 px-1 text-xs text-[#8996A9]"
+                            role="status"
+                        >
+                            <LoaderCircle className="size-3.5 animate-spin" />
+                            Buscando…
+                        </span>
+                    )}
+                    <div className="flex flex-wrap items-center gap-2">
+                        <label className="relative">
+                            <CalendarDays
+                                className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-[#71819A]"
+                                aria-hidden="true"
+                            />
+                            <select
+                                value={period ?? ''}
+                                onChange={(event) => {
+                                    setPage(1)
+                                    setPeriod(
+                                        (event.target.value || undefined) as
+                                            OrderPeriod | undefined,
+                                    )
+                                }}
+                                className="h-11 appearance-none rounded-full border border-[#D7E1EF] bg-white py-2.5 pl-10 pr-10 text-sm font-semibold text-[#243556] shadow-[0_4px_14px_rgb(20_48_105_/_0.05)] outline-none transition hover:border-[#B9CDFD] focus:border-[#2451C5] focus:ring-2 focus:ring-[#2451C5]/15"
+                                aria-label="Filtrar pedidos por periodo"
+                            >
+                                <option value="">Todos los periodos</option>
+                                {ORDER_PERIODS.map((item) => (
+                                    <option key={item} value={item}>
+                                        {periodLabels[item]}
+                                    </option>
+                                ))}
+                            </select>
+                            <ChevronDown
+                                className="pointer-events-none absolute right-3.5 top-1/2 size-4 -translate-y-1/2 text-[#71819A]"
+                                aria-hidden="true"
+                            />
+                        </label>
                         <button
                             type="button"
-                            disabled={page >= totalPages}
-                            onClick={() => setPage((value) => value + 1)}
-                            className="rounded-lg border border-[#D7E1EF] px-3 py-2 text-sm text-[#243556] transition hover:border-[#B9CDFD] disabled:opacity-40"
+                            onClick={() => void query.refetch()}
+                            className="grid size-11 place-items-center rounded-full border border-[#D7E1EF] bg-white text-[#65738A] shadow-[0_4px_14px_rgb(20_48_105_/_0.05)] transition hover:border-[#B9CDFD] hover:text-[#2451C5] focus:outline-none focus:ring-2 focus:ring-[#2451C5]/15"
+                            aria-label="Actualizar pedidos"
                         >
-                            Siguiente
+                            <RefreshCw
+                                className={`size-4 ${query.isFetching ? 'animate-spin' : ''}`}
+                            />
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setNewOrderOpen(true)}
+                            className="inline-flex h-11 items-center justify-center rounded-full bg-[#1D5BFF] px-5 text-sm font-bold text-white shadow-[0_7px_18px_rgb(29_91_255_/_0.2)] transition hover:bg-[#174BD4] focus:outline-none focus:ring-4 focus:ring-[#1D5BFF]/15"
+                        >
+                            + Nueva orden
                         </button>
                     </div>
                 </div>
-            )}
-            {selectedId && (
-                <OrderDetailModal
-                    order={detail.data}
-                    isLoading={detail.isLoading}
-                    currency={currency}
-                    timezone={timezone}
-                    isUpdating={updatingOrderId === selectedId}
-                    hasMutationError={mutationErrorOrderId === selectedId}
-                    errorMessage={mutation.error ? statusErrorMessage(mutation.error) : undefined}
-                    onClose={() => setSelectedId(null)}
-                    onStatusChange={changeStatus}
+                <select
+                    value={status ?? ''}
+                    onChange={(event) =>
+                        updateStatusFilter(
+                            (event.target.value || undefined) as OrderStatus | undefined,
+                        )
+                    }
+                    className="sr-only"
+                    aria-label="Filtrar pedidos por estado"
+                >
+                    <option value="">Todos los estados</option>
+                    {ORDER_STATUSES.map((item) => (
+                        <option key={item} value={item}>
+                            {statusMeta[item].label}
+                        </option>
+                    ))}
+                </select>
+                {query.isError ? (
+                    <DashboardErrorState
+                        title="No pudimos cargar tus pedidos"
+                        description="No logramos consultar los pedidos de tu negocio. Inténtalo nuevamente para actualizar la operación diaria."
+                        onRetry={() => void query.refetch()}
+                    />
+                ) : query.data?.orders.length === 0 ? (
+                    <EmptyState
+                        icon={ShoppingBag}
+                        title={debouncedSearch ? 'No encontramos pedidos' : 'Aún no tienes pedidos'}
+                        description={
+                            debouncedSearch
+                                ? 'Prueba con otro número, nombre o teléfono.'
+                                : 'Cuando tus clientes realicen un pedido, aparecerá aquí.'
+                        }
+                    />
+                ) : (
+                    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                        {query.data?.orders.map((order) => (
+                            <OrderCard
+                                key={order.id}
+                                order={order}
+                                currency={currency}
+                                timezone={timezone}
+                                isUpdating={updatingOrderId === order.id}
+                                hasMutationError={mutationErrorOrderId === order.id}
+                                errorMessage={
+                                    mutation.error ? statusErrorMessage(mutation.error) : undefined
+                                }
+                                onOpen={() => setSelectedId(order.id)}
+                                onStatusChange={changeStatus}
+                            />
+                        ))}
+                    </div>
+                )}
+                {query.data && totalPages > 1 && (
+                    <div className="flex items-center justify-between gap-4">
+                        <p className="text-xs text-[#8996A9]">
+                            Página {page} de {totalPages}
+                        </p>
+                        <div className="flex flex-wrap justify-end gap-2">
+                            <button
+                                type="button"
+                                disabled={page <= 1}
+                                onClick={() => setPage((value) => value - 1)}
+                                className="rounded-lg border border-[#D7E1EF] px-3 py-2 text-sm text-[#243556] transition hover:border-[#B9CDFD] disabled:opacity-40"
+                            >
+                                Anterior
+                            </button>
+                            {visiblePages.map((value) => (
+                                <button
+                                    key={value}
+                                    type="button"
+                                    aria-current={value === page ? 'page' : undefined}
+                                    onClick={() => setPage(value)}
+                                    className={`min-w-9 rounded-lg border px-3 py-2 text-sm transition ${value === page ? 'border-[#2451C5] bg-[#2451C5] font-bold text-white' : 'border-[#D7E1EF] text-[#243556] hover:border-[#B9CDFD]'}`}
+                                >
+                                    {value}
+                                </button>
+                            ))}
+                            <button
+                                type="button"
+                                disabled={page >= totalPages}
+                                onClick={() => setPage((value) => value + 1)}
+                                className="rounded-lg border border-[#D7E1EF] px-3 py-2 text-sm text-[#243556] transition hover:border-[#B9CDFD] disabled:opacity-40"
+                            >
+                                Siguiente
+                            </button>
+                        </div>
+                    </div>
+                )}
+                {selectedId && (
+                    <OrderDetailModal
+                        order={detail.data}
+                        isLoading={detail.isLoading}
+                        currency={currency}
+                        timezone={timezone}
+                        isUpdating={updatingOrderId === selectedId}
+                        hasMutationError={mutationErrorOrderId === selectedId}
+                        errorMessage={
+                            mutation.error ? statusErrorMessage(mutation.error) : undefined
+                        }
+                        onClose={() => setSelectedId(null)}
+                        onStatusChange={changeStatus}
+                    />
+                )}
+                <NewRestaurantOrderDrawer
+                    open={newOrderOpen}
+                    onClose={() => setNewOrderOpen(false)}
+                    onViewOrder={(order) => {
+                        setNewOrderOpen(false)
+                        setSelectedId(order.id)
+                    }}
+                />
+                <footer className="flex flex-col gap-3 border-t border-[#DCE5F3] pt-5 text-sm text-[#65738A] sm:flex-row sm:items-center sm:justify-between">
+                    <span className="inline-flex items-center gap-2 text-base font-semibold text-[#53647D]">
+                        <ClipboardList className="size-5" />
+                        <strong className="text-xl font-bold text-[#12234A]">
+                            {query.data?.total ?? 0}
+                        </strong>{' '}
+                        {query.data?.total === 1 ? 'pedido' : 'pedidos'} en total
+                    </span>
+                    {averageMinutes !== null && (
+                        <span className="inline-flex items-center gap-2 rounded-full border border-[#DCE5F3] bg-white px-4 py-2 font-semibold shadow-[0_4px_14px_rgb(20_48_105_/_0.04)]">
+                            <Clock3 className="size-4 text-[#71819A]" /> Tiempo promedio de
+                            preparación: {averageMinutes} min
+                        </span>
+                    )}
+                </footer>
+            </div>
+        </main>
+    )
+}
+
+function StatusPill({
+    label,
+    count,
+    dot,
+    active,
+    onClick,
+}: {
+    label: string
+    count: number
+    dot?: string
+    active: boolean
+    onClick: () => void
+}) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            className={`inline-flex h-10 items-center gap-2 rounded-full border px-3.5 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-[#1D5BFF]/25 ${active ? 'border-[#1D5BFF] bg-[#1D5BFF] text-white shadow-[0_6px_16px_rgb(29_91_255_/_0.18)]' : 'border-[#D7E1EF] bg-white text-[#53647D] shadow-[0_4px_14px_rgb(20_48_105_/_0.04)] hover:border-[#B9CDFD] hover:text-[#1D5BFF]'}`}
+        >
+            {dot && (
+                <span
+                    className={`size-2 rounded-full ${active ? 'bg-white' : dot}`}
+                    aria-hidden="true"
                 />
             )}
-            <NewRestaurantOrderDrawer
-                open={newOrderOpen}
-                onClose={() => setNewOrderOpen(false)}
-                onViewOrder={(order) => {
-                    setNewOrderOpen(false)
-                    setSelectedId(order.id)
-                }}
-            />
-        </main>
+            {label}
+            <span
+                className={`grid min-w-6 place-items-center rounded-full px-1.5 py-0.5 text-xs ${active ? 'bg-white text-[#1D5BFF]' : 'bg-[#EEF2F7] text-[#65738A]'}`}
+            >
+                {count}
+            </span>
+        </button>
     )
 }
 
@@ -407,84 +570,140 @@ function OrderCard({
     onStatusChange: (orderId: string, status: OrderStatus) => void
 }) {
     const meta = statusMeta[order.status]
-    const Icon = meta.icon
     const next = nextStatus(order.status)
+    const headerClass = {
+        PENDING: 'bg-[#FFF4D6]',
+        PREPARING: 'bg-[#EAF2FF]',
+        READY: 'bg-[#E3F7EA]',
+        CANCELLED: 'bg-[#E7EDF3]',
+    }[order.status]
+    const number = String(order.orderNumber).padStart(3, '0')
 
     return (
         <article
-            className={`overflow-hidden rounded-2xl border bg-white shadow-[0_8px_22px_rgb(20_48_105_/_0.045)] transition hover:shadow-[0_12px_30px_rgb(20_48_105_/_0.08)] ${isUpdating ? 'border-[#B9CDFD]' : 'border-[#DCE5F3]'}`}
+            className={`flex h-full flex-col overflow-hidden rounded-[22px] border bg-white shadow-[0_8px_22px_rgb(20_48_105_/_0.045)] transition hover:-translate-y-0.5 hover:shadow-[0_12px_30px_rgb(20_48_105_/_0.08)] ${isUpdating ? 'border-[#B9CDFD]' : 'border-[#DCE5F3]'}`}
         >
-            <div className="grid gap-4 p-4 sm:grid-cols-[minmax(0,1fr)_minmax(280px,360px)] sm:items-center sm:p-5">
+            <button
+                type="button"
+                onClick={onOpen}
+                className={`flex w-full items-center justify-between gap-3 px-4 py-3 text-left outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#1D5BFF] ${headerClass}`}
+            >
+                <span className="flex items-center gap-2.5">
+                    <span className="font-display text-lg font-bold tracking-[-.03em] text-[#12234A]">
+                        #{number}
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-xs font-medium text-[#53647D]">
+                        <Clock3 className="size-3.5" />
+                        {formatBusinessTime(order.createdAt ?? '', timezone)}
+                    </span>
+                </span>
+                <span
+                    className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-bold ${meta.badge}`}
+                >
+                    <span className={`size-2 rounded-full ${meta.dot}`} />
+                    {meta.label}
+                </span>
+            </button>
+            <div className="flex-1 p-4">
                 <button
                     type="button"
                     onClick={onOpen}
-                    className="min-w-0 text-left outline-none focus-visible:ring-2 focus-visible:ring-[#2451C5] focus-visible:ring-offset-2"
+                    className="mb-4 block w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-[#1D5BFF] focus-visible:ring-offset-2"
                 >
-                    <span className="flex items-start gap-3">
-                        <span
-                            className={`mt-0.5 grid size-10 shrink-0 place-items-center rounded-xl ${meta.badge}`}
-                        >
-                            <Icon className="size-5" aria-hidden="true" />
-                        </span>
-                        <span className="min-w-0">
-                            <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                                <span className="font-display text-lg tracking-[-.03em] text-[#12234A]">
-                                    Pedido #{order.orderNumber}
-                                </span>
-                                <span className="text-xs text-[#8996A9]">
-                                    {formatBusinessTime(order.createdAt ?? '', timezone)}
-                                </span>
-                            </span>
-                            <span className="mt-1 block truncate text-sm font-semibold text-[#243556]">
-                                {order.customerName}
-                            </span>
-                            <span className="mt-1 block text-xs text-[#65738A]">
-                                {order.items.length}{' '}
-                                {order.items.length === 1 ? 'producto' : 'productos'} ·{' '}
-                                {formatMoney(order.total, currency)}
-                            </span>
-                        </span>
+                    <span className="flex items-center gap-2 text-sm font-bold text-[#243556]">
+                        <UserRound className="size-4 text-[#71819A]" />
+                        {displayCustomerName(order.customerName)}
                     </span>
+                    {displayPhone(order.customerPhone) && (
+                        <span className="mt-1 flex items-center gap-2 text-xs text-[#71819A]">
+                            <Phone className="size-3.5" />
+                            {displayPhone(order.customerPhone)}
+                        </span>
+                    )}
+                    {order.notes?.trim() && (
+                        <span className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-[#F4D99B] bg-[#FFF8E8] px-2.5 py-1 text-[11px] font-bold text-[#9A6500]">
+                            <StickyNote className="size-3.5" /> Tiene nota
+                        </span>
+                    )}
                 </button>
-                <div className="flex min-w-0 items-center justify-between gap-3 rounded-xl border border-[#EDF2F9] bg-[#FBFCFE] p-3 sm:justify-end sm:border-0 sm:bg-transparent sm:p-0">
-                    <div
-                        className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-bold motion-safe:transition-all ${meta.badge} ${isUpdating ? 'scale-[.98] opacity-70' : ''}`}
-                    >
-                        <span className={`size-2 rounded-full ${meta.dot}`} />
-                        {meta.label}
-                    </div>
-                    <div className="flex items-center gap-2">
-                        {next && (
-                            <button
-                                type="button"
-                                disabled={isUpdating}
-                                onClick={() => onStatusChange(order.id, next)}
-                                className={`inline-flex min-h-10 items-center gap-2 rounded-xl px-3 text-xs font-bold shadow-sm transition hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-[#2451C5]/30 disabled:cursor-wait disabled:opacity-60 ${meta.button}`}
-                            >
-                                {isUpdating ? (
-                                    <LoaderCircle className="size-4 animate-spin" />
-                                ) : (
-                                    <ArrowRight className="size-4" />
-                                )}
-                                <span className="hidden sm:inline">
-                                    {isUpdating ? 'Actualizando…' : meta.actionLabel}
+                <div className="max-h-[192px] min-h-[192px] space-y-3 overflow-y-auto pr-1 [scrollbar-color:#B9CDFD_transparent] [scrollbar-width:thin]">
+                    {order.items.map((item, index) => (
+                        <div
+                            key={item.id ?? `${item.productId}-${index}`}
+                            className="flex items-center gap-3"
+                        >
+                            {item.productImageUrl ? (
+                                <Image
+                                    src={item.productImageUrl}
+                                    alt=""
+                                    width={56}
+                                    height={56}
+                                    unoptimized
+                                    className="size-14 shrink-0 rounded-xl object-cover"
+                                />
+                            ) : (
+                                <span className="grid size-14 shrink-0 place-items-center rounded-xl bg-[#F0F3F6] text-[#8A99AB]">
+                                    <Utensils className="size-5" />
                                 </span>
-                                <span className="sm:hidden">{isUpdating ? '…' : 'Avanzar'}</span>
-                            </button>
-                        )}
-                        {canCancel(order.status) && (
-                            <button
-                                type="button"
-                                disabled={isUpdating}
-                                onClick={() => onStatusChange(order.id, 'CANCELLED')}
-                                className="grid size-10 place-items-center rounded-xl border border-[#F3C2BD] text-[#B42318] transition hover:bg-[#FFF3F1] focus:outline-none focus:ring-2 focus:ring-[#B42318]/20 disabled:cursor-wait disabled:opacity-50"
-                                aria-label={`Cancelar pedido #${order.orderNumber}`}
-                                title="Cancelar pedido"
-                            >
-                                <CircleX className="size-4" />
-                            </button>
-                        )}
-                    </div>
+                            )}
+                            <div className="min-w-0 text-sm">
+                                <p className="truncate text-[#243556]">
+                                    <span className="mr-1 text-xs text-[#8996A9]">
+                                        {item.quantity}x
+                                    </span>
+                                    <span className="font-bold">
+                                        {item.productName ?? item.name ?? item.productId}
+                                    </span>
+                                </p>
+                                {item.options?.length ? (
+                                    <p className="mt-0.5 truncate text-xs text-[#8996A9]">
+                                        ({item.options.map((option) => option.name).join(', ')})
+                                    </p>
+                                ) : null}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+            <div className="mt-auto flex flex-wrap items-center justify-between gap-3 bg-[#F1F5F8] px-4 py-3">
+                <div className="flex min-w-0 items-center gap-3">
+                    <span className="inline-flex min-w-0 items-center gap-1.5 text-xs font-semibold text-[#53647D]">
+                        <Utensils className="size-3.5 shrink-0" />
+                        {order.items.length}{' '}
+                        {order.items.length === 1 ? 'producto' : 'productos'}{' '}
+                    </span>
+                    <strong className="shrink-0 font-display text-xl font-bold tracking-[-.03em] text-[#12234A]">
+                        {formatMoney(order.total, currency)}
+                    </strong>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                    {next && (
+                        <button
+                            type="button"
+                            disabled={isUpdating}
+                            onClick={() => onStatusChange(order.id, next)}
+                            className={`inline-flex min-h-10 items-center gap-1.5 rounded-xl px-3 text-xs font-bold transition hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-[#1D5BFF]/30 disabled:cursor-wait disabled:opacity-60 ${meta.button}`}
+                        >
+                            {isUpdating ? (
+                                <LoaderCircle className="size-3.5 animate-spin" />
+                            ) : (
+                                <ChefHat className="size-3.5" />
+                            )}
+                            {isUpdating ? 'Actualizando…' : meta.actionLabel}
+                        </button>
+                    )}
+                    {canCancel(order.status) && (
+                        <button
+                            type="button"
+                            disabled={isUpdating}
+                            onClick={() => onStatusChange(order.id, 'CANCELLED')}
+                            className="grid size-10 place-items-center rounded-xl border border-[#F3C2BD] text-[#B42318] transition hover:bg-[#FFF3F1] focus:outline-none focus:ring-2 focus:ring-[#B42318]/20 disabled:cursor-wait disabled:opacity-50"
+                            aria-label={`Cancelar pedido #${order.orderNumber}`}
+                            title="Cancelar pedido"
+                        >
+                            <X className="size-4" />
+                        </button>
+                    )}
                 </div>
             </div>
             {hasMutationError && errorMessage && (

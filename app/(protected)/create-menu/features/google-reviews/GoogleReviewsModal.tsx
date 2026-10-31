@@ -244,6 +244,24 @@ export function GoogleReviewsModal({ open, onClose }: GoogleReviewsModalProps) {
             title="Invita a compartir su experiencia"
             description="Elige un diseño para imprimirlo o compartirlo con tus clientes."
             size="xl"
+            footer={
+                !isLoading && !settings.isError ? (
+                    <button
+                        type="submit"
+                        form="google-reviews-form"
+                        disabled={isSaving || !url.trim() || url.trim() === savedUrl}
+                        aria-busy={isSaving}
+                        className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#1E40AF] px-4 py-3 text-sm font-bold text-white shadow-[0_10px_22px_rgb(30_64_175_/_0.18)] transition hover:bg-[#183991] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:ml-auto"
+                    >
+                        {isSaving ? (
+                            <LoaderCircle className="size-4 animate-spin" />
+                        ) : (
+                            <Save className="size-4" />
+                        )}
+                        {isSaving ? 'Guardando…' : 'Guardar enlace'}
+                    </button>
+                ) : undefined
+            }
         >
             {isLoading ? (
                 <div
@@ -277,6 +295,7 @@ export function GoogleReviewsModal({ open, onClose }: GoogleReviewsModalProps) {
             ) : (
                 <div className="space-y-7">
                     <form
+                        id="google-reviews-form"
                         onSubmit={submit}
                         className="rounded-2xl border border-[#DCE5F3] bg-[#F8FAFE] p-4 sm:p-5"
                     >
@@ -311,19 +330,6 @@ export function GoogleReviewsModal({ open, onClose }: GoogleReviewsModalProps) {
                                     />
                                 </div>
                             </div>
-                            <button
-                                type="submit"
-                                disabled={isSaving || !url.trim() || url.trim() === savedUrl}
-                                aria-busy={isSaving}
-                                className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-[#1E40AF] px-4 py-3 text-sm font-bold text-white shadow-[0_10px_22px_rgb(30_64_175_/_0.18)] transition hover:bg-[#183991] disabled:cursor-not-allowed disabled:opacity-60"
-                            >
-                                {isSaving ? (
-                                    <LoaderCircle className="size-4 animate-spin" />
-                                ) : (
-                                    <Save className="size-4" />
-                                )}
-                                {isSaving ? 'Guardando…' : 'Guardar enlace'}
-                            </button>
                         </div>
                         {validationError && (
                             <p className="mt-3 text-sm text-[#B42318]" role="alert">

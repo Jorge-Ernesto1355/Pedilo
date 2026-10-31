@@ -8,6 +8,9 @@ import type { CartLine } from './types'
 import { hasAvailableOptions } from './optionGroupValidation'
 import { isValidPhone, sanitizePhoneInput } from '@/src/lib/validation/phone'
 
+const PUBLIC_ORDER_TEXT_MAX_LENGTH = 200
+const PUBLIC_CUSTOMER_NAME_MAX_LENGTH = 20
+
 type OrderDrawerProps = {
     lines: CartLine[]
     totalItems: number
@@ -346,6 +349,7 @@ export function OrderDrawer({
                                         value={customerName}
                                         onChange={(event) => setCustomerName(event.target.value)}
                                         placeholder="Ej. Jorge Pérez"
+                                        maxLength={PUBLIC_CUSTOMER_NAME_MAX_LENGTH}
                                         className="w-full rounded-xl border border-[#D7E1EF] px-3.5 py-3 text-sm text-[#12234A] outline-none transition placeholder:text-[#A0ACBD] focus:border-[#2451C5] focus:ring-4 focus:ring-[#2451C5]/10"
                                     />
                                     <label
@@ -392,9 +396,22 @@ export function OrderDrawer({
                                         value={notes}
                                         onChange={(event) => setNotes(event.target.value)}
                                         placeholder="Ej. Sin cebolla"
+                                        maxLength={PUBLIC_ORDER_TEXT_MAX_LENGTH}
+                                        aria-describedby="order-notes-counter"
                                         rows={2}
                                         className="w-full resize-none rounded-xl border border-[#D7E1EF] px-3.5 py-3 text-sm text-[#12234A] outline-none transition placeholder:text-[#A0ACBD] focus:border-[#2451C5] focus:ring-4 focus:ring-[#2451C5]/10"
                                     />
+                                    <span
+                                        id="order-notes-counter"
+                                        className={`mt-1 flex justify-between text-[11px] font-normal ${notes.length >= PUBLIC_ORDER_TEXT_MAX_LENGTH - 20 ? 'text-[#B42318]' : 'text-[#8996A9]'}`}
+                                    >
+                                        <span>
+                                            Máximo {PUBLIC_ORDER_TEXT_MAX_LENGTH} caracteres
+                                        </span>
+                                        <span className="font-semibold">
+                                            {notes.length}/{PUBLIC_ORDER_TEXT_MAX_LENGTH}
+                                        </span>
+                                    </span>
                                     <p className="mt-3 rounded-xl bg-[#F5F8FC] px-3 py-2.5 text-xs leading-5 text-[#65738A]">
                                         Al confirmar, estos datos y el detalle de tu pedido se
                                         compartirán con{' '}

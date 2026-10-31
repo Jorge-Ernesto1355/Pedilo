@@ -119,17 +119,17 @@ export function DashboardNav() {
     return (
         <>
             <header className="relative z-50 overflow-visible border-b border-[#DCE5F3] bg-white/90 backdrop-blur">
-                <div className="mx-auto flex h-[72px] max-w-[1440px] items-center justify-between px-4 sm:px-8 lg:px-10">
+                <div className="mx-auto flex h-[85px] max-w-[1440px] items-center justify-between px-4 sm:px-8 lg:px-10">
                     <Link
                         href="/dashboard"
-                        className="flex items-center gap-2.5 text-lg font-black tracking-[-.04em] text-[#12234A]"
+                        className="flex items-center gap-2.5 text-4xl font-black tracking-[-.06em] text-[#12234A]"
                     >
                         <Image
                             src="/logoPediloSinfondo.png"
                             alt=""
                             width={34}
                             height={34}
-                            className="size-8 object-contain"
+                            className="size-10 object-contain"
                             priority
                         />
                         Pedilo

@@ -25,6 +25,8 @@ describe('protected auth boundary', () => {
         '__Secure-better-auth.session_token',
         'better-auth.session_token.0',
         '__Secure-better-auth.session_token.0',
+        'better-auth-local.session_token',
+        '__Secure-better-auth-local.session_token',
         'better-auth-development.session_token',
         '__Secure-better-auth-development.session_token',
     ])('allows protected route requests with %s', (cookieName) => {

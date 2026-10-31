@@ -75,6 +75,8 @@ const catalog = {
                                             optionGroupId: extrasGroupId,
                                             name: 'Aguacate',
                                             price: 20,
+                                            minSelections: 0,
+                                            maxSelections: 2,
                                             sortOrder: 0,
                                             isAvailable: true,
                                         },
@@ -95,6 +97,8 @@ const catalog = {
                                             optionGroupId: salsaGroupId,
                                             name: 'Salsa verde',
                                             price: 10,
+                                            minSelections: 0,
+                                            maxSelections: 1,
                                             sortOrder: 0,
                                             isAvailable: true,
                                         },
@@ -192,8 +196,8 @@ describe('Crear pedido desde el catálogo público', () => {
             .should('be.visible')
             .within(() => {
                 cy.contains('h2', 'Taco especial').should('be.visible')
-                cy.contains('legend', 'Extras').should('contain', 'Mínimo 1 · máximo 2')
-                cy.contains('legend', 'Salsa extra').should('contain', 'Opcional · máximo 1')
+                cy.contains('legend', 'Extras').should('contain', 'Selecciona al menos una opción')
+                cy.contains('legend', 'Salsa extra').should('contain', 'Opciones individuales')
                 cy.contains('button', 'Agregar al pedido').should('be.disabled')
 
                 cy.get('button[aria-label="Agregar Aguacate"]').click()

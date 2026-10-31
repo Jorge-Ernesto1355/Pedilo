@@ -108,18 +108,15 @@ async function ensureAccount() {
         throw new Error(`No se pudo iniciar sesión en la cuenta E2E (${login.status}): ${details}`)
     }
 
-    const localBackend = ['localhost', '127.0.0.1', '::1'].includes(new URL(apiUrl).hostname)
     await request('/auth/register', {
         method: 'POST',
-        body: localBackend
-            ? {
-                  name: 'E2E Dashboard User',
-                  email,
-                  password,
-                  acceptLegalDocuments: true,
-                  ageDeclaration: true,
-              }
-            : { name: 'E2E Dashboard User', email, password },
+        body: {
+            name: 'E2E Dashboard User',
+            email,
+            password,
+            acceptLegalDocuments: true,
+            ageDeclaration: true,
+        },
     })
     await request('/auth/login', {
         method: 'POST',

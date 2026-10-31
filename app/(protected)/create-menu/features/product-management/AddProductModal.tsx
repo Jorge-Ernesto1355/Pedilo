@@ -13,7 +13,7 @@ import { OptionGroupsEditor } from '../option-management/OptionGroupsEditor'
 import { useProduct } from './useProductManagement'
 import { ApiError } from '@/app/auth/lib/client/api-error'
 import { notify } from '@/src/lib/notifications/notify'
-import { ImagePlus } from 'lucide-react'
+import { ImagePlus, ListPlus } from 'lucide-react'
 import Link from 'next/link'
 import { PRODUCT_DESCRIPTION_MAX_LENGTH } from '../../description-limits'
 
@@ -117,6 +117,12 @@ export function AddProductModal({
                         : 'Inténtalo nuevamente.',
             })
     }
+    function goToOptions() {
+        if (!currentProduct) return
+        document
+            .getElementById(`product-options-${currentProduct.id}`)
+            ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
     return (
         <Modal
             open={open}
@@ -124,38 +130,79 @@ export function AddProductModal({
             title={product ? 'Editar producto' : 'Agregar producto'}
             description={`${product ? 'Actualiza' : 'Crea'} la información que tus clientes verán en el menú.`}
             size="lg"
+            footer={
+                <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-xs leading-5 text-[#8996A9]">
+                        {product
+                            ? 'Los cambios se guardan en tu menú al confirmar.'
+                            : 'Después de crear el producto podrás agregar opciones y extras.'}
+                    </p>
+                    <div className="flex justify-end gap-2">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            disabled={isSaving}
+                            className="rounded-xl border border-[#D7E1EF] px-4 py-2.5 text-sm font-semibold text-[#65738A] transition hover:bg-[#F2F5FA]"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            type="submit"
+                            form="product-form"
+                            disabled={isSaving}
+                            className="inline-flex min-w-40 items-center justify-center rounded-xl bg-[#1E40AF] px-5 py-2.5 text-sm font-bold text-white shadow-[0_8px_18px_-10px_rgba(30,64,175,.75)] transition hover:bg-[#183991] disabled:cursor-wait disabled:opacity-60"
+                        >
+                            {isSaving
+                                ? 'Guardando producto…'
+                                : product
+                                  ? 'Guardar cambios'
+                                  : 'Crear producto'}
+                        </button>
+                    </div>
+                </div>
+            }
         >
             <form
+                id="product-form"
                 onInputCapture={sanitizeNumericInput}
                 onSubmit={handleSubmit(submit)}
                 className="space-y-6"
             >
-                <div className="rounded-2xl border border-[#DCE5F3] bg-[#F8FAFE] p-4">
-                    <p className="text-xs font-bold uppercase tracking-[.14em] text-[#2451C5]">
-                        Información principal
-                    </p>
-                    <p className="mt-1 text-sm leading-6 text-[#65738A]">
-                        El nombre, descripción y precio ayudan a tus clientes a decidir rápidamente
-                        qué pedir.
-                    </p>
-                    <p className="mt-2 text-xs leading-5 text-[#65738A]">
-                        Publica únicamente alimentos y bebidas permitidos por la{' '}
-                        <Link
-                            href="/productos-y-contenido"
-                            className="font-semibold text-[#2451C5] underline underline-offset-2"
+                <section
+                    aria-labelledby="product-options-prompt-title"
+                    className="flex items-center gap-3 rounded-xl border border-[#BFD2FF] bg-[#F1F5FF] px-3 py-2.5"
+                >
+                    <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-[#DCE7FF] text-[#1E40AF]">
+                        <ListPlus className="size-4" aria-hidden="true" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                        <h3
+                            id="product-options-prompt-title"
+                            className="text-xs font-bold text-[#12234A]"
                         >
-                            Política de Productos y Contenido
-                        </Link>
-                        . Para imágenes, revisa la{' '}
-                        <Link
-                            href="/propiedad-intelectual"
-                            className="font-semibold text-[#2451C5] underline underline-offset-2"
+                            Opciones y extras
+                        </h3>
+                        <p className="mt-0.5 text-[11px] leading-4 text-[#53617A]">
+                            {currentProduct
+                                ? 'Agrega tamaños, ingredientes o complementos.'
+                                : 'Podrás agregarlos después de crear el producto.'}
+                        </p>
+                    </div>
+                    {currentProduct ? (
+                        <button
+                            type="button"
+                            onClick={goToOptions}
+                            aria-controls={`product-options-${currentProduct.id}`}
+                            className="min-h-8 shrink-0 rounded-lg bg-[#1E40AF] px-2.5 py-1.5 text-[11px] font-bold text-white transition hover:bg-[#183991] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#2451C5]/20"
                         >
-                            Política de Propiedad Intelectual
-                        </Link>
-                        .
-                    </p>
-                </div>
+                            Configurar
+                        </button>
+                    ) : (
+                        <span className="shrink-0 text-[11px] font-semibold text-[#5572B8]">
+                            Después de guardar
+                        </span>
+                    )}
+                </section>
                 <div>
                     <label
                         htmlFor="product-name"
@@ -308,33 +355,31 @@ export function AddProductModal({
                         No se pudo sincronizar el detalle del producto. Ver respuesta del servidor.
                     </button>
                 )}
-                <div className="flex flex-col-reverse gap-3 border-t border-[#E8EEF6] pt-5 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="text-xs leading-5 text-[#8996A9]">
-                        {product
-                            ? 'Los cambios se guardan en tu menú al confirmar.'
-                            : 'Después de crear el producto podrás agregar opciones y extras.'}
+                <div className="rounded-2xl border border-[#DCE5F3] bg-[#F8FAFE] p-4">
+                    <p className="text-xs font-bold uppercase tracking-[.14em] text-[#2451C5]">
+                        Información principal
                     </p>
-                    <div className="flex justify-end gap-2">
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            disabled={isSaving}
-                            className="rounded-xl border border-[#D7E1EF] px-4 py-2.5 text-sm font-semibold text-[#65738A] transition hover:bg-[#F2F5FA]"
+                    <p className="mt-1 text-sm leading-6 text-[#65738A]">
+                        El nombre, descripción y precio ayudan a tus clientes a decidir rápidamente
+                        qué pedir.
+                    </p>
+                    <p className="mt-2 text-xs leading-5 text-[#65738A]">
+                        Publica únicamente alimentos y bebidas permitidos por la{' '}
+                        <Link
+                            href="/productos-y-contenido"
+                            className="font-semibold text-[#2451C5] underline underline-offset-2"
                         >
-                            Cancelar
-                        </button>
-                        <button
-                            type="submit"
-                            disabled={isSaving}
-                            className="inline-flex min-w-40 items-center justify-center rounded-xl bg-[#1E40AF] px-5 py-2.5 text-sm font-bold text-white shadow-[0_8px_18px_-10px_rgba(30,64,175,.75)] transition hover:bg-[#183991] disabled:cursor-wait disabled:opacity-60"
+                            Política de Productos y Contenido
+                        </Link>
+                        . Para imágenes, revisa la{' '}
+                        <Link
+                            href="/propiedad-intelectual"
+                            className="font-semibold text-[#2451C5] underline underline-offset-2"
                         >
-                            {isSaving
-                                ? 'Guardando producto…'
-                                : product
-                                  ? 'Guardar cambios'
-                                  : 'Crear producto'}
-                        </button>
-                    </div>
+                            Política de Propiedad Intelectual
+                        </Link>
+                        .
+                    </p>
                 </div>
                 {errors.root?.server?.message && (
                     <p role="alert" className="text-center text-xs text-[#B42318]">

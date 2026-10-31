@@ -6,12 +6,15 @@ import {
     AlertCircle,
     ArrowLeft,
     Check,
+    FolderOpen,
     LoaderCircle,
     Minus,
+    PackageOpen,
     Plus,
     ShoppingBag,
     X,
 } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { ApiError } from '@/app/auth/lib/client/api-error'
 import { getUserFriendlyError } from '@/src/lib/errors/user-friendly-error'
@@ -33,7 +36,7 @@ import { getMenus } from '@/app/(protected)/create-menu/features/category-manage
 import { getProductsPaged } from '@/app/(protected)/create-menu/features/product-management/productApi'
 
 const CUSTOMER_NAME_MAX_LENGTH = 80
-const CUSTOMER_NOTES_MAX_LENGTH = 500
+const CUSTOMER_NOTES_MAX_LENGTH = 200
 
 function useRestaurantCatalog(enabled: boolean) {
     const businessId = useAuthStore((state) => state.user?.businessId)
@@ -201,7 +204,9 @@ export function NewRestaurantOrderDrawer({
                 items: cart.lines.map((line) => ({
                     productId: line.product.id,
                     quantity: line.quantity,
-                    optionIds: line.selections.map((selection) => selection.id),
+                    optionIds: line.selections.flatMap((selection) =>
+                        Array.from({ length: selection.quantity }, () => selection.id),
+                    ),
                 })),
             },
             {
@@ -323,9 +328,11 @@ export function NewRestaurantOrderDrawer({
                                     No pudimos cargar los productos de tu catálogo.
                                 </div>
                             ) : menus.length === 0 ? (
-                                <p className="rounded-2xl border border-[#DCE5F3] bg-white p-5 text-sm text-[#65738A]">
-                                    Agrega productos a tu catálogo para crear una orden.
-                                </p>
+                                <EmptyCatalogState
+                                    icon={FolderOpen}
+                                    title="Tu catálogo está vacío"
+                                    description="Agrega un menú y sus categorías para empezar a crear la orden."
+                                />
                             ) : (
                                 <>
                                     <div
@@ -353,45 +360,69 @@ export function NewRestaurantOrderDrawer({
                                             onChange={setActiveCategory}
                                         />
                                     )}
-                                    <div className="space-y-8">
-                                        {categories.map((category) => (
-                                            <section
-                                                key={category.id}
-                                                id={`restaurant-category-${category.id}`}
-                                            >
-                                                <div className="mb-3">
-                                                    <h3 className="font-display text-xl text-[#12234A]">
-                                                        {category.name}
-                                                    </h3>
-                                                    {category.description && (
-                                                        <p className="mt-1 text-sm text-[#65738A]">
-                                                            {category.description}
-                                                        </p>
-                                                    )}
-                                                </div>
-                                                <div className="rounded-2xl border border-[#DCE5F3] bg-white px-5 py-5">
-                                                    <div className="divide-y divide-[#E8EEF6]">
-                                                        {category.products
-                                                            .filter(
-                                                                (product) => product.isAvailable,
-                                                            )
-                                                            .map((product) => (
-                                                                <ProductCard
-                                                                    key={product.id}
-                                                                    product={product}
-                                                                    onSelect={() =>
-                                                                        setCustomizing(product)
-                                                                    }
-                                                                    onAdd={() =>
-                                                                        addProduct(product)
-                                                                    }
+                                    {categories.length === 0 ? (
+                                        <EmptyCatalogState
+                                            icon={FolderOpen}
+                                            title="Este menú aún no tiene categorías"
+                                            description="Agrega una categoría para empezar a crear la orden."
+                                        />
+                                    ) : (
+                                        <div className="space-y-8">
+                                            {categories.map((category) => {
+                                                const availableProducts = category.products.filter(
+                                                    (product) => product.isAvailable,
+                                                )
+                                                return (
+                                                    <section
+                                                        key={category.id}
+                                                        id={`restaurant-category-${category.id}`}
+                                                    >
+                                                        <div className="mb-3">
+                                                            <h3 className="font-display text-xl text-[#12234A]">
+                                                                {category.name}
+                                                            </h3>
+                                                            {category.description && (
+                                                                <p className="mt-1 text-sm text-[#65738A]">
+                                                                    {category.description}
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                        <div className="rounded-2xl border border-[#DCE5F3] bg-white px-5 py-5">
+                                                            {availableProducts.length === 0 ? (
+                                                                <EmptyCatalogState
+                                                                    icon={PackageOpen}
+                                                                    title="Esta categoría está vacía"
+                                                                    description="Cuando agregues productos disponibles aparecerán aquí."
+                                                                    compact
                                                                 />
-                                                            ))}
-                                                    </div>
-                                                </div>
-                                            </section>
-                                        ))}
-                                    </div>
+                                                            ) : (
+                                                                <div className="divide-y divide-[#E8EEF6]">
+                                                                    {availableProducts.map(
+                                                                        (product) => (
+                                                                            <ProductCard
+                                                                                key={product.id}
+                                                                                product={product}
+                                                                                onSelect={() =>
+                                                                                    setCustomizing(
+                                                                                        product,
+                                                                                    )
+                                                                                }
+                                                                                onAdd={() =>
+                                                                                    addProduct(
+                                                                                        product,
+                                                                                    )
+                                                                                }
+                                                                            />
+                                                                        ),
+                                                                    )}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </section>
+                                                )
+                                            })}
+                                        </div>
+                                    )}
                                 </>
                             )}
                         </div>
@@ -425,6 +456,36 @@ export function NewRestaurantOrderDrawer({
                     />
                 )}
             </section>
+        </div>
+    )
+}
+
+function EmptyCatalogState({
+    icon: Icon,
+    title,
+    description,
+    compact = false,
+}: {
+    icon: LucideIcon
+    title: string
+    description: string
+    compact?: boolean
+}) {
+    return (
+        <div
+            className={`relative overflow-hidden rounded-2xl border border-[#DCE5F3] bg-[#F8FAFE] text-center ${compact ? 'px-4 py-8' : 'px-6 py-12'}`}
+            role="status"
+        >
+            <span className="pointer-events-none absolute left-1/2 top-0 h-1 w-24 -translate-x-1/2 rounded-b-full bg-[#1D5BFF]" />
+            <span
+                className={`mx-auto grid place-items-center rounded-2xl bg-[#E5EEFF] text-[#1D5BFF] shadow-[0_8px_20px_rgb(29_91_255_/_0.12)] ${compact ? 'size-12' : 'size-14'}`}
+            >
+                <Icon className={compact ? 'size-5' : 'size-6'} aria-hidden="true" />
+            </span>
+            <h4 className="mt-4 font-display text-lg font-bold tracking-[-.02em] text-[#12234A]">
+                {title}
+            </h4>
+            <p className="mx-auto mt-1 max-w-sm text-sm leading-6 text-[#65738A]">{description}</p>
         </div>
     )
 }
@@ -614,16 +675,24 @@ function CustomerStep({
                     <label className="block text-sm font-bold text-[#243556]">
                         Notas <span className="font-normal text-[#8996A9]">(opcional)</span>
                         <textarea
+                            id="restaurant-order-notes"
                             value={notes}
                             onChange={(event) => onNotesChange(event.target.value)}
                             placeholder="Ej. Sin cebolla"
                             maxLength={CUSTOMER_NOTES_MAX_LENGTH}
                             aria-invalid={!notesValid}
+                            aria-describedby="restaurant-order-notes-counter"
                             rows={4}
                             className="mt-2 w-full resize-none rounded-xl border border-[#D7E1EF] bg-white px-3.5 py-3 font-normal text-[#12234A] outline-none focus:border-[#2451C5] focus:ring-4 focus:ring-[#2451C5]/10"
                         />
-                        <span className="mt-1 block text-right text-[11px] font-normal text-[#8996A9]">
-                            {notes.length}/{CUSTOMER_NOTES_MAX_LENGTH}
+                        <span
+                            id="restaurant-order-notes-counter"
+                            className={`mt-1 flex items-center justify-between text-[11px] font-normal ${notes.length >= CUSTOMER_NOTES_MAX_LENGTH - 20 ? 'text-[#B42318]' : 'text-[#8996A9]'}`}
+                        >
+                            <span>Máximo {CUSTOMER_NOTES_MAX_LENGTH} caracteres</span>
+                            <span className="font-semibold">
+                                {notes.length}/{CUSTOMER_NOTES_MAX_LENGTH}
+                            </span>
                         </span>
                     </label>
                 </div>

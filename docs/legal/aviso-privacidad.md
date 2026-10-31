@@ -1,6 +1,6 @@
 AVISO DE PRIVACIDAD INTEGRAL DE PEDILO
 
-Versión: 1.0
+Versión: 1.2
 Fecha de entrada en vigor: 15 de septiembre
 
 1. Responsable
@@ -32,6 +32,9 @@ Podemos tratar:
 - Información necesaria para autenticación.
 - Información relacionada con sesiones y seguridad de la cuenta.
 - Información necesaria para recuperar o proteger la cuenta.
+- Identificador de usuario, correo electrónico y nombre asociados a eventos de uso cuando se encuentra activa una sesión autenticada.
+- La declaración de que la persona tiene al menos 18 años.
+- La aceptación de los Términos y Condiciones para Clientes y de este Aviso de Privacidad, incluyendo las versiones aceptadas y la fecha y hora de la aceptación.
 
 Si utilizas Google para registrarte o iniciar sesión, Pedilo recibirá la información que resulte necesaria para autenticar tu cuenta mediante Google.
 
@@ -66,7 +69,13 @@ Podemos tratar:
 - Notas relacionadas con el pedido.
 - Información técnica estrictamente necesaria para operar y proteger la plataforma.
 
+Dependiendo de la configuración de las herramientas y del evento que se produzca, la información técnica puede incluir dirección IP, URL o ruta visitada, fecha y hora, navegador, sistema operativo, dispositivo, identificadores técnicos, registros de errores, trazas de ejecución, información de red y datos técnicos asociados a la sesión.
+
+Los eventos de uso registrados por las herramientas de analítica pueden incluir acciones dentro de la plataforma y datos agregados del pedido, como cantidad de productos, importe total y existencia de notas. Pedilo procura no enviar a estas herramientas el contenido completo de las notas del pedido ni datos de pago.
+
 Actualmente Pedilo no solicita como requisito general datos personales sensibles para realizar pedidos.
+
+La declaración de mayoría de edad y la evidencia de aceptación se tratan para gestionar el registro, aplicar el requisito de elegibilidad de los Términos, mantener evidencia de los documentos aceptados y proteger la cuenta. La declaración es una manifestación de la persona usuaria; Pedilo no realiza mediante este proceso una verificación independiente de identidad o edad.
 
 Pedilo tampoco solicita actualmente información de tarjetas bancarias ni procesa directamente pagos.
 
@@ -127,6 +136,16 @@ Para clientes que realizan pedidos:
 - Mantener registros técnicos estrictamente necesarios.
 - Proteger los derechos de Pedilo, usuarios y restaurantes.
 - Cumplir obligaciones legales.
+
+3.5. Monitoreo, analítica y mejora del servicio
+
+Pedilo utiliza herramientas de terceros para diagnosticar errores, proteger la plataforma, entender el uso de sus funcionalidades y mejorar su funcionamiento:
+
+- Sentry puede recibir eventos de error, excepciones, trazas, ruta o solicitud relacionada, entorno, versión, fecha y hora, información del navegador o dispositivo y otros datos técnicos asociados al incidente.
+- PostHog puede recibir eventos de uso, información técnica de la sesión, identificadores de usuario y, para cuentas autenticadas, el correo electrónico y nombre asociados a la cuenta, además de excepciones capturadas para diagnóstico.
+- PostHog Session Replay podrá utilizarse únicamente cuando se encuentre habilitado en la configuración correspondiente. En ese caso, puede registrar la navegación y las interacciones de una sesión, sujeto a las reglas de grabación, enmascaramiento, exclusión y conservación que se configuren.
+
+Estas herramientas se utilizan para detectar y resolver fallas, medir el uso de funcionalidades, investigar incidentes, mejorar la experiencia y mantener la seguridad. No se utilizan para enviar campañas comerciales a clientes finales.
 
 ⸻
 
@@ -225,10 +244,14 @@ Actualmente pueden participar:
 - Vercel, para infraestructura y alojamiento del frontend.
 - Cloudflare, para dominio, DNS y servicios relacionados de infraestructura y seguridad.
 - OpenStreetMap y Leaflet, para funcionalidades relacionadas con mapas y ubicación.
+- Sentry, para monitoreo de errores, excepciones y rendimiento técnico.
+- PostHog, para analítica de producto, captura técnica de excepciones y, si se habilita, Session Replay.
 
 Los proveedores pueden operar infraestructura dentro o fuera de México dependiendo de sus servicios, arquitectura y condiciones vigentes.
 
 Pedilo procurará limitar la información comunicada a cada proveedor a aquella necesaria para la finalidad correspondiente.
+
+En la configuración revisada, PostHog utiliza como host predeterminado `https://us.i.posthog.com`; el host y la región efectivamente utilizados en producción deben confirmarse antes de publicar este aviso como versión definitiva. La ubicación concreta de los datos de Sentry también depende de la organización y proyecto configurados.
 
 ⸻
 
@@ -242,6 +265,8 @@ Pedilo podrá comunicar datos personales:
 - Cuando sea necesario para ejercer o defender derechos.
 - Cuando sea necesario para proteger los derechos, seguridad o propiedad de Pedilo o de terceros.
 - Cuando resulte aplicable alguna de las excepciones previstas por la legislación.
+
+Las comunicaciones a proveedores tecnológicos pueden implicar transferencias nacionales o internacionales, incluyendo transferencias a proveedores cuya infraestructura o región de almacenamiento se encuentre fuera de México. Sentry y PostHog podrán recibir la información técnica descrita en este aviso para las finalidades de monitoreo, diagnóstico y analítica. Cuando corresponda, Pedilo documentará la base legal, las condiciones contractuales y los mecanismos aplicables a dichas transferencias.
 
 Cuando la legislación requiera consentimiento para una transferencia determinada, Pedilo implementará el mecanismo correspondiente.
 
@@ -270,6 +295,8 @@ Pedilo no solicita deliberadamente información adicional de menores que no sea 
 12. Seguridad
 
 Pedilo implementa medidas administrativas, técnicas y organizativas razonables para proteger los datos personales.
+
+Respecto de Sentry y PostHog, Pedilo deberá configurar controles de minimización, permisos, conservación y eliminación, así como reglas para evitar que se capturen contraseñas, datos de pago, notas de pedidos u otra información que no sea necesaria. Si se habilita Session Replay, deberán revisarse antes de su uso las reglas de enmascaramiento, exclusión de campos y grabación de sesiones.
 
 Entre las medidas técnicas pueden encontrarse:
 
@@ -304,6 +331,8 @@ Pedilo conservará los datos durante el tiempo necesario para:
 - resolver controversias.
 
 Cuando los datos dejen de ser necesarios, serán suprimidos o, cuando corresponda legalmente, bloqueados y posteriormente eliminados.
+
+Los periodos concretos de conservación de eventos de Sentry, eventos de PostHog y, en su caso, grabaciones de Session Replay dependen de la configuración de Pedilo, del plan contratado y de las condiciones del proveedor. Pedilo deberá definir y revisar dichos periodos, evitar una conservación mayor a la necesaria y documentar el tratamiento de eliminación o anonimización correspondiente.
 
 ⸻
 
@@ -393,6 +422,8 @@ La baja de comunicaciones comerciales no afecta las comunicaciones estrictamente
 - pedidos;
 - soporte;
 - funcionamiento de la plataforma.
+
+Cuando se habiliten controles para analítica o Session Replay, el titular podrá utilizarlos o solicitar la limitación correspondiente mediante privacidad@pedilo.mx. La limitación no necesariamente detendrá el monitoreo técnico estrictamente necesario para seguridad, prevención de abuso, diagnóstico de errores, autenticación, soporte o cumplimiento de obligaciones legales.
 
 ⸻
 

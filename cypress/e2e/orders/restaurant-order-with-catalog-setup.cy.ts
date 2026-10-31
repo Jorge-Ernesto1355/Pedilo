@@ -306,7 +306,7 @@ describe('E2E completo: crear catálogo y ordenar desde Pedidos', () => {
             .within(() => {
                 cy.contains('Pedido #1').should('be.visible')
                 cy.contains('Estado actual').should('be.visible')
-                cy.contains('Nueva').should('be.visible')
+                cy.contains('Pendiente').should('be.visible')
                 cy.contains('$190.00').should('be.visible')
                 cy.contains('Cliente').should('be.visible')
                 cy.contains('Juan E2E').should('be.visible')
@@ -315,7 +315,7 @@ describe('E2E completo: crear catálogo y ordenar desde Pedidos', () => {
                 cy.contains('Productos').should('be.visible')
                 cy.contains('2 × Hamburguesa creada E2E').should('be.visible')
                 cy.contains('Historial de la orden').should('be.visible')
-                cy.contains('Nueva').should('be.visible')
+                cy.contains('Pendiente').should('be.visible')
                 cy.contains('Actual').should('be.visible')
                 cy.get('time[datetime="2026-10-06T10:00:00.000Z"]').should('be.visible')
             })

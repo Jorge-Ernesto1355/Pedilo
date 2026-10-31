@@ -75,14 +75,17 @@ function installDashboardApi(state: { status: DetailStatus }, historyData = hist
         const url = new URL(request.url)
         const requestStatus = url.searchParams.get('status')
         const requestSearch = url.searchParams.get('search')?.toLowerCase() ?? ''
+        const isStatusCountRequest = url.searchParams.get('limit') === '1'
         const matchesStatus = !requestStatus || requestStatus === state.status
         const matchesSearch =
             !requestSearch || baseOrder.customerName.toLowerCase().includes(requestSearch)
-        request.alias = requestStatus
-            ? requestSearch
-                ? 'filteredOrders'
-                : 'filteredStatusOrders'
-            : 'listOrders'
+        if (!isStatusCountRequest) {
+            request.alias = requestStatus
+                ? requestSearch
+                    ? 'filteredOrders'
+                    : 'filteredStatusOrders'
+                : 'listOrders'
+        }
         request.reply({
             statusCode: 200,
             body: {
@@ -114,7 +117,7 @@ function installDashboardApi(state: { status: DetailStatus }, historyData = hist
 }
 
 function orderCard() {
-    return cy.contains('article', `Pedido #${orderNumber}`)
+    return cy.contains('article', `#${String(orderNumber).padStart(3, '0')}`)
 }
 
 describe('Detalle e historial de órdenes', () => {
@@ -125,7 +128,7 @@ describe('Detalle e historial de órdenes', () => {
         cy.then(() => installDashboardApi(state))
         cy.visit('/dashboard/orders')
         cy.wait('@listOrders')
-        orderCard().contains('button', `Pedido #${orderNumber}`).click()
+        orderCard().contains('button', `#${String(orderNumber).padStart(3, '0')}`).click()
         cy.wait('@getOrderDetail')
 
         cy.get('[role="dialog"][aria-labelledby="order-detail-title"]')
@@ -136,15 +139,15 @@ describe('Detalle e historial de órdenes', () => {
                 cy.contains('668-321-4567').should('be.visible')
                 cy.contains('2 × Pizza familiar').should('be.visible')
                 cy.contains('$358.00').should('be.visible')
-                cy.contains('¡Lista!').should('be.visible')
+                cy.contains('Lista').should('be.visible')
                 cy.contains('Actual').should('be.visible')
                 cy.contains('Sin cebolla').should('be.visible')
 
                 cy.get('[aria-labelledby="order-history-title"]')
                     .should('contain', 'Historial de la orden')
-                    .and('contain', 'Nueva')
-                    .and('contain', 'Preparando')
-                    .and('contain', '¡Lista!')
+                    .and('contain', 'Pendiente')
+                    .and('contain', 'En preparación')
+                    .and('contain', 'Lista')
                     .and('contain', 'Orden recibida')
                     .and('contain', 'El restaurante está preparando la orden')
                     .and('contain', 'La orden está lista para entregar')
@@ -170,21 +173,19 @@ describe('Persistencia de órdenes después de refresh', () => {
         cy.visit('/dashboard/orders')
         cy.wait('@listOrders')
 
-        orderCard().contains('button', 'Empezar a preparar').click()
+        orderCard().contains('button', 'Preparar').click()
         cy.wait('@updateOrderStatus')
         cy.reload()
         cy.location('pathname').should('eq', '/dashboard/orders')
         cy.wait('@listOrders')
-        orderCard().contains('Preparando').should('be.visible')
+        orderCard().contains('En preparación').should('be.visible')
         cy.get('input[aria-label="Buscar pedidos por número, nombre o teléfono"]').should(
             'have.value',
             '',
         )
-        cy.get('select[aria-label="Filtrar pedidos por estado"]')
-            .should('have.value', '')
-            .select('PREPARING')
+        cy.contains('button', /^En preparación/).click()
         cy.wait('@filteredStatusOrders').its('request.url').should('include', 'status=PREPARING')
-        orderCard().contains('Preparando').should('be.visible')
+        orderCard().contains('En preparación').should('be.visible')
 
         cy.get('input[aria-label="Buscar pedidos por número, nombre o teléfono"]').type('Jorge')
         cy.wait('@filteredOrders').then(({ request }) => {
@@ -207,14 +208,14 @@ describe('Detalle de órdenes en móvil', () => {
             cy.wait('@listOrders')
             assertPageFitsViewport()
 
-            orderCard().contains('button', `Pedido #${orderNumber}`).click()
+            orderCard().contains('button', `#${String(orderNumber).padStart(3, '0')}`).click()
             cy.wait('@getOrderDetail')
             assertDialogFitsViewport('[role="dialog"][aria-labelledby="order-detail-title"]')
             assertTouchTargets('button[aria-label="Cerrar detalle"]')
             cy.get('[role="dialog"][aria-labelledby="order-detail-title"]')
                 .should('contain', 'Jorge Ramírez')
                 .and('contain', 'Pizza familiar')
-                .and('contain', '¡Lista!')
+                .and('contain', 'Lista')
                 .and('contain', 'Historial de la orden')
             assertPageFitsViewport()
         })

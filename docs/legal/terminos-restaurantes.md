@@ -222,6 +222,8 @@ Esto puede incluir, dependiendo de la finalidad:
 
 El restaurante no puede asumir que recibir un número telefónico mediante Pedilo constituye autorización ilimitada para utilizarlo con cualquier finalidad.
 
+Pedilo puede utilizar Sentry y PostHog para monitoreo de errores, diagnóstico, seguridad, analítica de uso y mejora de la plataforma. Estas herramientas pueden tratar información técnica y eventos relacionados con el uso de la cuenta comercial. Si Session Replay se habilita, se aplicarán las condiciones y controles indicados en el Aviso de Privacidad. El uso de estas herramientas no autoriza al restaurante a utilizar los datos de clientes para finalidades propias ni modifica sus obligaciones como responsable de tratamientos independientes.
+
 ⸻
 
 14. Marketing del restaurante

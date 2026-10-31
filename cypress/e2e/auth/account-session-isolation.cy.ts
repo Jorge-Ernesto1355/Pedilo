@@ -18,7 +18,7 @@ function register(credentials: Credentials) {
     cy.get('[data-testid="register-email"]').type(credentials.email)
     cy.get('[data-testid="register-password"]').type(credentials.password)
     cy.get('[data-testid="register-confirm-password"]').type(credentials.password)
-    cy.get('[data-testid="register-terms"]').check()
+    cy.get('[data-testid="register-legal"]').check()
     cy.get('[data-testid="register-submit"]').click()
     cy.location('pathname', { timeout: 15_000 }).should('eq', '/auth/login')
 }

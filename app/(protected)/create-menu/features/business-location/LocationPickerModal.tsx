@@ -62,6 +62,8 @@ export function LocationPickerModal({
     const initial = coordinates ?? defaultCoordinates
     const [draft, setDraft] = useState<LocationCoordinates>(initial)
     const hasTriedInitialGeocode = useRef(false)
+    const hasManuallyEditedCoordinates = useRef(false)
+    const geocodeSession = useRef(0)
     const { query, setQuery, results, isSearching, searchError, geocode } = useNominatimSearch()
     const {
         register,
@@ -76,6 +78,8 @@ export function LocationPickerModal({
     useEffect(() => {
         if (!open) {
             hasTriedInitialGeocode.current = false
+            hasManuallyEditedCoordinates.current = false
+            geocodeSession.current += 1
             return
         }
         const next = coordinates ?? defaultCoordinates
@@ -90,15 +94,21 @@ export function LocationPickerModal({
     useEffect(() => {
         if (!open || coordinates || !locationText.trim() || hasTriedInitialGeocode.current) return
         hasTriedInitialGeocode.current = true
+        const session = ++geocodeSession.current
         void geocode(locationText).then((result) => {
             const next = result ? parseResultCoordinates(result) : null
-            if (next) updateDraft(next, setDraft, setValue)
+            if (next && session === geocodeSession.current && !hasManuallyEditedCoordinates.current)
+                updateDraft(next, setDraft, setValue)
         })
     }, [coordinates, geocode, locationText, open, setValue])
 
     function updateLocation(next: LocationCoordinates) {
+        hasManuallyEditedCoordinates.current = true
         updateDraft(next, setDraft, setValue)
     }
+
+    const latitudeRegistration = register('latitude')
+    const longitudeRegistration = register('longitude')
 
     function handleSearchResult(result: NominatimResult) {
         const next = parseResultCoordinates(result)
@@ -125,8 +135,30 @@ export function LocationPickerModal({
             title="Ubicación exacta"
             description="Busca tu dirección y ajusta el pin para marcar el punto preciso de tu negocio."
             size="lg"
+            footer={
+                <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
+                    <p className="mr-auto flex items-center gap-1.5 text-xs text-[#8996A9]">
+                        <LocateFixed className="size-3.5" />
+                        El pin final se guardará con este perfil.
+                    </p>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="rounded-xl px-4 py-2.5 text-sm font-semibold text-[#65738A] transition hover:bg-[#F2F5FA]"
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        type="submit"
+                        form="location-picker-form"
+                        className="rounded-xl bg-[#1E40AF] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#183991]"
+                    >
+                        Guardar ubicación
+                    </button>
+                </div>
+            }
         >
-            <form onSubmit={handleSubmit(submit)} className="space-y-5">
+            <form id="location-picker-form" onSubmit={handleSubmit(submit)} className="space-y-5">
                 <div className="overflow-hidden rounded-2xl border border-[#CBD8EA]">
                     <div className="relative border-b border-[#E4EBF4] bg-white p-3">
                         <Search
@@ -187,7 +219,11 @@ export function LocationPickerModal({
                             inputMode="decimal"
                             aria-invalid={Boolean(errors.latitude)}
                             className="w-full rounded-xl border border-[#D7E1EF] px-3 py-2.5 text-sm outline-none transition focus:border-[#2451C5] focus:ring-4 focus:ring-[#2451C5]/10"
-                            {...register('latitude')}
+                            {...latitudeRegistration}
+                            onChange={(event) => {
+                                hasManuallyEditedCoordinates.current = true
+                                void latitudeRegistration.onChange(event)
+                            }}
                         />
                         {errors.latitude && (
                             <p role="alert" className="mt-1 text-xs text-[#B42318]">
@@ -208,34 +244,17 @@ export function LocationPickerModal({
                             inputMode="decimal"
                             aria-invalid={Boolean(errors.longitude)}
                             className="w-full rounded-xl border border-[#D7E1EF] px-3 py-2.5 text-sm outline-none transition focus:border-[#2451C5] focus:ring-4 focus:ring-[#2451C5]/10"
-                            {...register('longitude')}
+                            {...longitudeRegistration}
+                            onChange={(event) => {
+                                hasManuallyEditedCoordinates.current = true
+                                void longitudeRegistration.onChange(event)
+                            }}
                         />
                         {errors.longitude && (
                             <p role="alert" className="mt-1 text-xs text-[#B42318]">
                                 {errors.longitude.message}
                             </p>
                         )}
-                    </div>
-                </div>
-                <div className="flex flex-col-reverse gap-2 border-t border-[#E8EEF6] pt-5 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="flex items-center gap-1.5 text-xs text-[#8996A9]">
-                        <LocateFixed className="size-3.5" />
-                        El pin final se guardará con este perfil.
-                    </p>
-                    <div className="flex gap-2">
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            className="rounded-xl px-4 py-2.5 text-sm font-semibold text-[#65738A] transition hover:bg-[#F2F5FA]"
-                        >
-                            Cancelar
-                        </button>
-                        <button
-                            type="submit"
-                            className="rounded-xl bg-[#1E40AF] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#183991]"
-                        >
-                            Guardar ubicación
-                        </button>
                     </div>
                 </div>
             </form>

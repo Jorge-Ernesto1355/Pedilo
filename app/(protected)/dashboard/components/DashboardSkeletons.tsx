@@ -254,17 +254,61 @@ export function SalesSkeleton() {
 export function OrdersSkeleton() {
     return (
         <main
-            className="mx-auto max-w-[1200px] space-y-6 px-5 py-8 sm:px-8 lg:py-10"
+            className="min-h-[calc(100svh-85px)] bg-[#F3F7FB]"
             aria-busy="true"
             aria-label="Cargando pedidos"
         >
-            <PageHeaderSkeleton description />
-            <div className="flex justify-end gap-2">
-                <Block className="h-11 w-44 rounded-xl" />
-                <Block className="size-11 rounded-xl" />
+            <div className="mx-auto max-w-[1440px] space-y-7 px-5 py-8 sm:px-8 lg:px-12 lg:py-10">
+                <header className="flex flex-col gap-7 xl:flex-row xl:items-start xl:justify-between">
+                    <div className="flex gap-4">
+                        <Block className="size-14 shrink-0 rounded-2xl bg-[#D8E5FF]" />
+                        <div className="space-y-3 pt-1">
+                            <Block className="h-3 w-44" />
+                            <Block className="h-10 w-52" />
+                            <Block className="h-4 w-80 max-w-[75vw]" />
+                        </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                        {Array.from({ length: 5 }, (_, index) => (
+                            <Block key={index} className="h-10 w-24 rounded-full" />
+                        ))}
+                    </div>
+                </header>
+                <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+                    <Block className="h-11 w-full max-w-[520px] rounded-full" />
+                    <div className="flex flex-wrap gap-2">
+                        <Block className="h-11 w-48 rounded-full" />
+                        <Block className="size-11 rounded-full" />
+                        <Block className="h-11 w-36 rounded-full" />
+                    </div>
+                </div>
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                    {Array.from({ length: 6 }, (_, index) => (
+                        <section
+                            key={index}
+                            className="overflow-hidden rounded-[22px] border border-[#DCE5F3] bg-white"
+                        >
+                            <Block className="h-14 rounded-none bg-[#E4EDFF]" />
+                            <div className="space-y-4 p-4">
+                                <div className="space-y-2">
+                                    <Block className="h-4 w-40" />
+                                    <Block className="h-3 w-28" />
+                                </div>
+                                {Array.from({ length: 2 }, (_, item) => (
+                                    <div key={item} className="flex items-center gap-3">
+                                        <Block className="size-14 rounded-xl" />
+                                        <Block className="h-4 w-36" />
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="flex justify-between bg-[#EAF0F5] p-4">
+                                <Block className="h-4 w-28" />
+                                <Block className="h-9 w-24 rounded-xl" />
+                            </div>
+                        </section>
+                    ))}
+                </div>
             </div>
-            <TableSkeleton rows={6} columns={3} />
-            <PaginationSkeleton />
         </main>
     )
 }

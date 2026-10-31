@@ -10,7 +10,7 @@ function registerAndLogin(credentials: Credentials) {
     cy.get('[data-testid="register-email"]').type(credentials.email)
     cy.get('[data-testid="register-password"]').type(credentials.password)
     cy.get('[data-testid="register-confirm-password"]').type(credentials.password)
-    cy.get('[data-testid="register-terms"]').check()
+    cy.get('[data-testid="register-legal"]').check()
     cy.get('[data-testid="register-submit"]').click()
     cy.location('pathname', { timeout: 15_000 }).should('eq', '/auth/login')
 
@@ -171,30 +171,31 @@ describe('Flujo completo · usuario nuevo hasta orden lista', () => {
             cy.wait('@listOrders').its('response.statusCode').should('eq', 200)
             cy.contains('article', 'Cliente Cypress', { timeout: 15_000 }).should(
                 'contain',
-                'Nueva',
+                'Pendiente',
             )
-            cy.get('input[aria-label="Buscar pedidos por número, nombre o teléfono"]')
-                .clear()
-                .type('1')
-            cy.get('input[aria-label="Buscar pedidos por número, nombre o teléfono"]').should(
-                'have.value',
-                '1',
-            )
+            cy.then(() => {
+                cy.get('input[aria-label="Buscar pedidos por número, nombre o teléfono"]')
+                    .clear()
+                    .type('Cliente Cypress')
+                    .should('have.value', 'Cliente Cypress')
+            })
             cy.wait('@searchOrders').then(({ request, response }) => {
                 expect(response?.statusCode).to.eq(200)
-                expect(new URL(request.url).searchParams.get('search')).to.eq('1')
+                expect(new URL(request.url).searchParams.get('search')).to.eq(
+                    'Cliente Cypress',
+                )
             })
-            cy.contains('article', 'Pedido #1')
+            cy.contains('article', 'Cliente Cypress')
                 .should('have.length', 1)
                 .and('contain', 'Cliente Cypress')
 
-            // Nueva → Preparando → ¡Lista!
-            cy.get('article').contains('button', 'Empezar a preparar').click()
+            // Pendiente → En preparación → Lista
+            cy.get('article').contains('button', 'Preparar').click()
             cy.wait('@updateOrderStatus').its('response.statusCode').should('be.oneOf', [200, 204])
-            cy.get('article').contains('Preparando', { timeout: 15_000 }).should('be.visible')
-            cy.get('article').contains('button', 'Marcar como lista').click()
+            cy.get('article').contains('En preparación', { timeout: 15_000 }).should('be.visible')
+            cy.get('article').contains('button', 'Marcar listo').click()
             cy.wait('@updateOrderStatus').its('response.statusCode').should('be.oneOf', [200, 204])
-            cy.get('article').contains('¡Lista!', { timeout: 15_000 }).should('be.visible')
+            cy.get('article').contains('Lista', { timeout: 15_000 }).should('be.visible')
 
             // Abrir detalle → verificar historial y timestamps.
             cy.get('article').find('button').first().click()
@@ -203,10 +204,13 @@ describe('Flujo completo · usuario nuevo hasta orden lista', () => {
                 .within(() => {
                     cy.contains('Cliente Cypress').should('be.visible')
                     cy.contains('Hamburguesa Cypress').should('be.visible')
-                    cy.contains('¡Lista!').should('be.visible')
+                    cy.contains('1 × Hamburguesa Cypress').should('be.visible')
+                    cy.contains('$149.00').should('be.visible')
+                    cy.contains('Pedido de prueba completa').should('be.visible')
+                    cy.contains('Lista').should('be.visible')
                     cy.contains('Historial de la orden').should('be.visible')
-                    cy.contains('Nueva').should('be.visible')
-                    cy.contains('Preparando').should('be.visible')
+                    cy.contains('Pendiente').should('be.visible')
+                    cy.contains('En preparación').should('be.visible')
                     cy.get('time').should('have.length.at.least', 3)
                     cy.get('time').each(($time) => {
                         expect($time.attr('dateTime')).to.match(/^\d{4}-\d{2}-\d{2}T/)

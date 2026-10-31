@@ -87,24 +87,20 @@ async function renderSetup() {
 }
 
 describe('Business Setup product editor', () => {
-    it('keeps option and extra inputs editable while preserving their values', async () => {
+    it('keeps the product inputs editable while preserving their values', async () => {
         const user = userEvent.setup()
         await renderSetup()
 
         await user.click(screen.getByRole('button', { name: /agregar producto/i }))
         await screen.findByRole('dialog', { name: 'Agregar producto' })
 
-        await user.click(screen.getByRole('button', { name: 'Agregar opción' }))
-        const option = screen.getByRole('textbox', { name: 'Ej. Papas gajo 1' })
-        await user.type(option, 'Papas gajo')
-        expect(option).toHaveValue('Papas gajo')
+        const name = screen.getByLabelText('Nombre *')
+        await user.type(name, 'Hamburguesa')
+        expect(name).toHaveValue('Hamburguesa')
 
-        await user.click(screen.getByRole('button', { name: 'Agregar extra' }))
-        const extra = screen.getByRole('textbox', { name: 'Ej. Queso extra 1' })
-        await user.type(extra, 'Queso extra')
-        expect(extra).toHaveValue('Queso extra')
-
-        expect(screen.getByRole('textbox', { name: 'Ej. Papas gajo 1' })).toHaveValue('Papas gajo')
+        const description = screen.getByLabelText('Descripción (opcional)')
+        await user.type(description, 'Con queso')
+        expect(description).toHaveValue('Con queso')
     })
 
     it('requires a positive base price before saving a product', async () => {
@@ -113,8 +109,8 @@ describe('Business Setup product editor', () => {
 
         await user.click(screen.getByRole('button', { name: /agregar producto/i }))
         await screen.findByRole('dialog', { name: 'Agregar producto' })
-        await user.type(screen.getByLabelText('Nombre del plato'), 'Clásica')
-        await user.click(screen.getByRole('button', { name: 'Guardar producto' }))
+        await user.type(screen.getByLabelText('Nombre *'), 'Clásica')
+        await user.click(screen.getByRole('button', { name: 'Crear producto' }))
 
         expect(screen.getByRole('alert')).toHaveTextContent('Escribe el precio base.')
     })

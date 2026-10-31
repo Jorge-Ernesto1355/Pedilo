@@ -82,6 +82,28 @@ export function QrCodeButton({ shareUrl, className = '' }: QrCodeButtonProps) {
                 title="Tu código QR"
                 description="Escanea o descarga el código para compartir tu menú."
                 size="sm"
+                footer={
+                    <div className="flex w-full gap-2">
+                        <button
+                            type="button"
+                            disabled={!pngDataUrl}
+                            onClick={downloadPng}
+                            className="inline-flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#1E40AF] px-2 py-2.5 text-xs font-bold text-white transition hover:bg-[#183991] disabled:opacity-50 sm:gap-2 sm:px-3 sm:text-sm"
+                        >
+                            <Download className="size-4 shrink-0" />
+                            Descargar PNG
+                        </button>
+                        <button
+                            type="button"
+                            disabled={!svgMarkup}
+                            onClick={downloadSvg}
+                            className="inline-flex min-w-0 items-center justify-center gap-1.5 rounded-xl border border-[#C9D7EA] px-2 py-2.5 text-xs font-bold text-[#243556] transition hover:bg-[#F3F6FB] disabled:opacity-50 sm:gap-2 sm:px-3 sm:text-sm"
+                        >
+                            <FileCode className="size-4" />
+                            SVG
+                        </button>
+                    </div>
+                }
             >
                 <div className="flex flex-col items-center text-center">
                     {error ? (
@@ -104,26 +126,6 @@ export function QrCodeButton({ shareUrl, className = '' }: QrCodeButtonProps) {
                     <p className="mt-2 line-clamp-2 max-w-xs break-all text-[11px] leading-4 text-[#8996A9]">
                         {shareUrl}
                     </p>
-                    <div className="sticky bottom-0 mt-3 flex w-full gap-2 bg-white pb-1 pt-1">
-                        <button
-                            type="button"
-                            disabled={!pngDataUrl}
-                            onClick={downloadPng}
-                            className="inline-flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#1E40AF] px-2 py-2.5 text-xs font-bold text-white transition hover:bg-[#183991] disabled:opacity-50 sm:gap-2 sm:px-3 sm:text-sm"
-                        >
-                            <Download className="size-4 shrink-0" />
-                            Descargar PNG
-                        </button>
-                        <button
-                            type="button"
-                            disabled={!svgMarkup}
-                            onClick={downloadSvg}
-                            className="inline-flex min-w-0 items-center justify-center gap-1.5 rounded-xl border border-[#C9D7EA] px-2 py-2.5 text-xs font-bold text-[#243556] transition hover:bg-[#F3F6FB] disabled:opacity-50 sm:gap-2 sm:px-3 sm:text-sm"
-                        >
-                            <FileCode className="size-4" />
-                            SVG
-                        </button>
-                    </div>
                 </div>
             </Modal>
         </>

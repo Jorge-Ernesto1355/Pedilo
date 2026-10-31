@@ -876,6 +876,25 @@ export function MenuManagementPanel({ management }: { management: MenuManagement
                 onClose={() => setEditingMenu(false)}
                 title="Editar menú"
                 description="Actualiza la información del menú."
+                footer={
+                    <div className="flex justify-end gap-2">
+                        <button
+                            type="button"
+                            onClick={() => setEditingMenu(false)}
+                            className="rounded-xl px-4 py-2.5 text-sm font-semibold text-[#65738A]"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            type="button"
+                            onClick={saveMenu}
+                            disabled={management.updateMenu.isPending}
+                            className="rounded-xl bg-[#1E40AF] px-4 py-2.5 text-sm font-bold text-white"
+                        >
+                            {management.updateMenu.isPending ? 'Guardando…' : 'Guardar'}
+                        </button>
+                    </div>
+                }
             >
                 <div className="space-y-4">
                     <input
@@ -892,24 +911,6 @@ export function MenuManagementPanel({ management }: { management: MenuManagement
                         maxLength={MENU_DESCRIPTION_MAX_LENGTH}
                         className="w-full resize-none rounded-xl border border-[#D7E1EF] px-3.5 py-3 text-sm"
                     />
-                    <div className="flex justify-end gap-2">
-                        <button
-                            type="button"
-                            onClick={() => setEditingMenu(false)}
-                            disabled={management.updateMenu.isPending}
-                            className="rounded-xl px-4 py-2.5 text-sm font-semibold text-[#65738A]"
-                        >
-                            Cancelar
-                        </button>
-                        <button
-                            type="button"
-                            onClick={saveMenu}
-                            disabled={management.updateMenu.isPending}
-                            className="rounded-xl bg-[#1E40AF] px-4 py-2.5 text-sm font-bold text-white"
-                        >
-                            {management.updateMenu.isPending ? 'Guardando…' : 'Guardar'}
-                        </button>
-                    </div>
                 </div>
             </Modal>
             <Modal
@@ -917,6 +918,27 @@ export function MenuManagementPanel({ management }: { management: MenuManagement
                 onClose={() => setEditingCategory(null)}
                 title="Editar categoría"
                 description="Actualiza el nombre o la descripción sin modificar sus productos."
+                footer={
+                    editingCategory ? (
+                        <div className="flex justify-end gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setEditingCategory(null)}
+                                className="rounded-xl px-4 py-2.5 text-sm font-semibold text-[#65738A]"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                type="button"
+                                onClick={saveEditedCategory}
+                                disabled={management.updateCategory.isPending}
+                                className="rounded-xl bg-[#1E40AF] px-4 py-2.5 text-sm font-bold text-white"
+                            >
+                                {management.updateCategory.isPending ? 'Guardando…' : 'Guardar'}
+                            </button>
+                        </div>
+                    ) : undefined
+                }
             >
                 <div className="space-y-4">
                     {editingCategory && (
@@ -945,24 +967,6 @@ export function MenuManagementPanel({ management }: { management: MenuManagement
                                 maxLength={CATEGORY_DESCRIPTION_MAX_LENGTH}
                                 className="w-full resize-none rounded-xl border border-[#D7E1EF] px-3.5 py-3 text-sm"
                             />
-                            <div className="flex justify-end gap-2">
-                                <button
-                                    type="button"
-                                    onClick={() => setEditingCategory(null)}
-                                    disabled={management.updateCategory.isPending}
-                                    className="rounded-xl px-4 py-2.5 text-sm font-semibold text-[#65738A]"
-                                >
-                                    Cancelar
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={saveEditedCategory}
-                                    disabled={management.updateCategory.isPending}
-                                    className="rounded-xl bg-[#1E40AF] px-4 py-2.5 text-sm font-bold text-white"
-                                >
-                                    {management.updateCategory.isPending ? 'Guardando…' : 'Guardar'}
-                                </button>
-                            </div>
                         </>
                     )}
                 </div>
@@ -972,22 +976,7 @@ export function MenuManagementPanel({ management }: { management: MenuManagement
                 onClose={() => setMovingCategory(null)}
                 title="Mover productos"
                 description="Esta categoría contiene productos. Elige otra categoría para moverlos antes de eliminarla."
-            >
-                <div className="space-y-4">
-                    <select
-                        value={targetCategoryId}
-                        onChange={(event) => setTargetCategoryId(event.target.value)}
-                        className="w-full rounded-xl border border-[#D7E1EF] bg-white px-3.5 py-3 text-sm"
-                    >
-                        <option value="">Selecciona una categoría</option>
-                        {selectedMenu?.categories
-                            .filter((category) => category.id !== movingCategory?.id)
-                            .map((category) => (
-                                <option key={category.id} value={category.id}>
-                                    {category.name}
-                                </option>
-                            ))}
-                    </select>
+                footer={
                     <div className="flex justify-end gap-2">
                         <button
                             type="button"
@@ -1008,6 +997,23 @@ export function MenuManagementPanel({ management }: { management: MenuManagement
                             Mover y eliminar
                         </button>
                     </div>
+                }
+            >
+                <div className="space-y-4">
+                    <select
+                        value={targetCategoryId}
+                        onChange={(event) => setTargetCategoryId(event.target.value)}
+                        className="w-full rounded-xl border border-[#D7E1EF] bg-white px-3.5 py-3 text-sm"
+                    >
+                        <option value="">Selecciona una categoría</option>
+                        {selectedMenu?.categories
+                            .filter((category) => category.id !== movingCategory?.id)
+                            .map((category) => (
+                                <option key={category.id} value={category.id}>
+                                    {category.name}
+                                </option>
+                            ))}
+                    </select>
                 </div>
             </Modal>
         </section>

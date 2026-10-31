@@ -100,6 +100,10 @@ Si en el futuro se incorporan servicios publicitarios, Pedilo actualizará sus p
 
 Si Pedilo incorpora nuevas tecnologías de seguimiento, publicidad personalizada, cookies no esenciales, píxeles u otras herramientas de marketing que requieran información adicional o consentimiento, Pedilo actualizará sus políticas y mecanismos antes de utilizarlas de una manera que requiera autorización adicional.
 
+El uso de Sentry para monitoreo de errores y de PostHog para diagnóstico y analítica de producto no constituye por sí mismo una comunicación comercial. Estas herramientas pueden tratar información técnica, eventos de uso y datos de cuenta para las finalidades descritas en el Aviso de Privacidad.
+
+La eventual activación de PostHog Session Replay requiere confirmar previamente su configuración de grabación, enmascaramiento, conservación y los mecanismos de información, consentimiento u oposición que resulten aplicables. No deberá utilizarse para enviar publicidad ni para crear campañas comerciales dirigidas a clientes finales.
+
 ⸻
 
 11. Proveedores de correo

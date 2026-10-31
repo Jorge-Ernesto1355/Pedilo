@@ -8,7 +8,7 @@ import { z } from 'zod'
 import { Modal } from '@/app/components/ui/Modal'
 import { friendlyNotificationError, notify } from '@/src/lib/notifications/notify'
 import { useOptionGroups, useOptionManagement, useOptions } from './useOptionManagement'
-import type { OptionGroup, ProductOption } from './option.types'
+import { normalizeProductOption, type OptionGroup, type ProductOption } from './option.types'
 
 const inputClass =
     'w-full rounded-xl border border-[#D7E1EF] bg-white px-3.5 py-2.5 text-sm text-[#12234A] outline-none focus:border-[#2451C5] focus:ring-4 focus:ring-[#2451C5]/10'
@@ -38,35 +38,32 @@ function sanitizeNumericInput(event: React.FormEvent<HTMLElement>) {
             .replace(/(\..*)\./g, '$1')
             .replace(/(\.\d{2}).*/g, '$1')
 }
-const groupSchema = z
+const groupSchema = z.object({
+    name: z.string().trim().min(1, 'Escribe el nombre del grupo.'),
+    isRequired: z.boolean(),
+    optionName: z.string().trim(),
+    optionPrice: z
+        .string()
+        .regex(/^\d+(\.\d{1,2})?$/, 'Usa un precio válido.')
+        .or(z.literal('')),
+    optionMinSelections: z.string().regex(/^\d+$/, 'Usa un número entero.').or(z.literal('')),
+    optionMaxSelections: z.string().regex(/^\d+$/, 'Usa un número entero.').or(z.literal('')),
+})
+const optionSchema = z
     .object({
-        name: z.string().trim().min(1, 'Escribe el nombre del grupo.'),
-        isRequired: z.boolean(),
+        name: z.string().trim().min(1, 'Escribe el nombre de la opción.'),
+        price: z.string().regex(/^\d+(\.\d{1,2})?$/, 'Usa un precio válido.'),
         minSelections: z.string().regex(/^\d+$/, 'Usa un número entero.'),
         maxSelections: z.string().regex(/^\d+$/, 'Usa un número entero.'),
-        optionName: z.string().trim(),
-        optionPrice: z.string().regex(/^\d+(\.\d{1,2})?$/, 'Usa un precio válido.'),
     })
-    .superRefine((value, ctx) => {
-        const min = Number(value.minSelections)
-        const max = Number(value.maxSelections)
-        if (max < min)
-            ctx.addIssue({
+    .superRefine((value, context) => {
+        if (Number(value.maxSelections) < Number(value.minSelections))
+            context.addIssue({
                 code: 'custom',
                 path: ['maxSelections'],
                 message: 'No puede ser menor que el mínimo.',
             })
-        if (value.isRequired && min < 1)
-            ctx.addIssue({
-                code: 'custom',
-                path: ['minSelections'],
-                message: 'Un grupo obligatorio necesita al menos una selección.',
-            })
     })
-const optionSchema = z.object({
-    name: z.string().trim().min(1, 'Escribe el nombre de la opción.'),
-    price: z.string().regex(/^\d+(\.\d{1,2})?$/, 'Usa un precio válido.'),
-})
 type GroupValues = z.infer<typeof groupSchema>
 type OptionValues = z.infer<typeof optionSchema>
 
@@ -97,10 +94,16 @@ export function OptionModal({
         formState: { errors },
     } = useForm<OptionValues>({
         resolver: zodResolver(optionSchema),
-        defaultValues: { name: '', price: '0' },
+        defaultValues: { name: '', price: '', minSelections: '', maxSelections: '' },
     })
     useEffect(() => {
-        if (open) reset({ name: option?.name ?? '', price: option ? String(option.price) : '0' })
+        if (open)
+            reset({
+                name: option?.name ?? '',
+                price: option ? String(option.price) : '',
+                minSelections: option ? String(option.minSelections ?? 0) : '',
+                maxSelections: option ? String(option.maxSelections ?? 1) : '',
+            })
     }, [open, option, reset])
     return (
         <Modal
@@ -108,9 +111,31 @@ export function OptionModal({
             onClose={isSaving ? () => undefined : onClose}
             title={option ? 'Editar opción' : 'Agregar opción'}
             description="El precio se suma al precio base del producto."
+            footer={
+                <div className="flex justify-end gap-2">
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        disabled={isSaving}
+                        className="rounded-xl border border-[#D7E1EF] px-4 py-2 text-sm font-semibold text-[#65738A]"
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        type="submit"
+                        form="option-form"
+                        disabled={isSaving}
+                        aria-busy={isSaving}
+                        className="inline-flex items-center gap-2 rounded-xl bg-[#1E40AF] px-4 py-2 text-sm font-bold text-white shadow-[0_8px_18px_-10px_rgba(30,64,175,.75)] disabled:cursor-wait disabled:opacity-60"
+                    >
+                        {isSaving && <LoaderCircle className="size-4 animate-spin" />}
+                        {isSaving ? 'Guardando…' : option ? 'Guardar opción' : 'Agregar opción'}
+                    </button>
+                </div>
+            }
         >
             <div onInputCapture={sanitizeNumericInput}>
-                <form onSubmit={handleSubmit(onDone)} className="space-y-4">
+                <form id="option-form" onSubmit={handleSubmit(onDone)} className="space-y-4">
                     <div>
                         <label className="mb-1.5 block text-sm font-semibold text-[#243556]">
                             Nombre <span className="text-[#B42318]">*</span>
@@ -127,6 +152,44 @@ export function OptionModal({
                             Ejemplos: “Tocino”, “Aguacate” o “Término medio”.
                         </p>
                     </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                        <div>
+                            <label className="mb-1.5 block text-sm font-semibold text-[#243556]">
+                                Mínimo de unidades
+                            </label>
+                            <input
+                                className={inputClass}
+                                inputMode="numeric"
+                                placeholder="Ej. 0"
+                                {...register('minSelections')}
+                            />
+                            {errors.minSelections && (
+                                <p className="mt-1 text-xs text-[#B42318]">
+                                    {errors.minSelections.message}
+                                </p>
+                            )}
+                        </div>
+                        <div>
+                            <label className="mb-1.5 block text-sm font-semibold text-[#243556]">
+                                Máximo de unidades
+                            </label>
+                            <input
+                                className={inputClass}
+                                inputMode="numeric"
+                                placeholder="Ej. 1"
+                                {...register('maxSelections')}
+                            />
+                            {errors.maxSelections && (
+                                <p className="mt-1 text-xs text-[#B42318]">
+                                    {errors.maxSelections.message}
+                                </p>
+                            )}
+                        </div>
+                    </div>
+                    <p className="-mt-2 text-xs text-[#8996A9]">
+                        Define cuántas unidades de esta opción puede agregar el cliente. Por
+                        ejemplo, mínimo 0 y máximo 2 permite agregar hasta dos.
+                    </p>
                     <div>
                         <label className="mb-1.5 block text-sm font-semibold text-[#243556]">
                             Precio adicional
@@ -148,27 +211,8 @@ export function OptionModal({
                             <p className="mt-1 text-xs text-[#B42318]">{errors.price.message}</p>
                         )}
                         <p className="mt-1.5 text-xs text-[#8996A9]">
-                            Es lo que se sumará al precio del producto. Usa 0 si no tiene costo.
+                            Costo adicional por cada unidad. Escribe 0 si no tiene costo.
                         </p>
-                    </div>
-                    <div className="flex justify-end gap-2 border-t border-[#E8EEF6] pt-4">
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            disabled={isSaving}
-                            className="rounded-xl border border-[#D7E1EF] px-4 py-2 text-sm font-semibold text-[#65738A]"
-                        >
-                            Cancelar
-                        </button>
-                        <button
-                            type="submit"
-                            disabled={isSaving}
-                            aria-busy={isSaving}
-                            className="inline-flex items-center gap-2 rounded-xl bg-[#1E40AF] px-4 py-2 text-sm font-bold text-white shadow-[0_8px_18px_-10px_rgba(30,64,175,.75)] disabled:cursor-wait disabled:opacity-60"
-                        >
-                            {isSaving && <LoaderCircle className="size-4 animate-spin" />}
-                            {isSaving ? 'Guardando…' : option ? 'Guardar opción' : 'Agregar opción'}
-                        </button>
                     </div>
                 </form>
             </div>
@@ -197,20 +241,28 @@ export function GroupModal({
         handleSubmit,
         reset,
         setError,
+        setValue,
+        clearErrors,
         formState: { errors },
     } = useForm<GroupValues>({
         resolver: zodResolver(groupSchema),
         defaultValues: {
             name: '',
             isRequired: false,
-            minSelections: '0',
-            maxSelections: '5',
             optionName: '',
-            optionPrice: '0',
+            optionPrice: '',
+            optionMinSelections: '',
+            optionMaxSelections: '',
         },
     })
     const [draftOptions, setDraftOptions] = useState<
-        Array<{ name: string; price: number; isAvailable: boolean }>
+        Array<{
+            name: string
+            price: number
+            minSelections: number
+            maxSelections: number
+            isAvailable: boolean
+        }>
     >([])
     // The modal is kept mounted by the shared Modal component so reset is required on each open.
     useEffect(() => {
@@ -218,19 +270,23 @@ export function GroupModal({
             reset({
                 name: group?.name ?? '',
                 isRequired: group?.isRequired ?? false,
-                minSelections: String(group?.minSelections ?? 0),
-                maxSelections: String(group?.maxSelections ?? 5),
                 optionName: '',
-                optionPrice: '0',
+                optionPrice: '',
+                optionMinSelections: '',
+                optionMaxSelections: '',
             })
             // The modal is reused for different groups and needs a clean local draft.
             // eslint-disable-next-line react-hooks/set-state-in-effect
             setDraftOptions(
-                group?.options?.map(({ name, price, isAvailable }) => ({
-                    name,
-                    price: Number(price),
-                    isAvailable,
-                })) ?? [],
+                group?.options?.map(
+                    ({ name, price, minSelections, maxSelections, isAvailable }) => ({
+                        name,
+                        price: Number(price),
+                        minSelections: minSelections ?? 0,
+                        maxSelections: maxSelections ?? 1,
+                        isAvailable,
+                    }),
+                ) ?? [],
             )
         }
     }, [open, group, reset])
@@ -239,16 +295,22 @@ export function GroupModal({
         // The group response may not include options; hydrate the editor from its options query.
         // eslint-disable-next-line react-hooks/set-state-in-effect
         setDraftOptions(
-            existingOptionsQuery.data.map(({ name, price, isAvailable }) => ({
-                name,
-                price: Number(price),
-                isAvailable,
-            })),
+            existingOptionsQuery.data.map(
+                ({ name, price, minSelections, maxSelections, isAvailable }) => ({
+                    name,
+                    price: Number(price),
+                    minSelections: minSelections ?? 0,
+                    maxSelections: maxSelections ?? 1,
+                    isAvailable,
+                }),
+            ),
         )
     }, [existingOptionsQuery.data, group, open])
     const addDraft = () => {
         const name = document.getElementById('draft-option-name') as HTMLInputElement | null
         const price = document.getElementById('draft-option-price') as HTMLInputElement | null
+        const min = document.getElementById('draft-option-min') as HTMLInputElement | null
+        const max = document.getElementById('draft-option-max') as HTMLInputElement | null
         const trimmed = name?.value.trim() ?? ''
         if (!trimmed) {
             setError('optionName', { message: 'Escribe el nombre de la opción.' })
@@ -258,15 +320,35 @@ export function GroupModal({
             setError('optionPrice', { message: 'Usa un precio válido.' })
             return
         }
+        if (!/^\d+$/.test(min?.value ?? '') || !/^\d+$/.test(max?.value ?? '')) {
+            setError('optionMaxSelections', { message: 'Usa números enteros.' })
+            return
+        }
+        if (Number(max?.value) < Number(min?.value)) {
+            setError('optionMaxSelections', { message: 'No puede ser menor que el mínimo.' })
+            return
+        }
         if (draftOptions.some((option) => option.name.toLowerCase() === trimmed.toLowerCase())) {
             setError('optionName', { message: 'Esta opción ya fue agregada.' })
             return
         }
         setDraftOptions((current) => [
             ...current,
-            { name: trimmed, price: Number(price?.value), isAvailable: true },
+            {
+                name: trimmed,
+                price: Number(price?.value),
+                minSelections: Number(min?.value),
+                maxSelections: Number(max?.value),
+                isAvailable: true,
+            },
         ])
         if (name) name.value = ''
+        if (price) price.value = ''
+        setValue('optionName', '')
+        setValue('optionPrice', '')
+        setValue('optionMinSelections', '')
+        setValue('optionMaxSelections', '')
+        clearErrors(['optionName', 'optionPrice', 'optionMinSelections', 'optionMaxSelections'])
     }
     const submit = (values: GroupValues) =>
         onDone(
@@ -275,8 +357,8 @@ export function GroupModal({
                 productId,
                 name: values.name.trim(),
                 isRequired: values.isRequired,
-                minSelections: Number(values.minSelections),
-                maxSelections: Number(values.maxSelections),
+                minSelections: group?.minSelections ?? 0,
+                maxSelections: group?.maxSelections ?? 1,
                 isActive: group?.isActive ?? true,
                 sortOrder: group?.sortOrder ?? 0,
                 options: draftOptions.map((option, index) => ({
@@ -296,12 +378,34 @@ export function GroupModal({
             title={group ? 'Editar grupo de opciones' : 'Crear grupo de opciones'}
             description="Define los extras o variantes que puede elegir el cliente."
             size="lg"
+            footer={
+                <div className="flex justify-end gap-2">
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        disabled={isSaving}
+                        className="rounded-xl px-4 py-2 text-sm font-semibold text-[#65738A]"
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        type="submit"
+                        form="group-form"
+                        disabled={isSaving}
+                        aria-busy={isSaving}
+                        className="inline-flex items-center gap-2 rounded-xl bg-[#1E40AF] px-4 py-2 text-sm font-bold text-white disabled:cursor-wait disabled:opacity-60"
+                    >
+                        {isSaving && <LoaderCircle className="size-4 animate-spin" />}
+                        {isSaving ? 'Guardando…' : group ? 'Guardar cambios' : 'Crear grupo'}
+                    </button>
+                </div>
+            }
         >
             <div onInputCapture={sanitizeNumericInput}>
-                <form onSubmit={handleSubmit(submit)} className="space-y-4">
+                <form id="group-form" onSubmit={handleSubmit(submit)} className="space-y-4">
                     <div>
                         <label className="mb-1.5 block text-sm font-semibold text-[#243556]">
-                            Nombre
+                            Nombre del grupo
                         </label>
                         <input
                             className={inputClass}
@@ -311,42 +415,14 @@ export function GroupModal({
                         {errors.name && (
                             <p className="mt-1 text-xs text-[#B42318]">{errors.name.message}</p>
                         )}
+                        <p className="mt-1.5 text-xs text-[#8996A9]">
+                            Ej. “Extras”, “Tamaños” o “Salsas”.
+                        </p>
                     </div>
                     <label className="flex items-center gap-2 text-sm text-[#243556]">
-                        <input type="checkbox" {...register('isRequired')} /> Selección obligatoria
+                        <input type="checkbox" {...register('isRequired')} /> El cliente debe elegir
+                        al menos una opción
                     </label>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                        <div>
-                            <label className="mb-1.5 block text-sm font-semibold text-[#243556]">
-                                Mínimo
-                            </label>
-                            <input
-                                className={inputClass}
-                                inputMode="numeric"
-                                {...register('minSelections')}
-                            />
-                            {errors.minSelections && (
-                                <p className="mt-1 text-xs text-[#B42318]">
-                                    {errors.minSelections.message}
-                                </p>
-                            )}
-                        </div>
-                        <div>
-                            <label className="mb-1.5 block text-sm font-semibold text-[#243556]">
-                                Máximo
-                            </label>
-                            <input
-                                className={inputClass}
-                                inputMode="numeric"
-                                {...register('maxSelections')}
-                            />
-                            {errors.maxSelections && (
-                                <p className="mt-1 text-xs text-[#B42318]">
-                                    {errors.maxSelections.message}
-                                </p>
-                            )}
-                        </div>
-                    </div>
                     {group && (
                         <div className="rounded-xl border border-[#E8EEF6] bg-[#F8FAFE] p-3">
                             <p className="mb-2 text-sm font-semibold text-[#243556]">
@@ -386,7 +462,11 @@ export function GroupModal({
                             <p className="mb-3 text-sm font-semibold text-[#243556]">
                                 Opciones (opcional)
                             </p>
-                            <div className="grid gap-2 sm:grid-cols-[1fr_120px_auto]">
+                            <p className="mb-3 text-xs text-[#8996A9]">
+                                Cada opción tiene sus propios límites. El mínimo indica cuántas debe
+                                elegir el cliente y el máximo cuántas puede agregar.
+                            </p>
+                            <div className="grid gap-2 sm:grid-cols-[1fr_100px_90px_90px_auto]">
                                 <input
                                     id="draft-option-name"
                                     className={inputClass}
@@ -397,9 +477,25 @@ export function GroupModal({
                                     id="draft-option-price"
                                     className={inputClass}
                                     inputMode="decimal"
-                                    placeholder="Precio"
-                                    defaultValue="0"
+                                    placeholder="Costo extra (ej. 10.00)"
+                                    aria-label="Costo extra de la opción"
                                     {...register('optionPrice')}
+                                />
+                                <input
+                                    id="draft-option-min"
+                                    className={inputClass}
+                                    inputMode="numeric"
+                                    placeholder="Mínimo (ej. 0)"
+                                    aria-label="Mínimo de unidades de la opción"
+                                    {...register('optionMinSelections')}
+                                />
+                                <input
+                                    id="draft-option-max"
+                                    className={inputClass}
+                                    inputMode="numeric"
+                                    placeholder="Máximo (ej. 1)"
+                                    aria-label="Máximo de unidades de la opción"
+                                    {...register('optionMaxSelections')}
                                 />
                                 <button
                                     type="button"
@@ -421,6 +517,11 @@ export function GroupModal({
                                     {errors.optionPrice.message}
                                 </p>
                             )}
+                            <p className="mt-2 text-xs text-[#8996A9]">
+                                El mínimo y máximo indican cuántas unidades puede elegir el cliente
+                                de esta opción. Ejemplo: mínimo 0 y máximo 2 permite elegir hasta
+                                dos unidades.
+                            </p>
                             <div className="mt-3 space-y-2">
                                 {draftOptions.map((option) => (
                                     <div
@@ -430,7 +531,8 @@ export function GroupModal({
                                         <span>
                                             {option.name}{' '}
                                             <span className="text-[#65738A]">
-                                                +${option.price.toFixed(2)}
+                                                +${option.price.toFixed(2)} · {option.minSelections}
+                                                –{option.maxSelections}
                                             </span>
                                         </span>
                                         <button
@@ -451,25 +553,6 @@ export function GroupModal({
                             </div>
                         </div>
                     )}
-                    <div className="flex justify-end gap-2 border-t border-[#E8EEF6] pt-4">
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            disabled={isSaving}
-                            className="rounded-xl px-4 py-2 text-sm font-semibold text-[#65738A]"
-                        >
-                            Cancelar
-                        </button>
-                        <button
-                            type="submit"
-                            disabled={isSaving}
-                            aria-busy={isSaving}
-                            className="inline-flex items-center gap-2 rounded-xl bg-[#1E40AF] px-4 py-2 text-sm font-bold text-white disabled:cursor-wait disabled:opacity-60"
-                        >
-                            {isSaving && <LoaderCircle className="size-4 animate-spin" />}
-                            {isSaving ? 'Guardando…' : group ? 'Guardar cambios' : 'Crear grupo'}
-                        </button>
-                    </div>
                 </form>
             </div>
         </Modal>
@@ -495,7 +578,9 @@ export function OptionGroupCard({
         mutations.removeOpt.isPending ||
         mutations.statusOpt.isPending ||
         mutations.reorderOpts.isPending
-    const options = optionsQuery.data?.length ? optionsQuery.data : (group.options ?? [])
+    const options = (optionsQuery.data?.length ? optionsQuery.data : (group.options ?? [])).map(
+        normalizeProductOption,
+    )
     const reorderOption = (targetId: string) => {
         if (!draggedOptionId || draggedOptionId === targetId || mutations.reorderOpts.isPending)
             return
@@ -513,7 +598,12 @@ export function OptionGroupCard({
     }
     const saveOption = (values: OptionValues) => {
         if (mutations.createOpt.isPending || mutations.updateOpt.isPending) return
-        const input = { name: values.name.trim(), price: Number(values.price) }
+        const input = {
+            name: values.name.trim(),
+            price: Number(values.price),
+            minSelections: Number(values.minSelections),
+            maxSelections: Number(values.maxSelections),
+        }
         if (option)
             mutations.updateOpt.mutate(
                 { optionId: option.id, optionGroupId: group.id, productId, input },
@@ -540,7 +630,7 @@ export function OptionGroupCard({
                         )}
                     </div>
                     <p className="mt-1 text-xs text-[#65738A]">
-                        Selecciona {group.minSelections}–{group.maxSelections}
+                        Límites configurados individualmente por opción
                     </p>
                 </div>
                 <button
@@ -705,8 +795,6 @@ export function OptionGroupsEditor({
                     input: {
                         name: group.name,
                         isRequired: group.isRequired,
-                        minSelections: group.minSelections,
-                        maxSelections: group.maxSelections,
                     },
                 },
                 { onSuccess: () => setGroupModal(undefined), onError: mutationError },
@@ -718,15 +806,17 @@ export function OptionGroupsEditor({
                     input: {
                         name: group.name,
                         isRequired: group.isRequired,
-                        minSelections: group.minSelections,
-                        maxSelections: group.maxSelections,
                         isActive: true,
                         options:
-                            group.options?.map(({ name, price, isAvailable }) => ({
-                                name,
-                                price: Number(price),
-                                isAvailable,
-                            })) ?? [],
+                            group.options?.map(
+                                ({ name, price, minSelections, maxSelections, isAvailable }) => ({
+                                    name,
+                                    price: Number(price),
+                                    minSelections,
+                                    maxSelections,
+                                    isAvailable,
+                                }),
+                            ) ?? [],
                     },
                 },
                 { onSuccess: () => setGroupModal(undefined), onError: mutationError },
@@ -743,7 +833,10 @@ export function OptionGroupsEditor({
         setDraggedId(null)
     }
     return (
-        <section className="mt-5 rounded-xl border border-[#DCE5F3] bg-[#F8FAFE] p-4">
+        <section
+            id={`product-options-${productId}`}
+            className="mt-5 scroll-mt-4 rounded-xl border border-[#DCE5F3] bg-[#F8FAFE] p-4"
+        >
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <div className="flex items-center gap-2">

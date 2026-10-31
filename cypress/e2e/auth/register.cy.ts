@@ -6,7 +6,7 @@ describe('Auth · Register', () => {
         cy.get('[data-testid="register-email"]').type(email)
         cy.get('[data-testid="register-password"]').type('Strong-pass-123')
         cy.get('[data-testid="register-confirm-password"]').type('Strong-pass-123')
-        cy.get('[data-testid="register-terms"]').check()
+        cy.get('[data-testid="register-legal"]').check()
     }
 
     it('renderiza nombre, email, passwords y términos', () => {
@@ -38,49 +38,37 @@ describe('Auth · Register', () => {
         cy.get('[data-testid="register-email"]').type('valid@example.test')
         cy.get('[data-testid="register-password"]').type('short')
         cy.get('[data-testid="register-confirm-password"]').type('different')
-        cy.get('[data-testid="register-terms"]').check()
+        cy.get('[data-testid="register-legal"]').check()
         cy.get('[data-testid="register-submit"]').click()
         cy.get('p').filter(':visible').should('have.length.at.least', 1)
     })
 
     it('verifica payload y manejo de email duplicado con intercept', () => {
-        cy.env(['backendUrl']).then(({ backendUrl }) => {
-            const localBackendHost = new URL(backendUrl).hostname
-            const registrationPayload = ['localhost', '127.0.0.1', '::1'].includes(localBackendHost)
-                ? {
-                      name: 'Cypress Test User',
-                      email: 'registered@example.test',
-                      password: 'Strong-pass-123',
-                      acceptLegalDocuments: true,
-                      ageDeclaration: true,
-                  }
-                : {
-                      name: 'Cypress Test User',
-                      email: 'registered@example.test',
-                      password: 'Strong-pass-123',
-                      terms: true,
-                  }
-            cy.intercept('POST', '**/api/v1/auth/register', (request) => {
-                expect(request.body).to.deep.equal(registrationPayload)
-                request.reply({
-                    statusCode: 409,
-                    body: {
-                        error: {
-                            code: 'EMAIL_ALREADY_IN_USE',
-                            message:
-                                'Este correo ya tiene una cuenta. inicia sesión para continuar',
-                        },
+        cy.intercept('POST', '**/api/v1/auth/register', (request) => {
+            expect(request.body).to.deep.equal({
+                name: 'Cypress Test User',
+                email: 'registered@example.test',
+                password: 'Strong-pass-123',
+                acceptLegalDocuments: true,
+                ageDeclaration: true,
+            })
+            request.reply({
+                statusCode: 409,
+                body: {
+                    error: {
+                        code: 'EMAIL_ALREADY_IN_USE',
+                        message: 'Este correo ya tiene una cuenta. inicia sesión para continuar',
                     },
-                })
-            }).as('register')
-            fillRegistration('registered@example.test')
-            cy.get('[data-testid="register-submit"]').click()
-            cy.wait('@register').its('request.method').should('eq', 'POST')
-            cy.get('[role="alert"]').should(
-                'contain',
-                'Este correo ya tiene una cuenta. Inicia sesión para continuar.',
-            )
-        })
+                },
+            })
+        }).as('register')
+        fillRegistration('registered@example.test')
+        cy.get('[data-testid="register-submit"]').click()
+        cy.wait('@register').its('request.method').should('eq', 'POST')
+        cy.get('[role="alert"]').should(
+            'contain',
+            'Este correo ya tiene una cuenta. Inicia sesión para continuar.',
+        )
     })
 
     it('después de registrarse solo navega al login y no consulta datos privados', () => {

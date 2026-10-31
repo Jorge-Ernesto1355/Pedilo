@@ -193,11 +193,11 @@ describe('Pedido público visible en el dashboard', () => {
 
         cy.get('article')
             .should('be.visible')
-            .and('contain', `Pedido #${orderNumber}`)
+            .and('contain', `#${String(orderNumber).padStart(3, '0')}`)
             .and('contain', 'María López')
             .and('contain', '$149.00')
-            .and('contain', 'Nueva')
-        cy.get('article').contains('button', `Pedido #${orderNumber}`).click()
+            .and('contain', 'Pendiente')
+        cy.get('article').contains('button', `#${String(orderNumber).padStart(3, '0')}`).click()
         cy.wait('@getDashboardOrder')
 
         cy.get('[role="dialog"][aria-labelledby="order-detail-title"]')
@@ -210,7 +210,7 @@ describe('Pedido público visible en el dashboard', () => {
                 cy.contains('Hamburguesa de la casa').should('be.visible')
                 cy.contains('1 × Hamburguesa de la casa').should('be.visible')
                 cy.contains('$149.00').should('be.visible')
-                cy.contains('Nueva').should('be.visible')
+                cy.contains('Pendiente').should('be.visible')
                 cy.contains('Orden recibida').should('be.visible')
                 cy.contains('Entregar en recepción').should('be.visible')
             })

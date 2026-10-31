@@ -47,11 +47,13 @@ describe('Register frontend', () => {
         const user = userEvent.setup()
         renderRegisterPage()
 
+        await user.click(screen.getByRole('checkbox'))
+
         await user.click(screen.getByRole('button', { name: /continuar con google/i }))
 
         expect(socialSignInMock).toHaveBeenCalledWith({
             provider: 'google',
-            callbackURL: `${window.location.origin}/auth/login`,
+            callbackURL: `${window.location.origin}/auth/login?newAccount=1`,
         })
     })
 
@@ -63,14 +65,15 @@ describe('Register frontend', () => {
         await user.click(screen.getByRole('button', { name: /crear cuenta/i }))
 
         await waitFor(() => expect(screen.getByText(/cuenta creada/i)).toBeInTheDocument())
-        expect(routerPushMock).toHaveBeenCalledWith('/auth/login')
+        expect(routerPushMock).toHaveBeenCalledWith('/auth/login?newAccount=1')
         expect(routerPushMock).not.toHaveBeenCalledWith(expect.stringContaining('dashboard'))
         const request = registerUserMock.mock.calls[0][0]
         expect(request).toEqual({
             name: 'Ana López',
             email: 'owner@example.com',
             password: 'correct-horse-7',
-            terms: true,
+            acceptLegalDocuments: true,
+            ageDeclaration: true,
         })
         expect(request.confirm).toBeUndefined()
     })
@@ -85,7 +88,9 @@ describe('Register frontend', () => {
         expect(await screen.findByText(/correo válido/i)).toBeInTheDocument()
         expect(await screen.findByText(/al menos 8 caracteres/i)).toBeInTheDocument()
         expect(await screen.findByText(/contraseñas no coinciden/i)).toBeInTheDocument()
-        expect(await screen.findByText(/debes aceptar los términos/i)).toBeInTheDocument()
+        expect(
+            await screen.findByText(/debes declarar que tienes al menos 18 años/i),
+        ).toBeInTheDocument()
         expect(registerUserMock).not.toHaveBeenCalled()
     })
 
@@ -99,7 +104,9 @@ describe('Register frontend', () => {
         await user.click(screen.getByRole('button', { name: /crear cuenta/i }))
 
         expect(await screen.findByText(/contraseñas no coinciden/i)).toBeInTheDocument()
-        expect(await screen.findByText(/debes aceptar los términos/i)).toBeInTheDocument()
+        expect(
+            await screen.findByText(/debes declarar que tienes al menos 18 años/i),
+        ).toBeInTheDocument()
         expect(registerUserMock).not.toHaveBeenCalled()
     })
 

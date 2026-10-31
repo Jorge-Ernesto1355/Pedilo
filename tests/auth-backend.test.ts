@@ -210,28 +210,10 @@ describe('register transport', () => {
                 name: 'Ana López',
                 email: 'owner@example.com',
                 password: 'correct-horse-7',
-                terms: true,
+                acceptLegalDocuments: true,
+                ageDeclaration: true,
             }),
         ).resolves.toEqual({ success: true })
-        expect(apiPost).toHaveBeenCalledWith('/auth/register', {
-            name: 'Ana López',
-            email: 'owner@example.com',
-            password: 'correct-horse-7',
-            terms: true,
-        })
-    })
-
-    it('envía los campos de aceptación requeridos por el backend local actualizado', async () => {
-        apiBaseUrl.value = 'http://localhost:3001/api/v1'
-        apiPost.mockResolvedValue({ data: { success: true } })
-
-        await registerUser({
-            name: 'Ana López',
-            email: 'owner@example.com',
-            password: 'correct-horse-7',
-            terms: true,
-        })
-
         expect(apiPost).toHaveBeenCalledWith('/auth/register', {
             name: 'Ana López',
             email: 'owner@example.com',

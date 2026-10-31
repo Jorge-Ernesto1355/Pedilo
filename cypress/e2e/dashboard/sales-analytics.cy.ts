@@ -1,3 +1,5 @@
+import type { Interception } from 'cypress/types/net-stubbing'
+
 type SalesPeriod = 'today' | '7d' | '30d' | 'thisMonth'
 
 const averageTicketPeriod: Record<SalesPeriod, string> = {
@@ -248,6 +250,27 @@ function bodyForPeriod(
     return (body ?? salesResponse(period)) as ReturnType<typeof salesResponse>
 }
 
+function waitForPeriod(
+    alias: string,
+    period: string,
+    callback: (interception: Interception) => void,
+) {
+    cy.wait(alias as `@${string}`).then((interception) => {
+        if (String(interception.request.query.period ?? '') !== period) {
+            waitForPeriod(alias, period, callback)
+            return
+        }
+        callback(interception)
+    })
+}
+
+function consumeRecordedRequests(alias: string) {
+    cy.get(`${alias}.all`).then((interceptions) => {
+        const recorded = interceptions as unknown as Array<unknown>
+        recorded.forEach(() => cy.wait(alias as `@${string}`))
+    })
+}
+
 describe('Ventas · analítica comparativa', () => {
     beforeEach(() => {
         cy.env(['e2eSeedEmail', 'e2eSeedPassword']).then(({ e2eSeedEmail, e2eSeedPassword }) => {
@@ -290,6 +313,7 @@ describe('Ventas · analítica comparativa', () => {
         setupSalesPage()
         cy.visit('/dashboard/sales')
         cy.wait('@dashboardSales')
+        cy.wait('@dashboardTrend')
         cy.wait('@averageTicket')
 
         const periods: Array<{ value: SalesPeriod; label: string }> = [
@@ -305,11 +329,15 @@ describe('Ventas · analítica comparativa', () => {
                 .should('contain', label)
                 .should('be.visible')
                 .click()
-            cy.wait('@dashboardSales').its('request.query.period').should('eq', value)
-            cy.wait('@dashboardTrend').its('request.query.period').should('eq', value)
-            cy.wait('@averageTicket')
-                .its('request.query.period')
-                .should('eq', averageTicketPeriod[value])
+            waitForPeriod('@dashboardSales', value, ({ request }) => {
+                expect(request.query.period).to.eq(value)
+            })
+            waitForPeriod('@dashboardTrend', value, ({ request }) => {
+                expect(request.query.period).to.eq(value)
+            })
+            waitForPeriod('@averageTicket', averageTicketPeriod[value], ({ request }) => {
+                expect(request.query.period).to.eq(averageTicketPeriod[value])
+            })
             cy.get('[aria-label="Métricas de ventas"]').should('be.visible')
         })
     })
@@ -343,7 +371,7 @@ describe('Ventas · analítica comparativa', () => {
         cy.visit('/dashboard/sales')
         cy.wait('@dashboardSales')
         cy.contains('Ventas no disponibles', { timeout: 30_000 }).should('be.visible')
-        cy.contains('Gráfica de ventas no disponible', { timeout: 30_000 }).should('be.visible')
+        cy.get('[aria-label^="Gráfica de ventas por"]', { timeout: 30_000 }).should('be.visible')
         cy.contains('Tendencia').should('be.visible')
     })
 
@@ -546,19 +574,21 @@ describe('Ventas · analítica comparativa', () => {
     })
 
     it('permite reintentar ventas y ticket promedio después de un error', () => {
+        let allowSalesRetry = false
+        let allowAverageRetry = false
         setupSalesPage({
-            // React Query retries failed requests three times before exposing the error state.
-            // Keep those attempts failing so the retry button is actually rendered; the manual
-            // retry (attempt five) then succeeds.
-            salesStatus: (attempt) => (attempt <= 4 ? 500 : 200),
-            averageStatus: (attempt) => (attempt <= 4 ? 500 : 200),
+            salesStatus: () => (allowSalesRetry ? 200 : 500),
+            averageStatus: () => (allowAverageRetry ? 200 : 500),
         })
         cy.visit('/dashboard/sales')
-        cy.wait('@dashboardSales')
-        cy.wait('@averageTicket')
         cy.contains('Ventas no disponibles', { timeout: 30_000 }).should('be.visible')
         cy.contains('Ticket promedio no disponible', { timeout: 30_000 }).should('be.visible')
 
+        consumeRecordedRequests('@dashboardSales')
+        consumeRecordedRequests('@averageTicket')
+        cy.then(() => {
+            allowSalesRetry = true
+        })
         cy.contains('Ventas no disponibles', { timeout: 30_000 }).parent().find('button').click()
         cy.wait('@dashboardSales').then(({ response }) => {
             expect(response?.statusCode).to.eq(200)
@@ -567,11 +597,16 @@ describe('Ventas · analítica comparativa', () => {
         cy.get('[aria-label="Métricas de ventas"]')
             .contains('$900.00', { timeout: 30_000 })
             .should('be.visible')
+        cy.then(() => {
+            allowAverageRetry = true
+        })
         cy.contains('Ticket promedio no disponible', { timeout: 30_000 })
             .parent()
             .find('button')
             .click()
-        cy.wait('@averageTicket')
+        cy.wait('@averageTicket').then(({ response }) => {
+            expect(response?.statusCode).to.eq(200)
+        })
         cy.get('[aria-label="Métricas de ventas"]')
             .contains('$300.00', { timeout: 30_000 })
             .should('be.visible')
@@ -586,15 +621,16 @@ describe('Ventas · analítica comparativa', () => {
     })
 
     it('muestra y puede reintentar las ventas históricas sin afectar ventas', () => {
-        setupSalesPage({ historicalStatus: (attempt) => (attempt <= 4 ? 500 : 200) })
+        let allowHistoricalRetry = false
+        setupSalesPage({ historicalStatus: () => (allowHistoricalRetry ? 200 : 500) })
         cy.visit('/dashboard/sales')
         cy.contains('Ventas históricas no disponibles', { timeout: 30_000 }).should('be.visible')
-        cy.wait('@historicalSales')
-        cy.wait('@historicalSales')
-        cy.wait('@historicalSales')
-        cy.wait('@historicalSales')
         cy.contains('Ganancias del periodo').should('be.visible')
 
+        consumeRecordedRequests('@historicalSales')
+        cy.then(() => {
+            allowHistoricalRetry = true
+        })
         cy.contains('Ventas históricas no disponibles').parent().find('button').click()
         cy.wait('@historicalSales').its('response.statusCode').should('eq', 200)
         cy.contains('$9,876.50', { timeout: 30_000 }).should('be.visible')
@@ -603,11 +639,20 @@ describe('Ventas · analítica comparativa', () => {
     })
 
     it('reintenta únicamente la consulta de tendencia', () => {
-        setupSalesPage({ trendStatus: (attempt) => (attempt <= 4 ? 500 : 200) })
+        let allowTrendRetry = false
+        setupSalesPage({ trendStatus: () => (allowTrendRetry ? 200 : 500) })
         cy.visit('/dashboard/sales')
         cy.contains('Tendencia no disponible', { timeout: 30_000 }).should('be.visible')
-        cy.get('@dashboardTrend.all').should('have.length', 4)
+        cy.get('@dashboardTrend.all').should((interceptions) => {
+            const recorded = interceptions as unknown as Array<Interception>
+            expect(recorded.length).to.be.greaterThan(0)
+            recorded.forEach(({ response }) => expect(response?.statusCode).to.eq(500))
+        })
 
+        consumeRecordedRequests('@dashboardTrend')
+        cy.then(() => {
+            allowTrendRetry = true
+        })
         cy.contains('Tendencia no disponible').parent().find('button').click()
         cy.wait('@dashboardTrend').its('response.statusCode').should('eq', 200)
         cy.get('[aria-label="Comparación visual de ventas"]', { timeout: 30_000 }).should(

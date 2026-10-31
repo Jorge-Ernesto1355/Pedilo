@@ -132,7 +132,7 @@ describe('Dashboard · datos históricos sembrados', () => {
         }).as('cancelledOrders')
         cy.visit('/dashboard/orders')
         cy.wait('@ordersInitial')
-        cy.get('select[aria-label="Filtrar pedidos por estado"]').select('CANCELLED')
+        cy.contains('button', /^Cancelados/).click()
         cy.wait('@cancelledOrders').then(({ request, response }) => {
             expect(request.url).to.include('status=CANCELLED')
             expect(response?.body.orders).to.be.an('array')

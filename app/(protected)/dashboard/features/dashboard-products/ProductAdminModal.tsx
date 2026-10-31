@@ -80,8 +80,28 @@ export function ProductAdminModal({
             title={product ? 'Editar producto' : 'Nuevo producto'}
             description="Mantén actualizado lo que tus clientes pueden pedir."
             size="lg"
+            footer={
+                <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        disabled={isSaving}
+                        className="rounded-xl px-4 py-2.5 text-sm font-semibold text-[#65738A] hover:bg-[#F4F7FB]"
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        type="submit"
+                        form="admin-product-form"
+                        disabled={isSaving}
+                        className="rounded-xl bg-[#2451C5] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#1E40AF] disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                        {isSaving ? 'Guardando…' : product ? 'Guardar cambios' : 'Crear producto'}
+                    </button>
+                </div>
+            }
         >
-            <form className="space-y-4" onSubmit={submit} noValidate>
+            <form id="admin-product-form" className="space-y-4" onSubmit={submit} noValidate>
                 {errorMessage && (
                     <div
                         role="alert"
@@ -197,22 +217,6 @@ export function ProductAdminModal({
                         </span>
                     </span>
                 </label>
-                <div className="flex flex-col-reverse gap-2 border-t border-[#E8EEF6] pt-4 sm:flex-row sm:justify-end">
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        disabled={isSaving}
-                        className="rounded-xl px-4 py-2.5 text-sm font-semibold text-[#65738A] hover:bg-[#F4F7FB]"
-                    >
-                        Cancelar
-                    </button>
-                    <button
-                        disabled={isSaving}
-                        className="rounded-xl bg-[#2451C5] px-4 py-2.5 text-sm font-bold text-white transition hover:bg-[#1E40AF] disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                        {isSaving ? 'Guardando…' : product ? 'Guardar cambios' : 'Crear producto'}
-                    </button>
-                </div>
             </form>
             {product && (
                 <OptionGroupsEditor productId={product.id} initialGroups={product.optionGroups} />
