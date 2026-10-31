@@ -31,7 +31,6 @@ type BusinessSettingsModalProps = {
 type FormState = {
     currency: string
     phone: string
-    whatsapp: string
     timezone: string
 }
 
@@ -43,7 +42,6 @@ function formStateFromSettings(settings: BusinessSettings): FormState {
     return {
         currency: settings.currency,
         phone: onlyDigits(settings.phone ?? ''),
-        whatsapp: onlyDigits(settings.whatsapp ?? ''),
         timezone: settings.timezone,
     }
 }
@@ -77,7 +75,6 @@ export function BusinessSettingsModal({ open, onClose }: BusinessSettingsModalPr
     const [initial, setInitial] = useState<FormState | null>(null)
     const [currency, setCurrency] = useState('')
     const [phone, setPhone] = useState('')
-    const [whatsapp, setWhatsapp] = useState('')
     const [timezone, setTimezone] = useState('America/Mazatlan')
     const [validationError, setValidationError] = useState<string | null>(null)
 
@@ -89,7 +86,6 @@ export function BusinessSettingsModal({ open, onClose }: BusinessSettingsModalPr
         setInitial(next)
         setCurrency(next.currency)
         setPhone(next.phone)
-        setWhatsapp(next.whatsapp)
         setTimezone(next.timezone)
         setValidationError(null)
     }, [open, settings.data])
@@ -111,10 +107,6 @@ export function BusinessSettingsModal({ open, onClose }: BusinessSettingsModalPr
             setValidationError('El teléfono debe contener exactamente 10 dígitos.')
             return
         }
-        if (whatsapp && !isValidPhone(whatsapp)) {
-            setValidationError('El WhatsApp debe contener exactamente 10 dígitos.')
-            return
-        }
         if (!normalizedTimezone || !validTimezone(normalizedTimezone)) {
             setValidationError('Selecciona una zona horaria válida.')
             return
@@ -123,7 +115,6 @@ export function BusinessSettingsModal({ open, onClose }: BusinessSettingsModalPr
         const next: FormState = {
             currency: normalizedCurrency,
             phone: onlyDigits(phone),
-            whatsapp: onlyDigits(whatsapp),
             timezone: normalizedTimezone,
         }
         const payload: BusinessSettingsInput = {}
@@ -131,12 +122,10 @@ export function BusinessSettingsModal({ open, onClose }: BusinessSettingsModalPr
         if (!initial) {
             payload.currency = next.currency
             payload.phone = next.phone || null
-            payload.whatsapp = next.whatsapp || null
             payload.timezone = next.timezone
         } else {
             if (next.currency !== initial.currency) payload.currency = next.currency
             if (next.phone !== initial.phone) payload.phone = next.phone || null
-            if (next.whatsapp !== initial.whatsapp) payload.whatsapp = next.whatsapp || null
             if (next.timezone !== initial.timezone) payload.timezone = next.timezone
         }
 
@@ -152,7 +141,6 @@ export function BusinessSettingsModal({ open, onClose }: BusinessSettingsModalPr
                 setInitial(nextState)
                 setCurrency(nextState.currency)
                 setPhone(nextState.phone)
-                setWhatsapp(nextState.whatsapp)
                 setTimezone(nextState.timezone)
                 notify.success({
                     title: 'Configuración guardada',
@@ -227,25 +215,6 @@ export function BusinessSettingsModal({ open, onClose }: BusinessSettingsModalPr
                             type="tel"
                             value={phone}
                             onChange={(event) => setPhone(onlyDigits(event.target.value))}
-                            className={inputClass}
-                            placeholder="Opcional"
-                            inputMode="numeric"
-                            pattern="[0-9]{10}"
-                            minLength={10}
-                            maxLength={10}
-                            autoComplete="tel"
-                        />
-                    </SettingsField>
-                    <SettingsField
-                        id="settings-whatsapp"
-                        label="WhatsApp"
-                        description="Número de WhatsApp que los clientes pueden utilizar para comunicarse con el negocio."
-                    >
-                        <input
-                            id="settings-whatsapp"
-                            type="tel"
-                            value={whatsapp}
-                            onChange={(event) => setWhatsapp(onlyDigits(event.target.value))}
                             className={inputClass}
                             placeholder="Opcional"
                             inputMode="numeric"

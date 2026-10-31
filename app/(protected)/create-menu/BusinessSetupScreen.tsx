@@ -4,7 +4,7 @@ import { FormProvider, useWatch } from 'react-hook-form'
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import posthog from 'posthog-js'
-import { ChevronRight, Store } from 'lucide-react'
+import { Store } from 'lucide-react'
 import { BusinessProfileForm } from './features/business-profile/BusinessProfileForm'
 import { useBusinessProfileForm } from './features/business-profile/useBusinessProfileForm'
 import { BusinessPreviewCard } from './features/business-preview/BusinessPreviewCard'
@@ -27,6 +27,7 @@ import {
 import { notify } from '@/src/lib/notifications/notify'
 import { locationCoordinatesSchema } from './features/business-location/location.schema'
 import { BusinessSettingsModal } from './features/business-settings/BusinessSettingsModal'
+import { BusinessActionsPanel } from './features/business-settings/BusinessActionsPanel'
 import { GoogleReviewsModal } from './features/google-reviews/GoogleReviewsModal'
 import { BusinessPreviewSkeleton } from './components/CreateMenuStates'
 import Link from 'next/link'
@@ -140,6 +141,7 @@ export default function BusinessSetupScreen({
     const [coverFile, setCoverFile] = useState<File | null>(null)
     const [businessSettingsOpen, setBusinessSettingsOpen] = useState(false)
     const [googleReviewsOpen, setGoogleReviewsOpen] = useState(false)
+    const [isNewBusinessCreated, setIsNewBusinessCreated] = useState(false)
 
     useEffect(() => {
         if (!businessRequiredNotice) return
@@ -226,6 +228,7 @@ export default function BusinessSetupScreen({
                 onSuccess: (response) => {
                     const business = response.business
                     if (!business) return
+                    if (isNewBusiness) setIsNewBusinessCreated(true)
 
                     posthog.capture('business_profile_saved', {
                         is_new_business: isNewBusiness,
@@ -391,8 +394,6 @@ export default function BusinessSetupScreen({
                                     logoBlurPreview={logoBlurPreview}
                                     coverPreview={coverPreview}
                                     coverBlurPreview={coverBlurPreview}
-                                    onOpenSettings={() => setBusinessSettingsOpen(true)}
-                                    onOpenGoogleReviews={() => setGoogleReviewsOpen(true)}
                                 />
                             )}
                             <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-[#DCE5F3] bg-[#FBFCFE] p-3">
@@ -413,12 +414,13 @@ export default function BusinessSetupScreen({
                                 </div>
                             </div>
                             <MenuManagementPanel management={categories} />
-                            <div className="flex items-center justify-between gap-4 rounded-xl border border-transparent px-1 py-2 text-xs text-[#8996A9]">
-                                <span>Más adelante podrás conectar tu catálogo con WhatsApp.</span>
-                                <span className="inline-flex items-center gap-1 font-semibold text-[#65738A]">
-                                    Siguiente paso <ChevronRight className="size-3.5" />
-                                </span>
-                            </div>
+                            <BusinessActionsPanel
+                                onOpenSettings={() => setBusinessSettingsOpen(true)}
+                                onOpenGoogleReviews={() => setGoogleReviewsOpen(true)}
+                                hasBusiness={Boolean(businessQuery.data)}
+                                isBusinessReady={businessConfirmed}
+                                isNewBusiness={isNewBusinessCreated}
+                            />
                         </div>
                     </div>
                 </div>

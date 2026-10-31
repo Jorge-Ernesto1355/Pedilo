@@ -92,11 +92,11 @@ function configureWhatsapp() {
         }
         request.continue()
     })
-    cy.contains('button', 'Configurar negocio').should('be.visible').click()
-    cy.get('#settings-whatsapp').should('be.visible').clear().type('6981119319')
-    cy.get('[role="dialog"]').contains('button', 'Guardar cambios').click()
+    cy.get('#business-whatsapp').parents('form').find('button[type="submit"]').should('be.visible')
+    cy.get('#business-whatsapp').should('be.visible').clear().type('6981119319')
+    cy.get('#business-whatsapp').parents('form').find('button[type="submit"]').click()
     cy.wait('@saveBusinessSettings').its('response.statusCode').should('be.oneOf', [200, 201])
-    cy.get('[role="dialog"]').should('not.exist')
+    cy.get('#business-whatsapp').should('have.value', '+52 698 111 9319')
 }
 
 describe('Flujo completo · usuario nuevo hasta orden lista', () => {

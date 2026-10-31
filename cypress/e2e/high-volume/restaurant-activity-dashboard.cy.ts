@@ -107,10 +107,9 @@ function createProduct(categoryName: string, product: ProductSeed, withImage = f
 }
 
 function configureWhatsapp() {
-    cy.contains('button', 'Configurar negocio').click()
-    cy.get('#settings-whatsapp').should('be.visible').clear().type('6981119319')
-    cy.get('[role="dialog"]').contains('button', 'Guardar cambios').click()
-    cy.get('[role="dialog"]').should('not.exist')
+    cy.get('#business-whatsapp').should('be.visible').clear().type('6981119319')
+    cy.get('#business-whatsapp').parents('form').find('button[type="submit"]').click()
+    cy.get('#business-whatsapp').should('have.value', '6981119319')
 }
 
 function placeOrder(slug: string, seed: OrderSeed, index: number) {

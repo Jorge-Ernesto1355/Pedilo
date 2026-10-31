@@ -148,6 +148,70 @@ describe('Crear menú · perfil del restaurante', () => {
         cy.contains('button', 'Guardar cambios').should('be.visible')
     })
 
+    it('muestra el bot después de crear el primer negocio sin WhatsApp', () => {
+        const createdBusiness = businessResponse()
+        let businessCreated = false
+        let settingsRequests = 0
+        const emptySettings = {
+            id: 'settings-first-business',
+            businessId: createdBusiness.id,
+            currency: 'MXN',
+            phone: null,
+            whatsapp: null,
+            address: null,
+            timezone: 'America/Mazatlan',
+        }
+
+        cy.intercept('GET', '**/api/v1/businesses/mine', (request) => {
+            request.reply({
+                statusCode: 200,
+                body: { business: businessCreated ? createdBusiness : null },
+            })
+        }).as('businessState')
+        cy.intercept('GET', '**/api/v1/businesses/mine/menus', {
+            statusCode: 200,
+            body: { menus: [] },
+        })
+        cy.intercept('GET', '**/api/v1/businesses/settings', (request) => {
+            settingsRequests += 1
+            request.reply({ statusCode: 200, body: emptySettings })
+        }).as('firstBusinessSettings')
+        cy.intercept('POST', '**/api/v1/businesses', (request) => {
+            businessCreated = true
+            request.reply({ statusCode: 201, body: { business: createdBusiness } })
+        }).as('createFirstBusiness')
+
+        cy.reload()
+        cy.wait('@businessState')
+        cy.contains(
+            'Para recibir pedidos, primero crea tu negocio y después registra tu número de WhatsApp.',
+        ).should('be.visible')
+        cy.contains('No pudimos cargar el número guardado.').should('not.exist')
+        cy.get('#business-whatsapp').should('not.exist')
+        cy.then(() => expect(settingsRequests).to.equal(0))
+        fillBusinessProfile({
+            name: createdBusiness.name,
+            slug: createdBusiness.slug,
+            location: createdBusiness.ubication,
+            description: createdBusiness.description,
+        })
+        cy.contains('button', 'Guardar cambios').click()
+        cy.wait('@createFirstBusiness').its('request.method').should('eq', 'POST')
+        cy.wait('@businessState')
+        cy.wait('@firstBusinessSettings')
+        cy.then(() => expect(settingsRequests).to.be.greaterThan(0))
+
+        cy.get('#business-whatsapp').should('be.visible').and('have.value', '')
+        cy.get('aside[aria-label="Asistente de configuración"] [role="status"]', {
+            timeout: 5_000,
+        })
+            .should('be.visible')
+            .and(
+                'contain',
+                '¡Hola! 👋 Antes de recibir pedidos, necesitas registrar tu número de WhatsApp para que podamos enviártelos.',
+            )
+    })
+
     it('después de refrescar carga el negocio existente y lo guarda como edición', () => {
         const existingBusiness = businessResponse({
             name: 'NEGOCIO-TEST-123',
@@ -533,8 +597,9 @@ describe('Crear menú · perfil del restaurante', () => {
         fillBusinessProfile()
         cy.contains('button', 'Guardar cambios').click()
         cy.wait('@createBusiness')
-        cy.contains('button', 'Configurar negocio').click()
+        cy.contains('button', 'Configurar').click()
         cy.wait('@getSettings')
+        cy.get('#settings-whatsapp').should('not.exist')
         cy.get('#settings-currency').select('USD')
         cy.get('#settings-timezone').select('UTC')
         cy.get('[role="dialog"]').contains('button', 'Guardar cambios').click()
