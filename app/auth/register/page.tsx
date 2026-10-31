@@ -439,14 +439,14 @@ export default function RegisterPage() {
                                         >
                                             Términos para Clientes
                                         </Link>{' '}
-                                        y la{' '}
+                                        y el{' '}
                                         <Link
                                             href="/privacidad"
                                             className="font-semibold text-blue-800 hover:underline"
                                         >
                                             Aviso de Privacidad
                                         </Link>
-                                        .
+                                        , y declaras que eres mayor de edad.
                                     </span>
                                 </label>
                                 <AnimatePresence initial={false}>
