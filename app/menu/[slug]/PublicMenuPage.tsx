@@ -21,6 +21,7 @@ import {
 } from './features/public-menu/whatsapp'
 import type { PublicProduct } from './features/public-menu/publicCatalog.types'
 import type { CartLine } from './features/public-menu/types'
+import type { OrderFulfillmentType } from '@/src/lib/api/order-types'
 
 function LoadingMenu() {
     return (
@@ -374,6 +375,12 @@ export default function PublicMenuPage({ slug }: { slug: string }) {
     const [orderOpen, setOrderOpen] = useState(false)
     const [isSubmittingOrder, setIsSubmittingOrder] = useState(false)
     const [orderError, setOrderError] = useState<string | null>(null)
+    const [couponApplicationError, setCouponApplicationError] = useState(false)
+    const [priceChange, setPriceChange] = useState<{
+        expectedSubtotal: number
+        currentSubtotal: number
+        difference: number
+    } | null>(null)
     const [orderConfirmed, setOrderConfirmed] = useState(false)
     const [manualWhatsAppUrl, setManualWhatsAppUrl] = useState<string | null>(null)
     const menus = useMemo(
@@ -506,7 +513,14 @@ export default function PublicMenuPage({ slug }: { slug: string }) {
     }
 
     const catalog = query.data!
-    async function sendWhatsAppOrder(customerName: string, customerPhone: string, notes: string) {
+    async function sendWhatsAppOrder(
+        customerName: string,
+        customerPhone: string,
+        notes: string,
+        fulfillmentType: OrderFulfillmentType,
+        ignoreCustomerDiscount = false,
+        acceptPriceChange = false,
+    ) {
         const businessWhatsAppNumber = normalizeBusinessWhatsAppNumber(
             catalog.business.whatsappNumber,
         )
@@ -518,6 +532,7 @@ export default function PublicMenuPage({ slug }: { slug: string }) {
 
         setIsSubmittingOrder(true)
         setOrderError(null)
+        setCouponApplicationError(false)
 
         // Reserve a blank tab synchronously so the eventual WhatsApp tab is
         // not blocked by the browser after the asynchronous order request.
@@ -534,28 +549,64 @@ export default function PublicMenuPage({ slug }: { slug: string }) {
         }
 
         try {
-            await createPublicOrder(catalog.business.id, {
+            const createdOrder = await createPublicOrder(catalog.business.id, {
                 customer: { name: customerName, phone: customerPhone },
+                fulfillmentType,
                 items: cart.lines.map((line) => ({
                     productId: line.product.id,
                     quantity: line.quantity,
-                    optionIds: line.selections.flatMap((selection) =>
-                        Array.from({ length: selection.quantity }, () => selection.id),
-                    ),
+                    optionIds: line.selections
+                        .filter((selection) => selection.kind === 'product-option')
+                        .flatMap((selection) =>
+                            Array.from({ length: selection.quantity }, () => selection.id),
+                        ),
+                    ...(line.selections.some((selection) => selection.kind === 'combo-choice')
+                        ? {
+                              comboChoiceIds: line.selections
+                                  .filter((selection) => selection.kind === 'combo-choice')
+                                  .flatMap((selection) =>
+                                      Array.from(
+                                          { length: selection.quantity },
+                                          () => selection.id,
+                                      ),
+                                  ),
+                          }
+                        : {}),
                 })),
                 ...(notes ? { notes } : {}),
+                ...(ignoreCustomerDiscount ? { ignoreCustomerDiscount: true } : {}),
+                expectedSubtotal: cart.total,
+                ...(acceptPriceChange ? { acceptPriceChange: true } : {}),
             })
 
-            const lines = cart.lines.map(
-                (line) =>
-                    `${line.quantity}x ${line.product.name} — $${(line.unitPrice * line.quantity).toLocaleString('es-MX')}`,
+            const lines = cart.lines.flatMap((line) => [
+                `${line.quantity}x ${line.product.name} — $${(line.unitPrice * line.quantity).toLocaleString('es-MX')}`,
+                ...(line.product.includedProducts?.length
+                    ? [
+                          `  Incluye: ${line.product.includedProducts.map((item) => item.product.name).join(', ')}`,
+                      ]
+                    : []),
+                ...(line.selections.length
+                    ? [
+                          `  Selección: ${line.selections.map((selection) => `${selection.name}${selection.quantity > 1 ? ` x${selection.quantity}` : ''}`).join(', ')}`,
+                      ]
+                    : []),
+            ])
+            lines.push(
+                `Subtotal: $${createdOrder.subtotal.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`,
             )
+            if (createdOrder.discountAmount && createdOrder.discountAmount > 0) {
+                lines.push(
+                    `Descuento personal: −$${createdOrder.discountAmount.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`,
+                )
+            }
             const message = createWhatsAppOrderMessage({
                 businessName: catalog.business.name,
                 customerName,
                 customerPhone,
+                fulfillmentType,
                 lines,
-                total: `$${cart.total.toLocaleString('es-MX')}`,
+                total: `$${createdOrder.total.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`,
                 notes,
             })
             const whatsappUrl = `https://wa.me/${businessWhatsAppNumber}?text=${encodeURIComponent(message)}`
@@ -577,7 +628,8 @@ export default function PublicMenuPage({ slug }: { slug: string }) {
 
             posthog.capture('public_order_created', {
                 item_count: cart.totalItems,
-                order_total: cart.total,
+                order_total: createdOrder.total,
+                discount_amount: createdOrder.discountAmount ?? 0,
                 has_notes: Boolean(notes),
             })
 
@@ -586,14 +638,40 @@ export default function PublicMenuPage({ slug }: { slug: string }) {
             setOrderConfirmed(true)
         } catch (error) {
             whatsappWindow?.close()
+            const discountFailed =
+                error instanceof ApiError &&
+                error.code === 'CUSTOMER_DISCOUNT_APPLICATION_FAILED'
+            const customerDisabled = error instanceof ApiError && error.code === 'CUSTOMER_DISABLED'
+            if (error instanceof ApiError && error.code === 'ORDER_PRICE_CHANGED') {
+                const details = error.details as {
+                    expectedSubtotal?: number
+                    currentSubtotal?: number
+                    difference?: number
+                } | undefined
+                if (typeof details?.expectedSubtotal === 'number' && typeof details.currentSubtotal === 'number') {
+                    setPriceChange({
+                        expectedSubtotal: details.expectedSubtotal,
+                        currentSubtotal: details.currentSubtotal,
+                        difference: details.difference ?? details.currentSubtotal - details.expectedSubtotal,
+                    })
+                }
+                setOrderError(null)
+                return
+            }
+            setCouponApplicationError(discountFailed)
             setOrderError(
-                getUserFriendlyError(error, {
+                discountFailed || customerDisabled
+                    ? null
+                    : getUserFriendlyError(error, {
                     fallback: {
                         title: 'No pudimos crear tu pedido',
                         description: 'No pudimos crear tu pedido. Inténtalo nuevamente.',
                     },
                 }).description,
             )
+            if (customerDisabled) {
+                setOrderError('Este cliente está deshabilitado y no puede realizar pedidos en este negocio.')
+            }
             setManualWhatsAppUrl(null)
         } finally {
             setIsSubmittingOrder(false)
@@ -688,11 +766,13 @@ export default function PublicMenuPage({ slug }: { slug: string }) {
                 )}
             </div>
             <OrderDrawer
+                key={orderConfirmed ? 'order-completed' : 'order-active'}
                 lines={cart.lines}
                 totalItems={cart.totalItems}
-                total={cart.total}
+                total={priceChange?.currentSubtotal ?? cart.total}
                 open={orderOpen}
                 businessName={query.data.business.name}
+                businessId={query.data.business.id}
                 onChangeQuantity={cart.changeQuantity}
                 onEditLine={(line) => {
                     setEditingLineKey(line.key)
@@ -704,11 +784,14 @@ export default function PublicMenuPage({ slug }: { slug: string }) {
                     setOrderOpen(false)
                     setOrderError(null)
                 }}
-                onCheckout={(customerName, customerPhone, notes) => {
-                    void sendWhatsAppOrder(customerName, customerPhone, notes)
+                onCheckout={(customerName, customerPhone, notes, fulfillmentType, ignoreCustomerDiscount, acceptPriceChange) => {
+                    void sendWhatsAppOrder(customerName, customerPhone, notes, fulfillmentType, ignoreCustomerDiscount, acceptPriceChange)
                 }}
                 isSubmitting={isSubmittingOrder}
                 orderError={orderError}
+                couponApplicationError={couponApplicationError}
+                priceChange={priceChange}
+                onCancelPriceChange={() => setPriceChange(null)}
             />
             <ProductCustomizeDialog
                 key={`${product?.id ?? 'empty'}:${editingLineKey ?? 'new'}`}

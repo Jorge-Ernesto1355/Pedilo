@@ -206,7 +206,20 @@ describe('Productos · historial y cambios concurrentes', () => {
             expect(request.body).not.to.have.property('price')
             request.reply({
                 statusCode: 201,
-                body: { order: { id: 'order-price-150', orderNumber: 1, total: 150 } },
+                body: {
+                    order: {
+                        id: 'order-price-150',
+                        orderNumber: 1,
+                        customerName: 'Cliente E2E',
+                        customerPhone: '6691234567',
+                        subtotal: 150,
+                        discountAmount: 0,
+                        total: 150,
+                        notes: null,
+                        items: [],
+                        statusHistory: [],
+                    },
+                },
             })
         }).as('createOrder')
         openCheckout()
@@ -231,11 +244,77 @@ describe('Productos · historial y cambios concurrentes', () => {
         })
         cy.intercept('POST', '**/api/v1/businesses/*/orders', (request) => {
             expect(request.body).not.to.have.property('price')
-            request.reply({ statusCode: 201, body: { order: { total: 150 } } })
+            request.reply({
+                statusCode: 201,
+                body: {
+                    order: {
+                        id: 'order-price-during-checkout',
+                        orderNumber: 2,
+                        customerName: 'Cliente E2E',
+                        customerPhone: '6691234567',
+                        subtotal: 150,
+                        discountAmount: 0,
+                        total: 150,
+                        notes: null,
+                        items: [],
+                        statusHistory: [],
+                    },
+                },
+            })
         }).as('createOrder')
         cy.contains('button', 'Confirmar pedido').click()
         cy.wait('@createOrder')
         cy.get('[role="dialog"][aria-labelledby="order-confirmation-title"]').should('be.visible')
+    })
+
+    it('muestra alerta y pide confirmar cuando el precio sube durante el checkout', () => {
+        visitPublicCatalog()
+        addProductToCart()
+        openCheckout()
+        let attempt = 0
+        cy.intercept('POST', '**/api/v1/businesses/*/orders', (request) => {
+            attempt += 1
+            request.alias = attempt === 1 ? 'priceChangedUp' : 'acceptPriceChangeUp'
+            if (attempt === 1) {
+                request.reply({
+                    statusCode: 409,
+                    body: { error: { code: 'ORDER_PRICE_CHANGED', details: { expectedSubtotal: 100, currentSubtotal: 150, difference: 50 } } },
+                })
+                return
+            }
+            expect(request.body.acceptPriceChange).to.eq(true)
+            request.reply({ statusCode: 201, body: { order: { id: 'order-price-up', orderNumber: 3, customerName: 'Cliente E2E', customerPhone: '6691234567', subtotal: 150, discountAmount: 0, total: 150, notes: null, items: [], statusHistory: [] } } })
+        })
+        cy.contains('button', 'Confirmar pedido').click()
+        cy.wait('@priceChangedUp')
+        cy.get('[data-testid="price-change-warning"]')
+            .should('contain', 'El precio cambió mientras hacías tu pedido')
+            .and('contain', '$150.00')
+            .and('contain', 'subió')
+        cy.contains('[data-testid="price-change-warning"] button', 'Continuar').click()
+        cy.wait('@acceptPriceChangeUp')
+        cy.get('[role="dialog"][aria-labelledby="order-confirmation-title"]').should('be.visible')
+    })
+
+    it('muestra alerta y actualiza el subtotal cuando el precio baja durante el checkout', () => {
+        visitPublicCatalog()
+        addProductToCart()
+        openCheckout()
+        cy.intercept('POST', '**/api/v1/businesses/*/orders', (request) => {
+            request.alias = 'priceChangedDown'
+            request.reply({
+                statusCode: 409,
+                body: { error: { code: 'ORDER_PRICE_CHANGED', details: { expectedSubtotal: 100, currentSubtotal: 80, difference: -20 } } },
+            })
+        })
+        cy.contains('button', 'Confirmar pedido').click()
+        cy.wait('@priceChangedDown')
+        cy.get('[data-testid="price-change-warning"]')
+            .should('contain', '$80.00')
+            .and('contain', 'bajó')
+        cy.get('[data-testid="price-change-warning"]').contains('Cancelar').click()
+        cy.get('[data-testid="price-change-warning"]').should('not.exist')
+        cy.get('[role="dialog"][aria-labelledby="order-title"]').should('be.visible')
     })
 
     it('conserva el precio original después de crear el pedido', () => {

@@ -3,8 +3,12 @@
 import { Minus, Pencil, Plus, ShoppingBag, X } from 'lucide-react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useEffect, useRef, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import Link from 'next/link'
 import type { CartLine } from './types'
+import type { CustomerDiscount, OrderFulfillmentType } from '@/src/lib/api/order-types'
+import { getCheckoutCustomerDiscount } from '@/src/lib/api/customerDiscountApi'
+import { Gift, LoaderCircle } from 'lucide-react'
 import { hasAvailableOptions } from './optionGroupValidation'
 import { isValidPhone, sanitizePhoneInput } from '@/src/lib/validation/phone'
 
@@ -17,14 +21,25 @@ type OrderDrawerProps = {
     total: number
     open: boolean
     businessName: string
+    businessId: string
     onChangeQuantity: (key: string, delta: number) => void
     onEditLine: (line: CartLine) => void
     onOpen: () => void
     onClose: () => void
-    onCheckout: (customerName: string, customerPhone: string, notes: string) => void
+    onCheckout: (
+        customerName: string,
+        customerPhone: string,
+        notes: string,
+        fulfillmentType: OrderFulfillmentType,
+        ignoreCustomerDiscount?: boolean,
+        acceptPriceChange?: boolean,
+    ) => void
     isSubmitting?: boolean
     phoneError?: string | null
     orderError?: string | null
+    couponApplicationError?: boolean
+    priceChange?: { expectedSubtotal: number; currentSubtotal: number; difference: number } | null
+    onCancelPriceChange?: () => void
 }
 
 export function OrderDrawer({
@@ -33,6 +48,7 @@ export function OrderDrawer({
     total,
     open,
     businessName,
+    businessId,
     onChangeQuantity,
     onEditLine,
     onOpen,
@@ -41,10 +57,14 @@ export function OrderDrawer({
     isSubmitting = false,
     phoneError,
     orderError,
+    couponApplicationError = false,
+    priceChange = null,
+    onCancelPriceChange,
 }: OrderDrawerProps) {
     const [customerName, setCustomerName] = useState('')
     const [customerPhone, setCustomerPhone] = useState('')
     const [notes, setNotes] = useState('')
+    const [fulfillmentType, setFulfillmentType] = useState<OrderFulfillmentType>('DINE_IN')
     const [cartPulseKey, setCartPulseKey] = useState(0)
     const previousTotalItems = useRef(totalItems)
     const dialogRef = useRef<HTMLElement>(null)
@@ -53,6 +73,64 @@ export function OrderDrawer({
     const reducedMotion = useReducedMotion()
     const phoneIsValid = isValidPhone(customerPhone)
     const shouldPulse = !reducedMotion && cartPulseKey > 0
+    const [lookupPhone, setLookupPhone] = useState('')
+    const [discountInvalidated, setDiscountInvalidated] = useState(false)
+    const knownDiscountRef = useRef<CustomerDiscount | null>(null)
+
+    useEffect(() => {
+        if (!open || !phoneIsValid || customerPhone.length !== 10) {
+            return
+        }
+        const timer = window.setTimeout(() => setLookupPhone(customerPhone), 350)
+        return () => window.clearTimeout(timer)
+    }, [customerPhone, open, phoneIsValid])
+
+    const discountQuery = useQuery({
+        queryKey: ['checkout-customer-discount', businessId, lookupPhone],
+        queryFn: () => getCheckoutCustomerDiscount(businessId, lookupPhone),
+        enabled: Boolean(open && businessId && lookupPhone && lookupPhone === customerPhone),
+        retry: false,
+        staleTime: 10_000,
+    })
+    const availableDiscount =
+        lookupPhone === customerPhone && discountQuery.data?.status === 'AVAILABLE'
+            ? discountQuery.data
+            : null
+    useEffect(() => {
+        if (availableDiscount) {
+            knownDiscountRef.current = availableDiscount
+        }
+    }, [availableDiscount])
+    const previewDiscountAmount = availableDiscount
+        ? Math.min(
+              total,
+              Math.round(
+                  (availableDiscount.type === 'PERCENTAGE'
+                      ? (total * availableDiscount.value) / 100
+                      : availableDiscount.value) * 100,
+              ) / 100,
+          )
+        : 0
+    const previewTotal = Math.max(0, total - previewDiscountAmount)
+
+    async function handleCheckout() {
+        const knownDiscount = knownDiscountRef.current
+        if (knownDiscount && lookupPhone === customerPhone) {
+            const refreshed = await discountQuery.refetch()
+            const currentDiscount = refreshed.data
+            if (!currentDiscount || currentDiscount.status !== 'AVAILABLE') {
+                setDiscountInvalidated(true)
+                return
+            }
+        }
+        onCheckout(customerName.trim(), customerPhone.trim(), notes.trim(), fulfillmentType)
+    }
+
+    function resetDiscountValidation() {
+        setDiscountInvalidated(false)
+        knownDiscountRef.current = null
+        setLookupPhone('')
+    }
 
     useEffect(() => {
         onCloseRef.current = onClose
@@ -262,18 +340,30 @@ export function OrderDrawer({
                                                     delay: reducedMotion ? 0 : index * 0.035,
                                                     ease: [0.22, 1, 0.36, 1],
                                                 }}
-                                                className="flex gap-3"
+                                                className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start"
                                             >
                                                 <div className="min-w-0 flex-1">
-                                                    <p className="text-sm font-bold text-[#243556]">
+                                                    <p className="max-w-full whitespace-normal break-words text-sm font-bold text-[#243556] [overflow-wrap:anywhere]">
                                                         {line.product.name}
                                                     </p>
+                                                    {line.product.includedProducts &&
+                                                        line.product.includedProducts.length >
+                                                            0 && (
+                                                            <p className="mt-0.5 max-w-full whitespace-normal break-words text-xs leading-5 text-[#65738A] [overflow-wrap:anywhere]">
+                                                                Incluye:{' '}
+                                                                {line.product.includedProducts
+                                                                    .map(
+                                                                        (item) => item.product.name,
+                                                                    )
+                                                                    .join(', ')}
+                                                            </p>
+                                                        )}
                                                     {line.selections.length > 0 ? (
-                                                        <p className="mt-0.5 text-xs leading-5 text-[#65738A]">
+                                                        <p className="mt-0.5 max-w-full whitespace-normal break-words text-xs leading-5 text-[#65738A] [overflow-wrap:anywhere]">
                                                             {line.selections
                                                                 .map(
                                                                     (selection) =>
-                                                                        `${selection.name}${selection.quantity > 1 ? ` ×${selection.quantity}` : ''} · +$${(selection.price * selection.quantity).toLocaleString('es-MX', { minimumFractionDigits: 2 })}`,
+                                                                        `${selection.name}${selection.quantity > 1 ? ` ×${selection.quantity}` : ''}${selection.kind === 'combo-choice' ? '' : ` · +$${(selection.price * selection.quantity).toLocaleString('es-MX', { minimumFractionDigits: 2 })}`}`,
                                                                 )
                                                                 .join(', ')}
                                                         </p>
@@ -284,7 +374,7 @@ export function OrderDrawer({
                                                             </p>
                                                         )
                                                     )}
-                                                    <p className="mt-1 text-xs font-semibold text-[#2451C5]">
+                                                        <p className="mt-1 max-w-full whitespace-normal break-words text-xs font-semibold text-[#2451C5] [overflow-wrap:anywhere]">
                                                         ${line.unitPrice.toLocaleString('es-MX')}{' '}
                                                         c/u
                                                     </p>
@@ -293,7 +383,7 @@ export function OrderDrawer({
                                                     <button
                                                         type="button"
                                                         onClick={() => onEditLine(line)}
-                                                        className="inline-flex min-h-9 items-center gap-1 self-center rounded-lg px-2 text-xs font-bold text-[#2451C5] hover:bg-[#EAF0FF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2451C5]/30"
+                                                        className="inline-flex min-h-9 items-center gap-1 self-start rounded-lg px-2 text-xs font-bold text-[#2451C5] hover:bg-[#EAF0FF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2451C5]/30 sm:self-center"
                                                     >
                                                         <Pencil
                                                             className="size-3"
@@ -302,7 +392,7 @@ export function OrderDrawer({
                                                         Editar
                                                     </button>
                                                 )}
-                                                <div className="flex h-11 shrink-0 items-center gap-1 self-center rounded-lg border border-[#DCE5F3] px-1 sm:h-8 sm:gap-2">
+                                                <div className="flex h-11 shrink-0 items-center gap-1 self-start rounded-lg border border-[#DCE5F3] px-1 sm:self-center sm:h-8 sm:gap-2">
                                                     <button
                                                         type="button"
                                                         onClick={() =>
@@ -336,6 +426,34 @@ export function OrderDrawer({
                                     </p>
                                 )}
                                 <div className="border-t border-[#E8EEF6] pt-4">
+                                    <fieldset>
+                                        <legend className="mb-2 block text-sm font-bold text-[#243556]">
+                                            ¿Cómo recibirás tu pedido?
+                                        </legend>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {(
+                                                [
+                                                    ['DINE_IN', 'Comer aquí'],
+                                                    ['PICKUP', 'Para llevar / recoger'],
+                                                ] as const
+                                            ).map(([value, label]) => (
+                                                <label
+                                                    key={value}
+                                                    className={`flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-semibold ${fulfillmentType === value ? 'border-[#2451C5] bg-[#F2F6FF] text-[#1E40AF]' : 'border-[#D7E1EF] text-[#53647D]'}`}
+                                                >
+                                                    <input
+                                                        type="radio"
+                                                        name="fulfillmentType"
+                                                        value={value}
+                                                        checked={fulfillmentType === value}
+                                                        onChange={() => setFulfillmentType(value)}
+                                                        className="accent-[#2451C5]"
+                                                    />
+                                                    {label}
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </fieldset>
                                     <label
                                         htmlFor="customer-name"
                                         className="mb-2 block text-sm font-bold text-[#243556]"
@@ -363,9 +481,10 @@ export function OrderDrawer({
                                         name="customerPhone"
                                         autoComplete="tel"
                                         value={customerPhone}
-                                        onChange={(event) =>
+                                        onChange={(event) => {
+                                            resetDiscountValidation()
                                             setCustomerPhone(sanitizePhoneInput(event.target.value))
-                                        }
+                                        }}
                                         placeholder="Ej. 698119319"
                                         inputMode="tel"
                                         className="w-full rounded-xl border border-[#D7E1EF] px-3.5 py-3 text-sm text-[#12234A] outline-none transition placeholder:text-[#A0ACBD] focus:border-[#2451C5] focus:ring-4 focus:ring-[#2451C5]/10"
@@ -379,6 +498,66 @@ export function OrderDrawer({
                                     {phoneError && (
                                         <p role="alert" className="mt-1.5 text-xs text-[#B42318]">
                                             {phoneError}
+                                        </p>
+                                    )}
+                                    {open &&
+                                        isValidPhone(customerPhone) &&
+                                        customerPhone.length === 10 &&
+                                        lookupPhone !== customerPhone && (
+                                            <p
+                                                className="mt-2 flex items-center gap-1.5 text-xs text-[#65738A]"
+                                                role="status"
+                                            >
+                                                <LoaderCircle
+                                                    className="size-3.5 animate-spin"
+                                                    aria-hidden="true"
+                                                />
+                                                Revisando si tienes un descuento…
+                                            </p>
+                                        )}
+                                    {discountInvalidated && (
+                                        <div className="mt-3 rounded-xl border border-[#F4C7C3] bg-[#FFF5F4] p-3" role="alert" data-testid="discount-invalidated">
+                                            <p className="text-sm font-bold text-[#B42318]">Cupón invalidado</p>
+                                            <p className="mt-1 text-xs leading-5 text-[#8F2B24]">
+                                                Este cupón fue eliminado y ya no será válido. No se te restará ningún importe de tu pedido.
+                                            </p>
+                                        </div>
+                                    )}
+                                    {!discountInvalidated && availableDiscount && (
+                                        <div className="mt-3 rounded-xl border border-[#B8E2C8] bg-[#F3FAF5] p-3">
+                                            <p className="flex items-center gap-2 text-sm font-bold text-[#205E3E]">
+                                                <Gift
+                                                    className="size-4 shrink-0"
+                                                    aria-hidden="true"
+                                                />
+                                                ¡Tienes un descuento!
+                                            </p>
+                                            <p className="mt-1 text-xs leading-5 text-[#53647D]">
+                                                {availableDiscount.type === 'PERCENTAGE'
+                                                    ? `${availableDiscount.value}% de descuento`
+                                                    : `$${availableDiscount.value.toLocaleString('es-MX', { minimumFractionDigits: 2 })} de descuento`}{' '}
+                                                en este restaurante. Se aplicará automáticamente.
+                                            </p>
+                                            {availableDiscount.expiresAt && (
+                                                <p className="mt-1 text-[11px] text-[#71819A]">
+                                                    Válido hasta{' '}
+                                                    {new Date(
+                                                        availableDiscount.expiresAt,
+                                                    ).toLocaleDateString('es-MX', {
+                                                        day: 'numeric',
+                                                        month: 'short',
+                                                        year: 'numeric',
+                                                    })}
+                                                </p>
+                                            )}
+                                        </div>
+                                    )}
+                                    {lookupPhone === customerPhone && discountQuery.isError && (
+                                        <p
+                                            className="mt-2 text-xs leading-5 text-[#65738A]"
+                                            role="status"
+                                        >
+                                            Revisaremos el descuento al confirmar tu pedido.
                                         </p>
                                     )}
                                     <label
@@ -429,6 +608,39 @@ export function OrderDrawer({
                                         </Link>
                                         .
                                     </p>
+                                    <div className="mt-3 rounded-xl border border-[#E8EEF6] bg-white px-3.5 py-3">
+                                        <div className="flex items-center justify-between gap-3 text-sm">
+                                            <span className="text-[#65738A]">Subtotal</span>
+                                            <span className="font-medium text-[#243556]">
+                                                $
+                                                {total.toLocaleString('es-MX', {
+                                                    minimumFractionDigits: 2,
+                                                })}
+                                            </span>
+                                        </div>
+                                        {!discountInvalidated && availableDiscount && previewDiscountAmount > 0 && (
+                                            <div className="mt-2 flex items-center justify-between gap-3 text-sm">
+                                                <span className="text-[#23794A]">Tu descuento</span>
+                                                <span className="font-semibold text-[#23794A]">
+                                                    −$
+                                                    {previewDiscountAmount.toLocaleString('es-MX', {
+                                                        minimumFractionDigits: 2,
+                                                    })}
+                                                </span>
+                                            </div>
+                                        )}
+                                        <div className="mt-2 flex items-center justify-between gap-3 border-t border-[#E8EEF6] pt-2.5">
+                                            <span className="text-sm font-bold text-[#243556]">
+                                                Total
+                                            </span>
+                                            <span className="text-base font-bold text-[#12234A]">
+                                                $
+                                                {previewTotal.toLocaleString('es-MX', {
+                                                    minimumFractionDigits: 2,
+                                                })}
+                                            </span>
+                                        </div>
+                                    </div>
                                     <button
                                         type="button"
                                         disabled={
@@ -436,20 +648,53 @@ export function OrderDrawer({
                                             !customerPhone.trim() ||
                                             !phoneIsValid ||
                                             lines.length === 0 ||
-                                            isSubmitting
+                                            isSubmitting ||
+                                            discountInvalidated
                                         }
                                         onClick={() => {
-                                            onCheckout(
-                                                customerName.trim(),
-                                                customerPhone.trim(),
-                                                notes.trim(),
-                                            )
+                                            void handleCheckout()
                                         }}
                                         className="mt-3 flex w-full items-center justify-between rounded-xl bg-[#1E40AF] px-4 py-3.5 text-sm font-bold text-white transition hover:bg-[#183991] disabled:cursor-not-allowed disabled:opacity-45"
                                     >
                                         {isSubmitting ? 'Enviando pedido…' : 'Confirmar pedido'}{' '}
-                                        <span>${total.toLocaleString('es-MX')}</span>
+                                        <span>
+                                            $
+                                            {previewTotal.toLocaleString('es-MX', {
+                                                minimumFractionDigits: 2,
+                                            })}
+                                        </span>
                                     </button>
+                                    {priceChange && (
+                                        <div className="mt-3 rounded-xl border border-[#F1C46A] bg-[#FFF9E8] px-3 py-3 text-left" data-testid="price-change-warning">
+                                            <p className="text-sm font-bold text-[#8A5A00]">El precio cambió mientras hacías tu pedido</p>
+                                            <p className="mt-1 text-xs leading-5 text-[#8A5A00]">
+                                                El subtotal ahora es ${priceChange.currentSubtotal.toLocaleString('es-MX', { minimumFractionDigits: 2 })} ({priceChange.difference > 0 ? 'subió' : 'bajó'} ${Math.abs(priceChange.difference).toLocaleString('es-MX', { minimumFractionDigits: 2 })}). ¿Quieres continuar?
+                                            </p>
+                                            <div className="mt-2 flex gap-2">
+                                                <button type="button" onClick={onCancelPriceChange} className="min-h-9 flex-1 rounded-lg border border-[#D7B35A] px-2 text-xs font-bold text-[#8A5A00]">Cancelar</button>
+                                                <button type="button" onClick={() => onCheckout(customerName.trim(), customerPhone.trim(), notes.trim(), fulfillmentType, false, true)} className="min-h-9 flex-1 rounded-lg bg-[#B77900] px-2 text-xs font-bold text-white">Continuar</button>
+                                            </div>
+                                        </div>
+                                    )}
+                                    {discountInvalidated && (
+                                        <div className="mt-3 rounded-xl border border-[#F4C7C3] bg-[#FFF5F4] p-3" data-testid="discount-invalidated-confirmation">
+                                            <p className="text-sm font-bold text-[#8F2B24]">¿Quieres continuar sin el cupón?</p>
+                                            <p className="mt-1 text-xs leading-5 text-[#8F2B24]">El total volvió a su importe original porque el descuento ya no está disponible.</p>
+                                            <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                                                <button type="button" onClick={onClose} className="min-h-10 flex-1 rounded-lg border border-[#E7A29C] px-3 py-2 text-sm font-bold text-[#8F2B24]">Cancelar pedido</button>
+                                                <button type="button" onClick={() => onCheckout(customerName.trim(), customerPhone.trim(), notes.trim(), fulfillmentType)} className="min-h-10 flex-1 rounded-lg bg-[#B42318] px-3 py-2 text-sm font-bold text-white">Continuar sin descuento</button>
+                                            </div>
+                                        </div>
+                                    )}
+                                    {couponApplicationError && (
+                                        <div className="mt-2 flex flex-wrap items-center justify-end gap-2" data-testid="coupon-application-error">
+                                            <p className="mr-auto text-xs font-bold text-[#B42318]">Error al aplicar el cupón</p>
+                                            <div className="flex gap-1.5">
+                                                <button type="button" onClick={() => void handleCheckout()} className="min-h-8 rounded-md border border-[#E7A29C] px-2.5 py-1 text-[11px] font-bold text-[#8F2B24]">Reintentar</button>
+                                                <button type="button" onClick={() => onCheckout(customerName.trim(), customerPhone.trim(), notes.trim(), fulfillmentType, true)} className="min-h-8 rounded-md bg-[#B42318] px-2.5 py-1 text-[11px] font-bold text-white">Sin cupón</button>
+                                            </div>
+                                        </div>
+                                    )}
                                     {orderError && (
                                         <p
                                             role="alert"

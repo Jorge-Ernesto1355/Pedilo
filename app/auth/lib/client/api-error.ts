@@ -27,23 +27,27 @@ export class ApiError extends Error {
     readonly status?: number
     readonly code?: string
     readonly fieldErrors: ApiFieldErrors
+    readonly details?: unknown
 
     constructor({
         message,
         status,
         code,
         fieldErrors = {},
+        details,
     }: {
         message: string
         status?: number
         code?: string
         fieldErrors?: ApiFieldErrors
+        details?: unknown
     }) {
         super(message)
         this.name = 'ApiError'
         this.status = status
         this.code = code
         this.fieldErrors = fieldErrors
+        this.details = details
     }
 }
 
@@ -149,5 +153,6 @@ export function normalizeApiError(error: unknown): ApiError {
               asString(body?.message) ??
               'No se pudo completar la solicitud.'),
         fieldErrors,
+        details: objectValues?.details,
     })
 }
