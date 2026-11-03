@@ -6,6 +6,7 @@ import {
     deleteCustomer,
     getCustomer,
     getCustomers,
+    setCustomerDisabled,
     updateCustomer,
 } from '@/src/lib/api/orderApi'
 import type { CustomerPayload } from '@/src/lib/api/order-types'
@@ -68,6 +69,20 @@ export function useCustomerMutations() {
                 notify.success({
                     title: 'Cliente eliminado',
                     description: 'El cliente se eliminó correctamente.',
+                })
+            },
+            onError: showError,
+        }),
+        toggleDisabled: useMutation({
+            mutationFn: ({ id, disabled }: { id: string; disabled: boolean }) =>
+                setCustomerDisabled(id, disabled),
+            onSuccess: (_, variables) => {
+                invalidate()
+                notify.success({
+                    title: variables.disabled ? 'Cliente deshabilitado' : 'Cliente habilitado',
+                    description: variables.disabled
+                        ? 'Ya no podrá hacer pedidos.'
+                        : 'Puede volver a hacer pedidos.',
                 })
             },
             onError: showError,

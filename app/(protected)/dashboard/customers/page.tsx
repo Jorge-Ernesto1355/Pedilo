@@ -4,6 +4,10 @@ import { useEffect, useState } from 'react'
 import posthog from 'posthog-js'
 import {
     LoaderCircle,
+    Ban,
+    CheckCircle2,
+    MessageCircle,
+    MoreHorizontal,
     Pencil,
     Plus,
     RefreshCw,
@@ -21,6 +25,9 @@ import { useCustomer, useCustomerMutations, useCustomers } from '../features/cus
 import { DashboardErrorState } from '../components/DashboardErrorState'
 import { CustomersSkeleton } from '../components/DashboardSkeletons'
 import { EmptyState } from '../components/EmptyState'
+import { CustomerDetailPanel } from '../features/customers/CustomerDetailPanel'
+
+const CUSTOMER_NAME_MAX_LENGTH = 20
 
 export default function CustomersPage() {
     const [page, setPage] = useState(1)
@@ -31,8 +38,32 @@ export default function CustomersPage() {
     const [customerModalOpen, setCustomerModalOpen] = useState(false)
     const [form, setForm] = useState({ name: '', phone: '' })
     const [formError, setFormError] = useState('')
-    const [showOrders, setShowOrders] = useState(false)
-    const limit = 20
+    const [openCustomerMenu, setOpenCustomerMenu] = useState<string | null>(null)
+    useEffect(() => {
+        if (!openCustomerMenu) return
+
+        function closeMenu(event: Event) {
+            if (event instanceof KeyboardEvent) {
+                if (event.key === 'Escape') setOpenCustomerMenu(null)
+                return
+            }
+            const target = event.target
+            if (
+                target instanceof Element &&
+                !target.closest(`[data-customer-actions="${openCustomerMenu}"]`)
+            ) {
+                setOpenCustomerMenu(null)
+            }
+        }
+
+        document.addEventListener('pointerdown', closeMenu)
+        document.addEventListener('keydown', closeMenu)
+        return () => {
+            document.removeEventListener('pointerdown', closeMenu)
+            document.removeEventListener('keydown', closeMenu)
+        }
+    }, [openCustomerMenu])
+    const limit = 10
     useEffect(() => {
         const timer = window.setTimeout(() => {
             setPage(1)
@@ -61,18 +92,18 @@ export default function CustomersPage() {
     if (query.isLoading) return <CustomersSkeleton />
 
     function openCreate() {
+        setOpenCustomerMenu(null)
         setEditing(null)
         setCustomerModalOpen(true)
         setForm({ name: '', phone: '' })
         setFormError('')
-        setShowOrders(false)
     }
     function openEdit(customer: Customer) {
+        setOpenCustomerMenu(null)
         setEditing(customer)
         setCustomerModalOpen(true)
         setForm({ name: customer.name, phone: customer.phone ?? '' })
         setFormError('')
-        setShowOrders(false)
     }
     function closeForm() {
         setCustomerModalOpen(false)
@@ -119,7 +150,13 @@ export default function CustomersPage() {
     function remove(customer: Customer) {
         if (mutations.remove.isPending) return
         if (!window.confirm(`¿Eliminar a ${customer.name}?`)) return
+        setOpenCustomerMenu(null)
         mutations.remove.mutate(customer.id)
+    }
+    function toggleDisabled(customer: Customer) {
+        if (mutations.toggleDisabled.isPending) return
+        setOpenCustomerMenu(null)
+        mutations.toggleDisabled.mutate({ id: customer.id, disabled: !customer.isDisabled })
     }
     return (
         <main className="mx-auto max-w-[1200px] space-y-6 px-5 py-8 sm:px-8 lg:py-10">
@@ -182,7 +219,7 @@ export default function CustomersPage() {
                     />
                 )
             ) : (
-                <div className="overflow-hidden rounded-2xl border border-[#DCE5F3] bg-white shadow-[0_12px_30px_rgb(18_35_74/0.05)]">
+                <div className="overflow-visible rounded-2xl border border-[#DCE5F3] bg-white shadow-[0_12px_30px_rgb(18_35_74/0.05)]">
                     <div className="divide-y divide-[#E8EEF6]">
                         {query.data?.customers.map((customer) => (
                             <div
@@ -228,28 +265,91 @@ export default function CustomersPage() {
                                         </div>
                                     </div>
                                 </div>
-                                <div className="flex justify-end gap-1 border-t border-[#EEF2F7] pt-2 sm:border-0 sm:pt-0">
+                                <div
+                                    className="relative flex justify-end border-t border-[#EEF2F7] pt-2 sm:border-0 sm:pt-0"
+                                    data-customer-actions={customer.id}
+                                >
                                     <button
                                         type="button"
-                                        onClick={() => openEdit(customer)}
-                                        aria-label={`Editar ${customer.name}`}
+                                        onClick={() =>
+                                            setOpenCustomerMenu((current) =>
+                                                current === customer.id ? null : customer.id,
+                                            )
+                                        }
+                                        aria-label={`Acciones de ${customer.name}`}
+                                        aria-expanded={openCustomerMenu === customer.id}
+                                        aria-haspopup="menu"
                                         className="grid size-9 place-items-center rounded-lg text-[#65738A] hover:bg-[#EEF3FF]"
                                     >
-                                        <Pencil className="size-4" />
+                                        <MoreHorizontal className="size-5" />
                                     </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => remove(customer)}
-                                        disabled={mutations.remove.isPending}
-                                        aria-label={`Eliminar ${customer.name}`}
-                                        className="grid size-9 place-items-center rounded-lg text-[#65738A] hover:bg-[#FFF0EF] hover:text-[#B42318] disabled:cursor-wait disabled:opacity-50"
-                                    >
-                                        {mutations.remove.isPending ? (
-                                            <LoaderCircle className="size-4 animate-spin" />
-                                        ) : (
-                                            <Trash2 className="size-4" />
-                                        )}
-                                    </button>
+                                    {openCustomerMenu === customer.id && (
+                                        <div
+                                            role="menu"
+                                            aria-label={`Acciones para ${customer.name}`}
+                                            className="absolute right-0 top-11 z-20 min-w-48 rounded-xl border border-[#DCE5F3] bg-white p-1.5 shadow-[0_14px_36px_rgb(18_35_74/0.16)]"
+                                        >
+                                            {customer.phone && (
+                                                <a
+                                                    href={`https://wa.me/52${customer.phone.replace(/\D/g, '')}`}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    role="menuitem"
+                                                    aria-label={`Enviar WhatsApp a ${customer.name}`}
+                                                    className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-[#17643A] hover:bg-[#F0FDF7]"
+                                                >
+                                                    <MessageCircle className="size-4" />
+                                                    Enviar WhatsApp
+                                                </a>
+                                            )}
+                                            <button
+                                                type="button"
+                                                role="menuitem"
+                                                onClick={() => openEdit(customer)}
+                                                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-[#53647D] hover:bg-[#EEF3FF]"
+                                            >
+                                                <Pencil className="size-4" />
+                                                Editar cliente
+                                            </button>
+                                            <button
+                                                type="button"
+                                                role="menuitem"
+                                                onClick={() => toggleDisabled(customer)}
+                                                disabled={mutations.toggleDisabled.isPending}
+                                                className="flex w-full items-start gap-2 rounded-lg px-3 py-2 text-left hover:bg-[#FFF7ED] disabled:cursor-wait disabled:opacity-50"
+                                            >
+                                                {mutations.toggleDisabled.isPending ? (
+                                                    <LoaderCircle className="mt-0.5 size-4 animate-spin text-[#B45309]" />
+                                                ) : customer.isDisabled ? (
+                                                    <CheckCircle2 className="mt-0.5 size-4 text-[#17643A]" />
+                                                ) : (
+                                                    <Ban className="mt-0.5 size-4 text-[#B45309]" />
+                                                )}
+                                                <span>
+                                                    <span className="block text-sm font-semibold text-[#53647D]">
+                                                        {customer.isDisabled ? 'Habilitar cliente' : 'Deshabilitar cliente'}
+                                                    </span>
+                                                    <span className="block text-[11px] font-normal leading-4 text-[#8996A9]">
+                                                        {customer.isDisabled ? 'Podrá volver a hacer pedidos' : 'Ya no podrá hacer pedidos'}
+                                                    </span>
+                                                </span>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                role="menuitem"
+                                                onClick={() => remove(customer)}
+                                                disabled={mutations.remove.isPending}
+                                                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-[#B42318] hover:bg-[#FFF0EF] disabled:cursor-wait disabled:opacity-50"
+                                            >
+                                                {mutations.remove.isPending ? (
+                                                    <LoaderCircle className="size-4 animate-spin" />
+                                                ) : (
+                                                    <Trash2 className="size-4" />
+                                                )}
+                                                Eliminar cliente
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         ))}
@@ -305,8 +405,13 @@ export default function CustomersPage() {
                                 value={form.name}
                                 onChange={(event) => setForm({ ...form, name: event.target.value })}
                                 placeholder="Nombre"
+                                maxLength={CUSTOMER_NAME_MAX_LENGTH}
+                                aria-describedby="customer-name-counter"
                                 className="w-full rounded-xl border px-3.5 py-3 text-sm"
                             />
+                            <p id="customer-name-counter" className="-mt-2 text-right text-xs text-[#8996A9]">
+                                {form.name.length}/{CUSTOMER_NAME_MAX_LENGTH}
+                            </p>
                             <p className="-mt-2 text-xs text-[#8996A9]">
                                 El teléfono es opcional y se usa para contactar al cliente. Si lo
                                 agregas, escribe 9 o 10 números juntos.
@@ -329,13 +434,12 @@ export default function CustomersPage() {
                                 </p>
                             )}
                             {formError && <p className="text-xs text-[#B42318]">{formError}</p>}
-                            {(mutations.create.isError || mutations.update.isError) && (
+                            {(mutations.create.isError || mutations.update.isError) && !backendPhoneError && (
                                 <p className="text-xs text-[#B42318]">
-                                    {backendPhoneError ??
-                                        (customerMutationError instanceof ApiError &&
+                                    {customerMutationError instanceof ApiError &&
                                         customerMutationError.status === 400
-                                            ? 'Revisa el nombre y el formato del teléfono.'
-                                            : 'No pudimos guardar el cliente. Revisa los datos e inténtalo nuevamente.')}
+                                        ? 'Revisa el nombre y el formato del teléfono.'
+                                        : 'No pudimos guardar el cliente. Revisa los datos e inténtalo nuevamente.'}
                                 </p>
                             )}
                             <button
@@ -355,83 +459,9 @@ export default function CustomersPage() {
                     </section>
                 </div>
             )}
-            {selected && (
-                <div className="fixed inset-0 z-50 grid place-items-center bg-[#10224A]/25 p-4">
-                    <section className="w-full max-w-md rounded-2xl bg-white p-6">
-                        <div className="flex justify-between">
-                            <h2 className="font-display text-xl text-[#12234A]">
-                                Detalle del cliente
-                            </h2>
-                            <button
-                                type="button"
-                                onClick={() => setSelected(null)}
-                                aria-label="Cerrar"
-                            >
-                                <X />
-                            </button>
-                        </div>
-                        {detail.isLoading ? (
-                            <p className="mt-5 text-sm text-[#65738A]">Cargando…</p>
-                        ) : (
-                            detail.data && (
-                                <div className="mt-5 space-y-3 text-sm">
-                                    <p>
-                                        <strong>{detail.data.name}</strong>
-                                    </p>
-                                    <p className="text-[#65738A]">{detail.data.phone}</p>
-                                    <p className="text-[#65738A]">
-                                        Pedidos: {detail.data.orderCount}
-                                    </p>
-                                    <p className="text-[#65738A]">
-                                        Total gastado:{' '}
-                                        <strong className="text-[#17643A]">
-                                            $
-                                            {detail.data.totalSpent.toLocaleString('es-MX', {
-                                                minimumFractionDigits: 2,
-                                            })}
-                                        </strong>
-                                    </p>
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowOrders((value) => !value)}
-                                        className="mt-2 rounded-lg border border-[#C9D7EA] px-3 py-2 text-xs font-bold text-[#2451C5]"
-                                    >
-                                        {showOrders ? 'Ocultar pedidos' : 'Cargar pedidos'}
-                                    </button>
-                                    {showOrders && (
-                                        <div className="mt-3 space-y-2 border-t border-[#E8EEF6] pt-3">
-                                            {detail.data.orders?.length ? (
-                                                detail.data.orders.map((order) => (
-                                                    <div
-                                                        key={order.id}
-                                                        className="flex justify-between text-xs"
-                                                    >
-                                                        <span>
-                                                            Pedido #{order.orderNumber} ·{' '}
-                                                            {order.status}
-                                                        </span>
-                                                        <strong>
-                                                            $
-                                                            {order.total.toLocaleString('es-MX', {
-                                                                minimumFractionDigits: 2,
-                                                            })}
-                                                        </strong>
-                                                    </div>
-                                                ))
-                                            ) : (
-                                                <p className="text-xs text-[#8996A9]">
-                                                    El backend no devolvió pedidos para este
-                                                    cliente.
-                                                </p>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-                            )
-                        )}
-                    </section>
-                </div>
-            )}
+            {selected && (detail.isLoading || detail.data ? (
+                detail.data ? <CustomerDetailPanel customer={detail.data} onClose={() => setSelected(null)} /> : null
+            ) : null)}
             {mutations.remove.isError && (
                 <p role="alert" className="text-sm text-[#B42318]">
                     {mutations.remove.error instanceof ApiError &&
