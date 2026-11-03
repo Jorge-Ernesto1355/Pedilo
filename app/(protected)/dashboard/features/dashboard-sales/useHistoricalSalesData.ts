@@ -13,6 +13,6 @@ export function useHistoricalSalesData() {
         queryFn: getHistoricalSales,
         enabled: Boolean(user?.id && businessId),
         staleTime: 0,
-        retry: 3,
+        retry: 0,
     })
 }

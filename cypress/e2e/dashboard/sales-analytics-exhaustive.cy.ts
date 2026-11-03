@@ -446,17 +446,23 @@ describe('Dashboard · auditoría exhaustiva de ventas, ticket y tendencia', () 
             'true',
         )
         cy.get('[aria-label="Periodo de ventas"] button[data-value="thisMonth"]').click({ force: true })
-        waitForPeriod('@sales', '7d', ({ request }) => {
-            expect(request.query.period).to.eq('7d')
+        // Do not consume the shared alias queue while waiting for a request from
+        // an earlier period: React Query may cancel/reorder the slow response.
+        // Inspecting all interceptions makes this assertion deterministic while
+        // still validating that both periods were requested.
+        cy.get('@sales.all').should((requests) => {
+            const periods = (requests as unknown as Array<Interception>).map(
+                ({ request }) => request.query.period,
+            )
+            expect(periods).to.include('7d')
+            expect(periods).to.include('thisMonth')
         })
-        waitForPeriod('@sales', 'thisMonth', ({ request }) => {
-            expect(request.query.period).to.eq('thisMonth')
-        })
-        waitForPeriod('@ticket', '7d', ({ request }) => {
-            expect(request.query.period).to.eq('7d')
-        })
-        waitForPeriod('@ticket', 'this_month', ({ request }) => {
-            expect(request.query.period).to.eq('this_month')
+        cy.get('@ticket.all').should((requests) => {
+            const periods = (requests as unknown as Array<Interception>).map(
+                ({ request }) => request.query.period,
+            )
+            expect(periods).to.include('7d')
+            expect(periods).to.include('this_month')
         })
         cy.contains(money(scenarios.thisMonth.current.total)).should('be.visible')
         cy.reload()

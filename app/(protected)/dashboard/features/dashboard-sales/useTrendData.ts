@@ -14,6 +14,6 @@ export function useTrendData(period: SalesPeriod) {
         queryFn: () => getDashboardTrend(period),
         enabled: Boolean(user?.id && businessId),
         staleTime: 0,
-        retry: 3,
+        retry: 0,
     })
 }

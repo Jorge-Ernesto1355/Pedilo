@@ -628,14 +628,17 @@ describe('Ventas · analítica comparativa', () => {
         cy.contains('Ganancias del periodo').should('be.visible')
 
         consumeRecordedRequests('@historicalSales')
-        cy.then(() => {
-            allowHistoricalRetry = true
+        cy.get('@dashboardSales.all').then((requests) => {
+            const salesRequestCount = (requests as unknown as Array<unknown>).length
+            cy.then(() => {
+                allowHistoricalRetry = true
+            })
+            cy.contains('Ventas históricas no disponibles').parent().find('button').click()
+            cy.wait('@historicalSales').its('response.statusCode').should('eq', 200)
+            cy.contains('$9,876.50', { timeout: 30_000 }).should('be.visible')
+            cy.contains('42 pedidos acumulados').should('be.visible')
+            cy.get('@dashboardSales.all').should('have.length', salesRequestCount)
         })
-        cy.contains('Ventas históricas no disponibles').parent().find('button').click()
-        cy.wait('@historicalSales').its('response.statusCode').should('eq', 200)
-        cy.contains('$9,876.50', { timeout: 30_000 }).should('be.visible')
-        cy.contains('42 pedidos acumulados').should('be.visible')
-        cy.get('@dashboardSales.all').should('have.length', 1)
     })
 
     it('reintenta únicamente la consulta de tendencia', () => {
@@ -650,16 +653,22 @@ describe('Ventas · analítica comparativa', () => {
         })
 
         consumeRecordedRequests('@dashboardTrend')
-        cy.then(() => {
-            allowTrendRetry = true
+        cy.get('@dashboardSales.all').then((salesRequests) => {
+            const salesRequestCount = (salesRequests as unknown as Array<unknown>).length
+            cy.get('@averageTicket.all').then((averageRequests) => {
+                const averageRequestCount = (averageRequests as unknown as Array<unknown>).length
+                cy.then(() => {
+                    allowTrendRetry = true
+                })
+                cy.contains('Tendencia no disponible').parent().find('button').click()
+                cy.wait('@dashboardTrend').its('response.statusCode').should('eq', 200)
+                cy.get('[aria-label="Comparación visual de ventas"]', { timeout: 30_000 }).should(
+                    'be.visible',
+                )
+                cy.get('@dashboardSales.all').should('have.length', salesRequestCount)
+                cy.get('@averageTicket.all').should('have.length', averageRequestCount)
+            })
         })
-        cy.contains('Tendencia no disponible').parent().find('button').click()
-        cy.wait('@dashboardTrend').its('response.statusCode').should('eq', 200)
-        cy.get('[aria-label="Comparación visual de ventas"]', { timeout: 30_000 }).should(
-            'be.visible',
-        )
-        cy.get('@dashboardSales.all').should('have.length', 1)
-        cy.get('@averageTicket.all').should('have.length', 1)
     })
 })
 

@@ -62,6 +62,7 @@ type ProductApiState = {
     failCatalog: boolean
     failAnalytics: boolean
     nextProductId: number
+    nestedPagination?: boolean
 }
 
 function statsFor(products: Product[]) {
@@ -174,14 +175,25 @@ function installProductApi(state: ProductApiState) {
         const products = filteredProducts(state.products, request.url)
         const page = Number(url.searchParams.get('page') ?? 1)
         const limit = Number(url.searchParams.get('limit') ?? 10)
+        const response = {
+            products: products.slice((page - 1) * limit, page * limit),
+            page,
+            limit,
+            total: products.length,
+        }
         request.reply({
             statusCode: 200,
-            body: {
-                products: products.slice((page - 1) * limit, page * limit),
-                page,
-                limit,
-                total: products.length,
-            },
+            body: state.nestedPagination
+                ? {
+                      products: response.products,
+                      pagination: {
+                          page: response.page,
+                          limit: response.limit,
+                          total: response.total,
+                          totalPages: Math.ceil(response.total / response.limit),
+                      },
+                  }
+                : response,
         })
     })
 
@@ -324,6 +336,61 @@ describe('Productos · catálogo, métricas y analytics', () => {
         cy.contains('h2', 'Qué están pidiendo tus clientes').should('be.visible')
         cy.contains('h3', 'Más vendidos').parent().should('contain', 'Café de olla')
         cy.contains('h3', 'Más solicitados').parent().should('contain', 'Coca Cola')
+    })
+
+    it('permite recorrer todas las páginas cuando el backend devuelve pagination anidada', () => {
+        const products = Array.from({ length: 40 }, (_, index) => ({
+            ...initialProducts[0],
+            id: `product-pagination-${index + 1}`,
+            name: `Producto de prueba ${String(index + 1).padStart(2, '0')}`,
+            createdAt: `2026-10-${String((index % 9) + 1).padStart(2, '0')}T12:00:00.000Z`,
+            updatedAt: `2026-10-${String((index % 9) + 1).padStart(2, '0')}T12:00:00.000Z`,
+        }))
+        const state: ProductApiState = {
+            products,
+            failCatalog: false,
+            failAnalytics: false,
+            nextProductId: 1,
+            nestedPagination: true,
+        }
+        visitProducts(state)
+
+        cy.contains('h2', 'Todos tus productos')
+            .closest('section')
+            .should('contain', 'Producto de prueba 01')
+            .and('contain', 'Producto de prueba 10')
+            .and('not.contain', 'Producto de prueba 11')
+        cy.contains('span', 'Página 1 de 4')
+            .parent()
+            .find('button')
+            .last()
+            .click()
+        waitForProductList({ page: '2', limit: '10' })
+        cy.contains('span', 'Página 2 de 4').should('be.visible')
+        cy.contains('h2', 'Todos tus productos')
+            .closest('section')
+            .should('contain', 'Producto de prueba 11')
+            .and('contain', 'Producto de prueba 20')
+
+        cy.contains('span', 'Página 2 de 4')
+            .parent()
+            .find('button')
+            .last()
+            .click()
+        waitForProductList({ page: '3', limit: '10' })
+        cy.contains('span', 'Página 3 de 4').should('be.visible')
+
+        cy.contains('span', 'Página 3 de 4')
+            .parent()
+            .find('button')
+            .last()
+            .click()
+        waitForProductList({ page: '4', limit: '10' })
+        cy.contains('span', 'Página 4 de 4').should('be.visible')
+        cy.contains('h2', 'Todos tus productos')
+            .closest('section')
+            .should('contain', 'Producto de prueba 31')
+            .and('contain', 'Producto de prueba 40')
     })
 
     it('aplica búsqueda, estado, categoría y ordenamiento enviando los parámetros correctos', () => {

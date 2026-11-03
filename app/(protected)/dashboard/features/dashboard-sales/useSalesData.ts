@@ -16,6 +16,8 @@ export function useSalesData(period: SalesPeriod) {
         // Each period selection should ask the API for its current value. This also
         // makes switching back to a previously selected period observable to the UI.
         staleTime: 0,
-        retry: 3,
+        // The cards expose an explicit retry action. Automatic retries delayed
+        // the error state and caused several requests after a single failure.
+        retry: 0,
     })
 }

@@ -30,6 +30,6 @@ export function useAverageTicketData(period: SalesPeriod) {
         // Keep this metric in sync with the selected sales period, including when
         // the user returns to a period that was loaded earlier.
         staleTime: 0,
-        retry: 3,
+        retry: 0,
     })
 }

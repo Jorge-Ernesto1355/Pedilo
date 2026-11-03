@@ -87,6 +87,15 @@ export default function CountUp({
         }
     }, [isInView, startWhen, motionValue, direction, from, to, delay, onStart, onEnd, duration])
 
+    // A KPI can become available after an error retry while the card is outside
+    // the viewport. In that case useInView never starts the animation, leaving
+    // the initial value rendered forever instead of the actual metric.
+    useEffect(() => {
+        if (!isInView && ref.current && startWhen) {
+            ref.current.textContent = formatValue(direction === 'down' ? from : to)
+        }
+    }, [isInView, startWhen, direction, from, to, formatValue])
+
     useEffect(() => {
         const unsubscribe = motionValue.on('change', (latest: number) => {
             if (ref.current) {

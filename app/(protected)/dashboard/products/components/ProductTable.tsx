@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element -- Product images come from the business catalog. */
 'use client'
 
 import { ChevronLeft, ChevronRight, Eye, LoaderCircle, Pencil, Trash2 } from 'lucide-react'
@@ -96,7 +97,14 @@ function ProductRow({
                         )}
                     </div>
                     <div>
-                        <p className="font-semibold">{product.name}</p>
+                        <div className="flex items-center gap-2">
+                            <p className="font-semibold">{product.name}</p>
+                            {product.type === 'COMBO' && (
+                                <span className="rounded border border-[#D6E1FA] bg-[#F2F6FF] px-1.5 py-0.5 text-[9px] font-bold tracking-wide text-[#3156A8]">
+                                    COMBO
+                                </span>
+                            )}
+                        </div>
                         <p className="mt-0.5 text-xs text-[#8996A9]">
                             Creado{' '}
                             {product.createdAt ? date.format(new Date(product.createdAt)) : '—'}

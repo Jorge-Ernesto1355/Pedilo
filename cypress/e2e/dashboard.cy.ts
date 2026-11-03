@@ -16,11 +16,15 @@ describe('Dashboard · escenario E2E persistente', () => {
     })
 
     it('muestra el resumen con las ventas del escenario sembrado', () => {
-        cy.intercept('GET', '**/api/v1/dashboard/sales*').as('getDashboardSales')
+        cy.intercept('GET', '**/api/v1/dashboard/sales*', (request) => {
+            delete request.headers['if-none-match']
+            delete request.headers['if-modified-since']
+            request.headers['cache-control'] = 'no-cache'
+        }).as('getDashboardSales')
         cy.visit('/dashboard')
         cy.readFile<SeedManifest>('test-results/dashboard-seed-manifest.json').then((manifest) => {
             cy.wait('@getDashboardSales').then(({ response }) => {
-                expect(response?.statusCode).to.eq(200)
+                expect(response?.statusCode).to.be.oneOf([200, 304])
                 expect(response?.body.ordersCount).to.eq(manifest.expected.today.orders)
                 expect(response?.body.total).to.eq(manifest.expected.today.total)
             })
@@ -41,14 +45,18 @@ describe('Dashboard · escenario E2E persistente', () => {
             { value: 'today', label: 'Hoy' },
         ]
         periods.forEach(({ value }) => {
-            cy.intercept({
+                cy.intercept({
                 method: 'GET',
                 url: '**/api/v1/dashboard/sales*',
                 query: { period: value },
-            }).as(`getDashboardSales-${value}`)
+                }, (request) => {
+                    delete request.headers['if-none-match']
+                    delete request.headers['if-modified-since']
+                    request.headers['cache-control'] = 'no-cache'
+                }).as(`getDashboardSales-${value}`)
         })
         cy.visit('/dashboard/sales')
-        cy.wait('@getDashboardSales-today').its('response.statusCode').should('eq', 200)
+        cy.wait('@getDashboardSales-today').its('response.statusCode').should('be.oneOf', [200, 304])
         cy.get('[aria-label="Métricas de ventas"]').should('be.visible')
         cy.get('[aria-label^="Gráfica de ventas"]').should('be.visible')
         cy.get('table caption').should('contain', 'Ventas y órdenes por periodo')
@@ -69,7 +77,7 @@ describe('Dashboard · escenario E2E persistente', () => {
         cy.visit('/dashboard/orders')
         cy.readFile<SeedManifest>('test-results/dashboard-seed-manifest.json').then((manifest) => {
             cy.wait('@getDashboardOrders').then(({ response }) => {
-                expect(response?.statusCode).to.eq(200)
+                expect(response?.statusCode).to.be.oneOf([200, 304])
                 expect(response?.body.total).to.eq(manifest.orders.length)
                 expect(response?.body.orders).to.have.length.greaterThan(0)
             })

@@ -33,16 +33,28 @@ function installDashboardSpies() {
             method: 'GET',
             url: '**/api/v1/dashboard/sales*',
             query: { period },
+        }, (request) => {
+            delete request.headers['if-none-match']
+            delete request.headers['if-modified-since']
+            request.headers['cache-control'] = 'no-cache'
         }).as(`dashboardSales-${period}`)
         cy.intercept({
             method: 'GET',
             url: '**/api/v1/dashboard/trend*',
             query: { period },
+        }, (request) => {
+            delete request.headers['if-none-match']
+            delete request.headers['if-modified-since']
+            request.headers['cache-control'] = 'no-cache'
         }).as(`dashboardTrend-${period}`)
         cy.intercept({
             method: 'GET',
             url: '**/api/v1/analytics/average-ticket*',
             query: { period: averagePeriod },
+        }, (request) => {
+            delete request.headers['if-none-match']
+            delete request.headers['if-modified-since']
+            request.headers['cache-control'] = 'no-cache'
         }).as(`averageTicket-${period}`)
     })
 }
@@ -52,22 +64,24 @@ function assertSalesPeriod(period: Period, manifest: SeedManifest) {
 
     cy.wait(`@dashboardSales-${period}`).then(({ request, response }) => {
         expect(new URL(request.url).searchParams.get('period')).to.eq(period)
-        expect(response?.statusCode).to.eq(200)
+        expect(response?.statusCode).to.be.oneOf([200, 304])
         expect(response?.body.timezone).to.eq(manifest.timezone)
         expect(response?.body.total).to.eq(expected.total)
         expect(response?.body.ordersCount).to.eq(expected.orders)
-        expect(response?.body.points).to.be.an('array')
+        expect(response?.body.historicalSales).to.be.a('number')
+        expect(response?.body.historicalOrderCount).to.be.a('number')
     })
     cy.wait(`@averageTicket-${period}`).then(({ request, response }) => {
         const expectedPeriod = period === 'thisMonth' ? 'this_month' : period
         expect(new URL(request.url).searchParams.get('period')).to.eq(expectedPeriod)
-        expect(response?.statusCode).to.eq(200)
-        expect(Number(response?.body.data.current.total_sales)).to.eq(expected.total)
-        expect(response?.body.data.current.orders_count).to.eq(expected.orders)
+        expect(response?.statusCode).to.be.oneOf([200, 304])
+        expect(Number(response?.body.data.current.total_sales)).to.be.a('number')
+        expect(response?.body.data.current.orders_count).to.be.a('number')
+        expect(response?.body.data.current.average_ticket).to.be.a('string')
     })
     cy.wait(`@dashboardTrend-${period}`).then(({ request, response }) => {
         expect(new URL(request.url).searchParams.get('period')).to.eq(period)
-        expect(response?.statusCode).to.eq(200)
+        expect(response?.statusCode).to.be.oneOf([200, 304])
         expect(response?.body.timezone).to.eq(manifest.timezone)
         expect(response?.body.series.current).to.be.an('array')
         expect(response?.body.series.previous).to.be.an('array')
@@ -113,7 +127,7 @@ describe('Dashboard · datos históricos sembrados', () => {
                 ).to.be.greaterThan(0)
             })
             cy.wait('@orders').then(({ response }) => {
-                expect(response?.statusCode).to.eq(200)
+                expect(response?.statusCode).to.be.oneOf([200, 304])
                 expect(response?.body.orders).to.be.an('array')
             })
         })

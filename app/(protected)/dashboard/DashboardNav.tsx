@@ -13,12 +13,16 @@ import {
     Package,
     ShoppingBag,
     Users,
+    Volume2,
+    VolumeX,
 } from 'lucide-react'
 import { notify } from '@/src/lib/notifications/notify'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuthStore } from '@/store/authStore'
 import { useCurrentBusiness } from '@/app/(protected)/create-menu/features/business-profile/useCurrentBusiness'
 import posthog from 'posthog-js'
+import { useOrderEventsStore } from '@/store/orderEventsStore'
+import { getOrderSoundPreferenceKey } from './features/orders/services/orderEvents'
 
 const links = [
     { href: '/dashboard', label: 'Resumen', icon: LayoutDashboard },
@@ -45,6 +49,11 @@ export function DashboardNav() {
     const router = useRouter()
     const queryClient = useQueryClient()
     const clearUser = useAuthStore((state) => state.clearUser)
+    const businessId = useAuthStore((state) => state.user?.businessId)
+    const unseenCount = useOrderEventsStore((state) => state.unseenOrderIds.length)
+    const soundEnabled = useOrderEventsStore((state) => state.soundEnabled)
+    const setSoundEnabled = useOrderEventsStore((state) => state.setSoundEnabled)
+    const connectionStatus = useOrderEventsStore((state) => state.connectionStatus)
     const businessQuery = useCurrentBusiness()
     const [accountMenuOpen, setAccountMenuOpen] = useState(false)
     const [isLoggingOut, setIsLoggingOut] = useState(false)
@@ -52,6 +61,23 @@ export function DashboardNav() {
     const accountMenuRef = useRef<HTMLDivElement>(null)
     const accountMenuPortalRef = useRef<HTMLDivElement>(null)
     const accountButtonRef = useRef<HTMLButtonElement>(null)
+    const connectionIndicator = connectionStatus === 'connected'
+        ? {
+              color: 'bg-[#2E9B62]',
+              label: 'Conectado',
+              description: 'Las nuevas órdenes se actualizan en tiempo real.',
+          }
+        : connectionStatus === 'error'
+          ? {
+                color: 'bg-[#C94040]',
+                label: 'Sin conexión',
+                description: 'No se pudo conectar al tiempo real. Las órdenes no se actualizarán automáticamente.',
+            }
+          : {
+                color: 'bg-[#D49A22]',
+                label: 'Conectando',
+                description: 'Estamos intentando conectar las actualizaciones en tiempo real.',
+            }
 
     function updateMenuPosition() {
         const button = accountButtonRef.current
@@ -144,20 +170,50 @@ export function DashboardNav() {
                                 link.href === '/dashboard'
                                     ? pathname === link.href
                                     : pathname.startsWith(link.href)
+                            const isOrders = link.href === '/dashboard/orders'
                             return (
                                 <Link
                                     key={link.href}
                                     href={link.href}
+                                    aria-label={isOrders && unseenCount > 0 ? `Pedidos, ${unseenCount} nuevas órdenes` : undefined}
                                     onMouseEnter={() => router.prefetch(link.href)}
                                     className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition ${active ? 'bg-[#EAF0FF] text-[#1E40AF]' : 'text-[#65738A] hover:bg-[#F5F8FC] hover:text-[#1E40AF]'}`}
                                 >
                                     <Icon className="size-4" />
                                     {link.label}
+                                    {isOrders && unseenCount > 0 && (
+                                        <span className="rounded-full bg-[#C94040] px-1.5 py-0.5 text-[10px] font-bold leading-none text-white" aria-label={`${unseenCount} nuevas órdenes`}>
+                                            {unseenCount > 99 ? '99+' : unseenCount}
+                                            <span className="sr-only"> nuevas órdenes</span>
+                                        </span>
+                                    )}
                                 </Link>
                             )
                         })}
                     </nav>
                     <div className="flex items-center gap-3">
+                        <span
+                            className="group relative hidden size-8 items-center justify-center rounded-full outline-none lg:inline-flex"
+                            tabIndex={0}
+                            role="img"
+                            aria-label={`Estado de actualizaciones: ${connectionIndicator.label}`}
+                        >
+                            <span
+                                className={`size-2.5 rounded-full ring-4 ring-transparent transition group-hover:ring-[#E8EEF8] group-focus-visible:ring-[#DCE6FF] ${connectionIndicator.color}`}
+                                aria-hidden="true"
+                            />
+                            <span className="pointer-events-none absolute right-0 top-10 z-50 w-64 translate-y-[-4px] rounded-xl border border-[#DCE5F3] bg-white p-3 text-left opacity-0 shadow-[0_12px_30px_rgb(20_48_105_/_0.14)] transition duration-150 group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100 group-focus-visible:pointer-events-auto group-focus-visible:translate-y-0 group-focus-visible:opacity-100">
+                                <span className="block text-xs font-bold text-[#12234A]">
+                                    {connectionIndicator.label}
+                                </span>
+                                <span className="mt-1 block text-xs leading-5 text-[#65738A]">
+                                    {connectionIndicator.description}
+                                </span>
+                                <span className="mt-2 block text-[10px] font-semibold text-[#8996A9]">
+                                    Verde: conectado · Amarillo: conectando · Rojo: sin conexión
+                                </span>
+                            </span>
+                        </span>
                         <Link
                             href="/create-menu"
                             className="hidden items-center gap-1.5 rounded-lg border border-[#C9D7EA] px-3 py-2 text-xs font-semibold text-[#243556] transition hover:border-[#9EB3D8] hover:bg-[#F5F8FC] hover:text-[#1E40AF] sm:inline-flex"
@@ -215,6 +271,26 @@ export function DashboardNav() {
                                             <Menu className="size-4" />
                                             Crear menú
                                         </Link>
+                                        <button
+                                            type="button"
+                                            role="menuitemcheckbox"
+                                            aria-checked={soundEnabled}
+                                            onClick={() => {
+                                                const next = !soundEnabled
+                                                setSoundEnabled(next)
+                                                if (businessId) {
+                                                    try {
+                                                        window.localStorage.setItem(getOrderSoundPreferenceKey(businessId), String(next))
+                                                    } catch {
+                                                        // The preference remains active for this session.
+                                                    }
+                                                }
+                                            }}
+                                            className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm font-semibold text-[#243556] transition hover:bg-[#F5F8FC] hover:text-[#1E40AF]"
+                                        >
+                                            {soundEnabled ? <Volume2 className="size-4" /> : <VolumeX className="size-4" />}
+                                            Sonido de nuevas órdenes
+                                        </button>
                                         <Link
                                             href="/dashboard/account"
                                             role="menuitem"
@@ -256,17 +332,23 @@ export function DashboardNav() {
                             <Link
                                 key={link.href}
                                 href={link.href}
+                                aria-label={isOrders && unseenCount > 0 ? `Pedidos, ${unseenCount} nuevas órdenes` : undefined}
                                 onMouseEnter={() => router.prefetch(link.href)}
                                 aria-current={active ? 'page' : undefined}
                                 className={`flex min-w-0 flex-col items-center justify-center rounded-lg text-[9px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1E40AF] focus-visible:ring-offset-2 ${isOrders ? '-translate-y-1 gap-0.5' : 'gap-0.5'} ${active ? 'text-[#1E40AF]' : 'text-[#8996A9] hover:text-[#1E40AF]'}`}
                             >
                                 <span
-                                    className={`grid place-items-center transition-colors ${isOrders ? `size-10 rounded-xl shadow-[0_6px_14px_rgb(30_64_175_/_0.22)] ${active ? 'bg-[#1E40AF] text-white' : 'bg-[#EAF0FF] text-[#2451C5]'}` : `size-7 rounded-lg ${active ? 'bg-[#EAF0FF]' : ''}`}`}
+                                    className={`relative grid place-items-center transition-colors ${isOrders ? `size-10 rounded-xl shadow-[0_6px_14px_rgb(30_64_175_/_0.22)] ${active ? 'bg-[#1E40AF] text-white' : 'bg-[#EAF0FF] text-[#2451C5]'}` : `size-7 rounded-lg ${active ? 'bg-[#EAF0FF]' : ''}`}`}
                                 >
                                     <Icon
                                         className={isOrders ? 'size-5' : 'size-4'}
                                         strokeWidth={active || isOrders ? 2.4 : 2}
                                     />
+                                    {isOrders && unseenCount > 0 && (
+                                        <span className="absolute -right-1.5 -top-1.5 grid min-h-4 min-w-4 place-items-center rounded-full bg-[#C94040] px-1 text-[9px] font-bold leading-none text-white ring-2 ring-white" aria-label={`${unseenCount} nuevas órdenes`}>
+                                            {unseenCount > 99 ? '99+' : unseenCount}
+                                        </span>
+                                    )}
                                 </span>
                                 <span className={`truncate px-0.5 ${isOrders ? 'font-bold' : ''}`}>
                                     {link.label}

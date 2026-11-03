@@ -5,10 +5,12 @@ import { Package, Plus, RefreshCw } from 'lucide-react'
 import { friendlyNotificationError, notify } from '@/src/lib/notifications/notify'
 import { getUserFriendlyFieldError } from '@/src/lib/errors/user-friendly-error'
 import { ApiError } from '@/app/auth/lib/client/api-error'
-import type {
-    Product,
-    ProductInput,
+import {
+    isComboProduct,
+    type Product,
+    type ProductInput,
 } from '@/app/(protected)/create-menu/features/product-management/product.types'
+import { ComboManagerModal } from '@/app/(protected)/create-menu/features/product-management/ComboManagerModal'
 import type { ProductListParams } from '@/app/(protected)/create-menu/features/product-management/productApi'
 import { useProduct } from './hooks/useProduct'
 import { useProductMutations } from './hooks/useProductMutations'
@@ -59,6 +61,7 @@ export default function ProductsPage() {
         limit: 5,
     })
     const [editor, setEditor] = useState<'create' | 'edit' | null>(null)
+    const [comboEditorOpen, setComboEditorOpen] = useState(false)
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
     const [formError, setFormError] = useState('')
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
@@ -86,7 +89,7 @@ export default function ProductsPage() {
         analytics = useProductAnalytics(analyticsParams),
         categoriesQuery = useProductCategories(),
         management = useProductMutations(),
-        detail = useProduct(selectedProduct?.id ?? null)
+        detail = useProduct(selectedProduct && !comboEditorOpen ? selectedProduct.id : null)
     const settings = useBusinessSettings(true)
     const categories = useMemo<ProductCategoryOption[]>(
         () =>
@@ -208,10 +211,12 @@ export default function ProductsPage() {
     const openCreate = () => {
         clearFormErrors()
         setSelectedProduct(null)
+        setComboEditorOpen(false)
         setEditor('create')
     }
     const closeEditor = () => {
         clearFormErrors()
+        setComboEditorOpen(false)
         setEditor(null)
         setSelectedProduct(null)
     }
@@ -271,11 +276,21 @@ export default function ProductsPage() {
                     <ProductTable
                         products={catalog.data.products}
                         categoryNames={categoryNames}
-                        onView={setSelectedProduct}
+                        onView={(product) => {
+                            setEditor(null)
+                            setComboEditorOpen(false)
+                            setSelectedProduct(product)
+                        }}
                         onEdit={(product) => {
                             clearFormErrors()
                             setSelectedProduct(product)
-                            setEditor('edit')
+                            if (isComboProduct(product)) {
+                                setEditor(null)
+                                setComboEditorOpen(true)
+                            } else {
+                                setComboEditorOpen(false)
+                                setEditor('edit')
+                            }
                         }}
                         onToggle={toggleProduct}
                         onDelete={deleteProduct}
@@ -324,9 +339,23 @@ export default function ProductsPage() {
                     analytics.summary.isLoading
                 }
             />
+            {comboEditorOpen && selectedProduct && (
+                <ComboManagerModal
+                    open
+                    categoryId={selectedProduct.categoryId}
+                    categoryName={
+                        categoryNames.get(selectedProduct.categoryId) ??
+                        selectedProduct.categoryName ??
+                        'Categoría'
+                    }
+                    menus={categoriesQuery.data ?? []}
+                    combo={selectedProduct}
+                    onClose={closeEditor}
+                />
+            )}
             <ProductForm
                 key={`${editor ?? 'closed'}-${selectedProduct?.id ?? 'new'}-${detail.data?.updatedAt ?? 'loading'}-${detail.data?.optionGroups?.length ?? 0}-${categories.length}`}
-                open={editor !== null}
+                open={editor !== null && !comboEditorOpen}
                 product={editor === 'edit' ? (detail.data ?? selectedProduct) : null}
                 categories={categories}
                 isSaving={management.createProduct.isPending || management.updateProduct.isPending}
@@ -336,7 +365,7 @@ export default function ProductsPage() {
                 onSave={saveProduct}
             />
             <ProductDetails
-                open={Boolean(selectedProduct) && editor === null}
+                open={Boolean(selectedProduct) && editor === null && !comboEditorOpen}
                 product={detail.data}
                 categoryName={
                     detail.data?.categoryName ?? categoryNames.get(detail.data?.categoryId ?? '')
