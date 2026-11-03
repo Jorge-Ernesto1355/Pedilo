@@ -5,18 +5,19 @@
 import { useState } from 'react'
 import type { UseFormSetError } from 'react-hook-form'
 import { motion, useReducedMotion } from 'framer-motion'
-import { GripVertical, LoaderCircle, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react'
+import { GripVertical, LoaderCircle, Pencil, Plus, RefreshCw, Trash2, Utensils } from 'lucide-react'
 import { friendlyNotificationError, notify } from '@/src/lib/notifications/notify'
 import { Modal } from '@/app/components/ui/Modal'
 import { ApiError } from '@/app/auth/lib/client/api-error'
-import type { MenuCategory } from './menu.types'
+import type { Menu, MenuCategory } from './menu.types'
 import type { useCategoryManagement } from './useCategoryManagement'
 import { AddProductModal } from '../product-management/AddProductModal'
+import { ComboManagerModal } from '../product-management/ComboManagerModal'
 import {
     useProductManagement,
     useProductsByCategory,
 } from '../product-management/useProductManagement'
-import type { Product } from '../product-management/product.types'
+import { isComboProduct, type Product } from '../product-management/product.types'
 import type { ProductFormValues } from '../product-management/product.schema'
 import {
     CreateMenuEmptyState,
@@ -88,14 +89,19 @@ function ReorderStatus({ children }: { children: string }) {
 function CategoryProducts({
     category,
     categories,
+    menus,
     productManagement,
 }: {
     category: MenuCategory
     categories: MenuCategory[]
+    menus: Menu[]
     productManagement: ProductManagement
 }) {
     const productsQuery = useProductsByCategory(category.id)
     const [productModalOpen, setProductModalOpen] = useState(false)
+    const [comboModalOpen, setComboModalOpen] = useState(false)
+    const [productTypeModalOpen, setProductTypeModalOpen] = useState(false)
+    const [newItemType, setNewItemType] = useState<'PRODUCT' | 'COMBO'>('PRODUCT')
     const [editingProduct, setEditingProduct] = useState<Product | null>(null)
     const [draggedProductId, setDraggedProductId] = useState<string | null>(null)
     const [reorderingProductId, setReorderingProductId] = useState<string | null>(null)
@@ -215,7 +221,8 @@ function CategoryProducts({
                     type="button"
                     onClick={() => {
                         setEditingProduct(null)
-                        setProductModalOpen(true)
+                        setNewItemType('PRODUCT')
+                        setProductTypeModalOpen(true)
                     }}
                     disabled={productManagement.reorderProducts.isPending}
                     className="inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-bold text-[#2451C5] hover:bg-[#EEF3FF] disabled:cursor-wait disabled:opacity-50"
@@ -282,9 +289,16 @@ function CategoryProducts({
                                     )}
                                 </div>
                                 <div className="min-w-0">
-                                    <p className="truncate text-sm font-semibold text-[#243556]">
-                                        {product.name}
-                                    </p>
+                                    <div className="flex min-w-0 items-center gap-2">
+                                        <p className="truncate text-sm font-semibold text-[#243556]">
+                                            {product.name}
+                                        </p>
+                                        {isComboProduct(product) && (
+                                            <span className="shrink-0 rounded border border-[#D6E1FA] bg-[#F2F6FF] px-1.5 py-0.5 text-[9px] font-bold tracking-wide text-[#3156A8]">
+                                                COMBO
+                                            </span>
+                                        )}
+                                    </div>
                                     {product.description && (
                                         <p className="truncate text-xs text-[#8996A9]">
                                             {product.description}
@@ -316,7 +330,8 @@ function CategoryProducts({
                                     aria-label={`Editar ${product.name}`}
                                     onClick={() => {
                                         setEditingProduct(product)
-                                        setProductModalOpen(true)
+                                        if (isComboProduct(product)) setComboModalOpen(true)
+                                        else setProductModalOpen(true)
                                     }}
                                     disabled={productManagement.reorderProducts.isPending}
                                     className="grid size-7 place-items-center rounded text-[#65738A] hover:bg-[#EEF3FF] hover:text-[#1E40AF] disabled:cursor-wait disabled:opacity-50"
@@ -364,9 +379,9 @@ function CategoryProducts({
                 ))}
             </div>
             <AddProductModal
-                open={productModalOpen}
+                open={productModalOpen && !isComboProduct(editingProduct)}
                 categoryName={category.name}
-                product={editingProduct}
+                product={isComboProduct(editingProduct) ? null : editingProduct}
                 isSaving={
                     productManagement.createProduct.isPending ||
                     productManagement.updateProduct.isPending
@@ -377,6 +392,82 @@ function CategoryProducts({
                 }}
                 onSave={saveProduct}
             />
+            <Modal
+                open={productTypeModalOpen}
+                testId="product-type-dialog"
+                onClose={() => setProductTypeModalOpen(false)}
+                title="¿Qué vas a agregar?"
+                description="Elige cómo quieres que aparezca este artículo en tu menú."
+                size="lg"
+                footer={
+                    <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
+                        <button
+                            type="button"
+                            onClick={() => setProductTypeModalOpen(false)}
+                            className="rounded-lg border border-[#D7E1EF] px-4 py-2 text-sm font-semibold text-[#43536E]"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            type="button"
+                            className="rounded-lg bg-[#1E40AF] px-4 py-2 text-sm font-semibold text-white"
+                            onClick={() => {
+                                setProductTypeModalOpen(false)
+                                if (newItemType === 'COMBO') setComboModalOpen(true)
+                                else setProductModalOpen(true)
+                            }}
+                        >
+                            Continuar con {newItemType === 'PRODUCT' ? 'producto' : 'combo'}
+                        </button>
+                    </div>
+                }
+            >
+                <div className="grid gap-3 sm:grid-cols-2">
+                    <button
+                        type="button"
+                        aria-pressed={newItemType === 'PRODUCT'}
+                        onClick={() => setNewItemType('PRODUCT')}
+                        className={`rounded-xl border p-4 text-left transition ${newItemType === 'PRODUCT' ? 'border-[#7392E6] bg-[#F4F7FF] ring-2 ring-[#2451C5]/10' : 'border-[#E3E9F1] hover:bg-[#FAFCFE]'}`}
+                    >
+                        <span className="grid size-9 place-items-center rounded-lg bg-[#EAF0FF] text-[#2451C5]">
+                            <Plus className="size-4" />
+                        </span>
+                        <span className="mt-3 block text-sm font-bold text-[#243556]">
+                            Producto
+                        </span>
+                        <span className="mt-1 block text-xs leading-5 text-[#65738A]">
+                            El cliente compra exactamente este producto.
+                        </span>
+                    </button>
+                    <button
+                        type="button"
+                        aria-pressed={newItemType === 'COMBO'}
+                        onClick={() => setNewItemType('COMBO')}
+                        className={`rounded-xl border p-4 text-left transition ${newItemType === 'COMBO' ? 'border-[#7392E6] bg-[#F4F7FF] ring-2 ring-[#2451C5]/10' : 'border-[#E3E9F1] hover:bg-[#FAFCFE]'}`}
+                    >
+                        <span className="grid size-9 place-items-center rounded-lg bg-[#EEF3FF] text-[#2451C5]">
+                            <Utensils className="size-4" />
+                        </span>
+                        <span className="mt-3 block text-sm font-bold text-[#243556]">Combo</span>
+                        <span className="mt-1 block text-xs leading-5 text-[#65738A]">
+                            Combina productos y permite que el cliente elija opciones.
+                        </span>
+                    </button>
+                </div>
+            </Modal>
+            {comboModalOpen && (
+                <ComboManagerModal
+                    open={comboModalOpen}
+                    categoryId={category.id}
+                    categoryName={category.name}
+                    menus={menus}
+                    combo={isComboProduct(editingProduct) ? editingProduct : null}
+                    onClose={() => {
+                        setComboModalOpen(false)
+                        setEditingProduct(null)
+                    }}
+                />
+            )}
         </div>
     )
 }
@@ -859,6 +950,7 @@ export function MenuManagementPanel({ management }: { management: MenuManagement
                                                     <CategoryProducts
                                                         category={category}
                                                         categories={selectedMenu.categories ?? []}
+                                                        menus={menus}
                                                         productManagement={productManagement}
                                                     />
                                                 </motion.div>

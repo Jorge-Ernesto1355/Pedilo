@@ -31,8 +31,13 @@ export function ProductCustomizeDialog({
     const [selected, setSelected] = useState<OptionQuantities>(() =>
         selectionsToQuantities(initialSelections, product?.optionGroups ?? []),
     )
+    const [comboSelected, setComboSelected] = useState<Record<string, string>>(() =>
+        Object.fromEntries(initialSelections.filter((selection) => selection.kind === 'combo-choice' && selection.groupId && selection.productId).map((selection) => [selection.groupId!, selection.productId!])),
+    )
     if (!product) return null
+    const comboGroups = product.comboOptionGroups?.slice().sort((a, b) => a.sortOrder - b.sortOrder) ?? []
     const validation = validateOptionGroups(groups, selected)
+    const comboValid = comboGroups.every((group) => group.products.some((choice) => choice.product.isAvailable && choice.productId === comboSelected[group.id]))
     const selectedOptions = groups.flatMap((group) =>
         group.options
             .filter((option) => (selected[group.id]?.[option.id] ?? 0) > 0)
@@ -43,9 +48,11 @@ export function ProductCustomizeDialog({
                 quantity: selected[group.id]?.[option.id] ?? 0,
             })),
     )
-    const total =
-        product.price +
-        selectedOptions.reduce((sum, option) => sum + option.price * option.quantity, 0)
+    const comboSelections: CartSelection[] = comboGroups.flatMap((group) => {
+        const choice = group.products.find((item) => item.productId === comboSelected[group.id])
+        return choice ? [{ id: choice.id, name: `${group.name}: ${choice.product.name}`, price: 0, quantity: 1, kind: 'combo-choice', groupId: group.id, productId: choice.productId }] : []
+    })
+    const total = product.price + selectedOptions.reduce((sum, option) => sum + option.price * option.quantity, 0)
     function changeQuantity(groupId: string, optionId: string, delta: number) {
         setSelected((current) => {
             const group = groups.find((item) => item.id === groupId)
@@ -76,19 +83,21 @@ export function ProductCustomizeDialog({
                 aria-labelledby="customize-title"
                 className="max-h-[92vh] w-full overflow-y-auto rounded-t-[24px] border border-[#DCE5F3] bg-white shadow-[0_24px_80px_-32px_rgba(19,49,117,.45)] sm:max-w-lg sm:rounded-[24px]"
             >
-                <div className="flex items-start justify-between gap-4 border-b border-[#E8EEF6] px-5 py-4">
-                    <div>
+                <div className="flex min-w-0 items-start justify-between gap-4 border-b border-[#E8EEF6] px-5 py-4">
+                    <div className="min-w-0 flex-1">
                         <p className="text-xs font-bold uppercase tracking-[.15em] text-[#2451C5]">
                             {editing ? 'Edita tu pedido' : 'Personaliza tu pedido'}
                         </p>
                         <h2
                             id="customize-title"
-                            className="mt-1 font-display text-xl text-[#12234A]"
+                            className="mt-1 max-w-full break-words font-display text-xl text-[#12234A] [overflow-wrap:anywhere]"
                         >
                             {product.name}
                         </h2>
                         {product.description && (
-                            <p className="mt-1 text-sm text-[#65738A]">{product.description}</p>
+                            <p className="mt-1 max-w-full break-words text-sm text-[#65738A] [overflow-wrap:anywhere]">
+                                {product.description}
+                            </p>
                         )}
                     </div>
                     <button
@@ -107,6 +116,28 @@ export function ProductCustomizeDialog({
                             ${product.price.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
                         </strong>
                     </p>
+                    {product.includedProducts && product.includedProducts.length > 0 && (
+                        <section aria-label="Productos incluidos" className="rounded-xl bg-[#F6F8FC] px-4 py-3">
+                            <h3 className="text-sm font-bold text-[#243556]">Incluye</h3>
+                            <p className="mt-1 max-w-full break-words text-sm leading-5 text-[#65738A] [overflow-wrap:anywhere]">
+                                {product.includedProducts.map((item) => item.product.name).join(', ')}
+                            </p>
+                        </section>
+                    )}
+                    {comboGroups.map((group) => (
+                        <fieldset key={group.id}>
+                            <legend className="text-sm font-bold text-[#243556]">{group.name}<span className="ml-2 text-xs font-normal text-[#8996A9]">Elige una opción</span></legend>
+                            <div className="mt-3 space-y-2">
+                                {group.products.filter((choice) => choice.product.isAvailable).map((choice) => (
+                                    <label key={choice.id} className={`flex min-w-0 cursor-pointer items-center gap-3 rounded-xl border px-3.5 py-3 ${comboSelected[group.id] === choice.productId ? 'border-[#2451C5] bg-[#F4F7FF]' : 'border-[#E8EEF6]'}`}>
+                                        <input type="radio" name={`combo-${group.id}`} value={choice.productId} checked={comboSelected[group.id] === choice.productId} onChange={() => setComboSelected((current) => ({ ...current, [group.id]: choice.productId }))} className="size-4 accent-[#2451C5]" />
+                                        <span className="min-w-0 max-w-full break-words text-sm font-semibold text-[#243556] [overflow-wrap:anywhere]">{choice.product.name}</span>
+                                    </label>
+                                ))}
+                            </div>
+                            {!comboSelected[group.id] && <p className="mt-2 text-xs text-[#65738A]">Selecciona una opción para continuar.</p>}
+                        </fieldset>
+                    ))}
                     {groups.map((group) => {
                         const groupError = validation.errors.find(
                             (error) => error.groupId === group.id,
@@ -206,9 +237,9 @@ export function ProductCustomizeDialog({
                     </p>
                     <button
                         type="button"
-                        disabled={!validation.valid}
+                        disabled={!validation.valid || !comboValid}
                         onClick={() => {
-                            onAdd(selectedOptions)
+                            onAdd([...selectedOptions.map((option) => ({ ...option, kind: 'product-option' as const })), ...comboSelections])
                             onClose()
                         }}
                         className="min-h-11 rounded-xl bg-[#1E40AF] px-4 py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-45"

@@ -28,16 +28,6 @@ function numberPaste(event: React.ClipboardEvent<HTMLInputElement>, decimal = fa
     const value = event.clipboardData.getData('text').trim()
     if (!new RegExp(decimal ? '^\\d+(\\.\\d{0,2})?$' : '^\\d+$').test(value)) event.preventDefault()
 }
-function sanitizeNumericInput(event: React.FormEvent<HTMLElement>) {
-    const target = event.target
-    if (!(target instanceof HTMLInputElement)) return
-    if (target.inputMode === 'numeric') target.value = target.value.replace(/\D/g, '')
-    if (target.inputMode === 'decimal')
-        target.value = target.value
-            .replace(/[^\d.]/g, '')
-            .replace(/(\..*)\./g, '$1')
-            .replace(/(\.\d{2}).*/g, '$1')
-}
 const groupSchema = z.object({
     name: z.string().trim().min(1, 'Escribe el nombre del grupo.'),
     isRequired: z.boolean(),
@@ -134,7 +124,7 @@ export function OptionModal({
                 </div>
             }
         >
-            <div onInputCapture={sanitizeNumericInput}>
+            <div>
                 <form id="option-form" onSubmit={handleSubmit(onDone)} className="space-y-4">
                     <div>
                         <label className="mb-1.5 block text-sm font-semibold text-[#243556]">
@@ -242,6 +232,7 @@ export function GroupModal({
         reset,
         setError,
         setValue,
+        getValues,
         clearErrors,
         formState: { errors },
     } = useForm<GroupValues>({
@@ -307,24 +298,21 @@ export function GroupModal({
         )
     }, [existingOptionsQuery.data, group, open])
     const addDraft = () => {
-        const name = document.getElementById('draft-option-name') as HTMLInputElement | null
-        const price = document.getElementById('draft-option-price') as HTMLInputElement | null
-        const min = document.getElementById('draft-option-min') as HTMLInputElement | null
-        const max = document.getElementById('draft-option-max') as HTMLInputElement | null
-        const trimmed = name?.value.trim() ?? ''
+        const values = getValues()
+        const trimmed = values.optionName.trim()
         if (!trimmed) {
             setError('optionName', { message: 'Escribe el nombre de la opción.' })
             return
         }
-        if (!/^\d+(\.\d{1,2})?$/.test(price?.value ?? '')) {
+        if (!/^\d+(\.\d{1,2})?$/.test(values.optionPrice)) {
             setError('optionPrice', { message: 'Usa un precio válido.' })
             return
         }
-        if (!/^\d+$/.test(min?.value ?? '') || !/^\d+$/.test(max?.value ?? '')) {
+        if (!/^\d+$/.test(values.optionMinSelections) || !/^\d+$/.test(values.optionMaxSelections)) {
             setError('optionMaxSelections', { message: 'Usa números enteros.' })
             return
         }
-        if (Number(max?.value) < Number(min?.value)) {
+        if (Number(values.optionMaxSelections) < Number(values.optionMinSelections)) {
             setError('optionMaxSelections', { message: 'No puede ser menor que el mínimo.' })
             return
         }
@@ -336,14 +324,12 @@ export function GroupModal({
             ...current,
             {
                 name: trimmed,
-                price: Number(price?.value),
-                minSelections: Number(min?.value),
-                maxSelections: Number(max?.value),
+                price: Number(values.optionPrice),
+                minSelections: Number(values.optionMinSelections),
+                maxSelections: Number(values.optionMaxSelections),
                 isAvailable: true,
             },
         ])
-        if (name) name.value = ''
-        if (price) price.value = ''
         setValue('optionName', '')
         setValue('optionPrice', '')
         setValue('optionMinSelections', '')
@@ -401,7 +387,7 @@ export function GroupModal({
                 </div>
             }
         >
-            <div onInputCapture={sanitizeNumericInput}>
+            <div>
                 <form id="group-form" onSubmit={handleSubmit(submit)} className="space-y-4">
                     <div>
                         <label className="mb-1.5 block text-sm font-semibold text-[#243556]">

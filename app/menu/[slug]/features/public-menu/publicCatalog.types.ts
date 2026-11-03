@@ -23,6 +23,21 @@ export type PublicOptionGroup = {
     isActive: boolean
     options: PublicOption[]
 }
+export type PublicComboChoice = {
+    id: string
+    productId: string
+    sortOrder: number
+    product: { id: string; name: string; description: string | null; price: number; imageUrl: string | null; categoryId: string; isAvailable: boolean }
+}
+export type PublicComboOptionGroup = {
+    id: string
+    comboProductId: string
+    name: string
+    minSelections: number
+    maxSelections: number
+    sortOrder: number
+    products: PublicComboChoice[]
+}
 export type PublicProduct = {
     id: string
     businessId: string
@@ -34,6 +49,9 @@ export type PublicProduct = {
     sortOrder: number
     isAvailable: boolean
     optionGroups: PublicOptionGroup[]
+    type?: 'PRODUCT' | 'COMBO'
+    includedProducts?: PublicComboChoice[]
+    comboOptionGroups?: PublicComboOptionGroup[]
 }
 export type PublicCategory = {
     id: string

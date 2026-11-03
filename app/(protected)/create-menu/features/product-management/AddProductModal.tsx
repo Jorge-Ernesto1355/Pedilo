@@ -4,7 +4,7 @@
 
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useEffect, useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import type { UseFormSetError } from 'react-hook-form'
 import { Modal } from '@/app/components/ui/Modal'
 import { productSchema, type ProductFormValues } from './product.schema'
@@ -15,7 +15,10 @@ import { ApiError } from '@/app/auth/lib/client/api-error'
 import { notify } from '@/src/lib/notifications/notify'
 import { ImagePlus, ListPlus } from 'lucide-react'
 import Link from 'next/link'
-import { PRODUCT_DESCRIPTION_MAX_LENGTH } from '../../description-limits'
+import {
+    PRODUCT_DESCRIPTION_MAX_LENGTH,
+    PRODUCT_NAME_MAX_LENGTH,
+} from '../../description-limits'
 
 type AddProductModalProps = {
     open: boolean
@@ -54,6 +57,7 @@ export function AddProductModal({
         reset,
         setError,
         setValue,
+        control,
         formState: { errors },
     } = useForm<ProductFormValues>({
         resolver: zodResolver(productSchema),
@@ -84,6 +88,7 @@ export function AddProductModal({
     )
 
     const imageSource = currentProduct?.id ?? 'new-product'
+    const productName = useWatch({ control, name: 'name' }) ?? ''
     const imagePreview =
         selectedImage?.source === imageSource
             ? selectedImage.url
@@ -214,6 +219,7 @@ export function AddProductModal({
                         id="product-name"
                         autoFocus
                         className={inputClass}
+                        maxLength={PRODUCT_NAME_MAX_LENGTH}
                         placeholder="Ej. Hamburguesa clásica"
                         {...register('name')}
                     />
@@ -222,9 +228,12 @@ export function AddProductModal({
                             {errors.name.message}
                         </p>
                     )}
-                    <p className="mt-1.5 text-xs text-[#8996A9]">
-                        Usa un nombre fácil de reconocer, como “Tacos al pastor”.
-                    </p>
+                    <div className="mt-1.5 flex items-start justify-between gap-3 text-xs text-[#8996A9]">
+                        <p>Usa un nombre fácil de reconocer, como “Tacos al pastor”.</p>
+                        <span className="shrink-0" aria-label="Contador del nombre del producto">
+                            {productName.length}/{PRODUCT_NAME_MAX_LENGTH}
+                        </span>
+                    </div>
                 </div>
                 <div>
                     <label

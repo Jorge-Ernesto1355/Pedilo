@@ -82,6 +82,80 @@ describe('public menu product options', () => {
         expect(screen.getByRole('button', { name: /agregar al pedido/i })).toBeDisabled()
     })
 
+    function comboProduct(overrides: Partial<PublicProduct> = {}): PublicProduct {
+        return product({
+            type: 'COMBO',
+            optionGroups: [],
+            includedProducts: [{
+                id: 'included-link', productId: 'burger', sortOrder: 0,
+                product: { id: 'burger', name: 'Hamburguesa', description: null, price: 0, imageUrl: null, categoryId: 'category-1', isAvailable: true },
+            }],
+            comboOptionGroups: [{
+                id: 'side-group', comboProductId: 'product-1', name: 'Acompañamiento', minSelections: 1, maxSelections: 1, sortOrder: 0,
+                products: ['Papas gajo', 'Alitas'].map((name, index) => ({
+                    id: `choice-${index}`, productId: `product-${index}`, sortOrder: index,
+                    product: { id: `product-${index}`, name, description: null, price: 0, imageUrl: null, categoryId: 'category-1', isAvailable: true },
+                })),
+            }],
+            ...overrides,
+        })
+    }
+
+    it('shows products included in the combo', () => {
+        render(<ProductCustomizeDialog product={comboProduct()} onClose={vi.fn()} onAdd={vi.fn()} />)
+
+        expect(screen.getByText('Hamburguesa')).toBeInTheDocument()
+    })
+
+    it('disables the add button when a required combo group has no selection', () => {
+        render(<ProductCustomizeDialog product={comboProduct()} onClose={vi.fn()} onAdd={vi.fn()} />)
+
+        expect(screen.getByRole('button', { name: /agregar al pedido/i })).toBeDisabled()
+    })
+
+    it('enables the add button after selecting a valid combo choice', () => {
+        render(<ProductCustomizeDialog product={comboProduct()} onClose={vi.fn()} onAdd={vi.fn()} />)
+
+        fireEvent.click(screen.getByRole('radio', { name: 'Papas gajo' }))
+        expect(screen.getByRole('button', { name: /agregar al pedido/i })).not.toBeDisabled()
+    })
+
+    it('emits the selected combo choice with its group and product identifiers', () => {
+        const onAdd = vi.fn()
+        render(<ProductCustomizeDialog product={comboProduct()} onClose={vi.fn()} onAdd={onAdd} />)
+
+        fireEvent.click(screen.getByRole('radio', { name: 'Papas gajo' }))
+        fireEvent.click(screen.getByRole('button', { name: /agregar al pedido/i }))
+        expect(onAdd).toHaveBeenCalledWith([
+            expect.objectContaining({
+                id: 'choice-0',
+                productId: 'product-0',
+                groupId: 'side-group',
+                kind: 'combo-choice',
+                name: 'Acompañamiento: Papas gajo',
+                quantity: 1,
+            }),
+        ])
+    })
+
+    it('does not render unavailable combo choices', () => {
+        const combo = comboProduct({
+            comboOptionGroups: [
+                {
+                    ...comboProduct().comboOptionGroups![0]!,
+                    products: comboProduct().comboOptionGroups![0]!.products.map((choice, index) => ({
+                        ...choice,
+                        product: { ...choice.product, isAvailable: index === 0 },
+                    })),
+                },
+            ],
+        })
+        render(<ProductCustomizeDialog product={combo} onClose={vi.fn()} onAdd={vi.fn()} />)
+
+        expect(screen.getByRole('radio', { name: 'Papas gajo' })).toBeInTheDocument()
+        expect(screen.queryByRole('radio', { name: 'Alitas' })).not.toBeInTheDocument()
+    })
+
     it('edits selections without duplicating the line and recalculates its price', () => {
         const { result } = renderHook(() => useOrderCart())
         act(() => {

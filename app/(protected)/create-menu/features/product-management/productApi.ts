@@ -55,6 +55,17 @@ export type ProductListResponse = {
     limit: number
     total: number
 }
+type ProductListApiResponse = {
+    products: Product[]
+    page?: number
+    limit?: number
+    total?: number
+    pagination?: {
+        page?: number
+        limit?: number
+        total?: number
+    }
+}
 export type ProductStats = {
     totalProducts: number
     activeProducts: number
@@ -158,12 +169,19 @@ export async function getProducts(): Promise<Product[]> {
     ).then((body) => (Array.isArray(body) ? body : (body.products ?? [])))
 }
 export async function getProductsPaged(businessId: string, params: ProductListParams) {
-    return request(() =>
-        apiClient.get<ProductListResponse>(
+    const response = await request(() =>
+        apiClient.get<ProductListApiResponse>(
             `/businesses/${businessId}/products?${searchParams(params)}`,
             credentials,
         ),
     )
+    const pagination = response.pagination
+    return {
+        products: response.products,
+        page: pagination?.page ?? response.page ?? params.page,
+        limit: pagination?.limit ?? response.limit ?? params.limit,
+        total: pagination?.total ?? response.total ?? response.products.length,
+    } satisfies ProductListResponse
 }
 export async function getProductStats(businessId: string) {
     return request(() =>

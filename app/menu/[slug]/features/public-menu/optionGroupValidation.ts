@@ -33,7 +33,7 @@ export function hasRequiredOptionGroups(product: PublicProduct) {
 export function hasAvailableOptions(product: PublicProduct) {
     return product.optionGroups.some(
         (group) => group.isActive !== false && group.options.some((option) => option.isAvailable),
-    )
+    ) || (product.comboOptionGroups?.some((group) => group.products.some((choice) => choice.product.isAvailable)) ?? false)
 }
 
 export function validateOptionGroups(

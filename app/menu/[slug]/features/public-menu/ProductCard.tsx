@@ -45,10 +45,18 @@ export function ProductCard({
             </div>
             <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-4">
-                    <button type="button" onClick={onSelect} className="min-w-0 text-left">
+                    <button
+                        type="button"
+                        onClick={onSelect}
+                        className="min-w-0 max-w-full whitespace-normal text-left [overflow-wrap:anywhere]"
+                    >
                         <h3 className="font-display text-base tracking-[-.025em] text-[#12234A]">
                             {product.name}
                         </h3>
+                        {product.type === 'COMBO' && <span className="mt-1 inline-block text-xs font-semibold text-[#65738A]">Combo</span>}
+                        {product.includedProducts && product.includedProducts.length > 0 && (
+                            <p className="mt-1 text-xs leading-5 text-[#65738A]">Incluye: {product.includedProducts.map((item) => item.product.name).join(', ')}</p>
+                        )}
                         {hasOptions && (
                             <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-[#2451C5]">
                                 <SlidersHorizontal className="size-3" aria-hidden="true" />
@@ -56,7 +64,7 @@ export function ProductCard({
                             </span>
                         )}
                         {product.description && (
-                            <p className="mt-1 text-sm leading-5 text-[#65738A]">
+                            <p className="mt-1 max-w-full whitespace-normal text-sm leading-5 text-[#65738A] [overflow-wrap:anywhere]">
                                 {product.description}
                             </p>
                         )}

@@ -2,6 +2,7 @@ import type { OptionGroup } from '../option-management/option.types'
 
 export type Product = {
     id: string
+    type?: 'PRODUCT' | 'COMBO'
     categoryId: string
     name: string
     description: string | null
@@ -15,6 +16,10 @@ export type Product = {
     updatedAt?: string
     categoryName?: string | null
     optionGroups?: OptionGroup[]
+}
+
+export function isComboProduct(product: Pick<Product, 'type'> | null | undefined): boolean {
+    return product?.type?.toUpperCase() === 'COMBO'
 }
 
 export type ProductInput = {

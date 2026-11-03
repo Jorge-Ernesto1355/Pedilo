@@ -1,12 +1,12 @@
 import { z } from 'zod'
-import { PRODUCT_DESCRIPTION_MAX_LENGTH } from '../../description-limits'
+import { PRODUCT_DESCRIPTION_MAX_LENGTH, PRODUCT_NAME_MAX_LENGTH } from '../../description-limits'
 
 export const productSchema = z.object({
     name: z
         .string()
         .trim()
         .min(1, 'Escribe el nombre del producto.')
-        .max(80, 'Usa 80 caracteres o menos.'),
+        .max(PRODUCT_NAME_MAX_LENGTH, `Usa ${PRODUCT_NAME_MAX_LENGTH} caracteres o menos.`),
     description: z
         .string()
         .trim()
