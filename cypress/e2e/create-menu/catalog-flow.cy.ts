@@ -315,7 +315,11 @@ describe('Catálogo · menú, categoría, productos y opciones', () => {
         cy.visit('/create-menu')
         cy.wait('@listMenus')
         cy.contains('button', 'Crear menú').first().click()
-        cy.get('[role="dialog"]').should('have.attr', 'aria-labelledby', 'modal-title')
+        cy.get('[role="dialog"]')
+            .should('have.attr', 'aria-labelledby')
+            .then((labelledBy) => {
+                cy.get(`#${labelledBy}`).should('contain.text', 'Crear menú')
+            })
         cy.get('#menu-name').type('Menú de verano')
         cy.get('#menu-description').type('Tacos y bebidas para la temporada.')
         cy.get('[role="dialog"] button[type="submit"]').should('contain', 'Crear menú').click()
@@ -340,6 +344,7 @@ describe('Catálogo · menú, categoría, productos y opciones', () => {
         cy.contains('Tacos').should('be.visible')
 
         cy.contains('button', 'Agregar producto').click()
+        cy.get('[data-testid="product-type-dialog"]').contains('button', 'Continuar con producto').click()
         cy.get('[role="dialog"]').should('contain', 'Agregar producto')
         fillProduct('Taco de asada', '89', 'Tortilla, asada y cebolla.')
         cy.get('[role="dialog"] button[type="submit"]').should('contain', 'Crear producto').click()
@@ -367,6 +372,7 @@ describe('Catálogo · menú, categoría, productos y opciones', () => {
         cy.contains('Taco de asada especial').should('not.exist')
 
         cy.contains('button', 'Agregar producto').click()
+        cy.get('[data-testid="product-type-dialog"]').contains('button', 'Continuar con producto').click()
         fillProduct('Quesadilla de queso', '75', 'Queso fundido en tortilla de harina.')
         cy.get('[role="dialog"] button[type="submit"]').click()
         cy.wait('@createProduct')
@@ -507,6 +513,7 @@ describe('Catálogo · menú, categoría, productos y opciones', () => {
         })
 
         cy.contains('button', 'Agregar producto').click()
+        cy.get('[data-testid="product-type-dialog"]').contains('button', 'Continuar con producto').click()
         cy.get('#product-name').type('Producto breve')
         cy.get('#product-description')
             .should('have.attr', 'maxlength', '100')

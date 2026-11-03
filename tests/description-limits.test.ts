@@ -5,6 +5,17 @@ import { productSchema } from '@/app/(protected)/create-menu/features/product-ma
 const longDescription = 'x'.repeat(101)
 
 describe('description limits', () => {
+    it('uses the same 80-character name limit as product forms', () => {
+        const base = {
+            description: '',
+            price: '129',
+            image: null,
+        }
+
+        expect(productSchema.safeParse({ ...base, name: 'x'.repeat(80) }).success).toBe(true)
+        expect(productSchema.safeParse({ ...base, name: 'x'.repeat(81) }).success).toBe(false)
+    })
+
     it('rejects menu descriptions longer than 100 characters', () => {
         const result = menuFormSchema.safeParse({
             name: 'Menú principal',

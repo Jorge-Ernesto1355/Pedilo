@@ -208,6 +208,7 @@ function openCatalog() {
 
 function openProductModal() {
     cy.contains('button', 'Agregar producto').click()
+    cy.get('[data-testid="product-type-dialog"]').contains('button', 'Continuar con producto').click()
     cy.get('[role="dialog"]').should('contain', 'Agregar producto')
 }
 
@@ -273,8 +274,13 @@ describe('Productos · casos límite del catálogo', () => {
         closeProductModal()
 
         openProductModal()
-        submitProduct('Nombre demasiado largo'.repeat(6), '20')
-        cy.contains('Usa 80 caracteres o menos.').should('be.visible')
+        cy.get('#product-name')
+            .type('Nombre demasiado largo'.repeat(6))
+            .invoke('val')
+            .should('have.length', 80)
+        cy.get('#product-price').type('20')
+        cy.get('[role="dialog"] button[type="submit"]').contains('Crear producto').click()
+        cy.wait('@createProduct')
         closeProductModal()
 
         openProductModal()
@@ -306,6 +312,26 @@ describe('Productos · casos límite del catálogo', () => {
             )
         cy.contains('Price must be less').should('not.exist')
         closeProductModal()
+    })
+
+    it('limita el nombre del producto a 80 caracteres y muestra el contador', () => {
+        const state: CatalogState = {
+            products: [],
+            nextProductId: 1,
+            createRequests: 0,
+            rejectLargePrice: false,
+            deleteError: false,
+        }
+        installBusinessApi(state)
+        openCatalog()
+        openProductModal()
+        cy.get('#product-name')
+            .should('have.attr', 'maxlength', '80')
+            .type('N'.repeat(80))
+            .should('have.value', 'N'.repeat(80))
+        cy.get('[aria-label="Contador del nombre del producto"]').should('contain', '80/80')
+        cy.get('#product-name').type('extra').should('have.value', 'N'.repeat(80))
+        cy.get('[aria-label="Contador del nombre del producto"]').should('contain', '80/80')
     })
 
     it('crea, edita, desactiva y elimina productos, incluyendo nombres similares', () => {

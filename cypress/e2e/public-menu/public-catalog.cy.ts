@@ -335,6 +335,39 @@ describe('Catálogo público', () => {
         cy.contains('button', 'Ver mi pedido').should('not.exist')
     })
 
+    it('envuelve descripciones largas de productos en pantallas pequeñas', () => {
+        const longDescription =
+            'Hamburguesa preparada al momento con carne, queso, vegetales frescos y una salsa especial de la casa para compartir.'
+        const longDescriptionCatalog = Cypress._.cloneDeep(catalog)
+        longDescriptionCatalog.menus[0]!.categories[0]!.products[0]!.description = longDescription
+        installPublicCatalogApi(longDescriptionCatalog)
+        cy.viewport(375, 812)
+        cy.visit(`/${slug}`)
+        cy.wait('@getPublicCatalog')
+        cy.contains('article', 'Taco de asada')
+            .contains('p', longDescription)
+            .should('be.visible')
+        assertPageFitsViewport()
+    })
+
+    it('mantiene visible el control de cantidad con nombres largos en el pedido móvil', () => {
+        const longName = 'Hamburguesa artesanal especial de la casa con queso y vegetales frescos'
+        const longNameCatalog = Cypress._.cloneDeep(catalog)
+        longNameCatalog.menus[0]!.categories[1]!.products[0]!.name = longName
+        installPublicCatalogApi(longNameCatalog)
+        cy.viewport(375, 812)
+        cy.visit(`/${slug}`)
+        cy.wait('@getPublicCatalog')
+        cy.contains('article', longName)
+            .find(`button[aria-label="Agregar al carrito: ${longName}"]`)
+            .click()
+        cy.contains('button', 'Ver mi pedido').click()
+        cy.get('[role="dialog"][aria-labelledby="order-title"]')
+            .find(`button[aria-label="Agregar una unidad de ${longName}"]`)
+            .should('be.visible')
+        assertPageFitsViewport()
+    })
+
     mobileViewports.forEach(({ width, height }) => {
         it(`muestra el catálogo sin cortes en ${width}×${height}`, () => {
             installPublicCatalogApi()

@@ -7,10 +7,13 @@ export function normalizeBusinessWhatsAppNumber(value: string | null | undefined
     return null
 }
 
+import type { OrderFulfillmentType } from '@/src/lib/api/order-types'
+
 type OrderMessageInput = {
     businessName: string
     customerName: string
     customerPhone: string
+    fulfillmentType: OrderFulfillmentType
     lines: string[]
     total: string
     notes: string
@@ -20,6 +23,7 @@ export function createWhatsAppOrderMessage({
     businessName,
     customerName,
     customerPhone,
+    fulfillmentType,
     lines,
     total,
     notes,
@@ -31,6 +35,7 @@ export function createWhatsAppOrderMessage({
         '',
         `Cliente: ${customerName}`,
         `WhatsApp: ${customerPhone}`,
+        `Modalidad: ${fulfillmentType === 'DINE_IN' ? 'Comer aquí' : 'Para llevar / recoger'}`,
         ...(notes ? [`Notas: ${notes}`] : []),
     ].join('\n')
 }

@@ -6,10 +6,12 @@ import type {
     CreateRestaurantOrderPayload,
     Customer,
     CustomerPayload,
+    CustomerOrdersResponse,
     CustomersResponse,
     Order,
     OrderPeriod,
     OrderStatus,
+    OrderStatusUpdate,
     OrdersResponse,
 } from './order-types'
 
@@ -34,12 +36,18 @@ export function createPublicOrder(businessId: string, payload: CreateOrderPayloa
         publicApiClient.post<{ order: Order }>(`/businesses/${businessId}/orders`, payload),
     ).then((body) => body.order)
 }
-export function createRestaurantOrder(businessId: string, payload: CreateRestaurantOrderPayload) {
+export function createRestaurantOrder(
+    businessId: string,
+    payload: CreateRestaurantOrderPayload,
+    idempotencyKey?: string,
+) {
     return request(() =>
         apiClient.post<{ order: Order }>(
             `/businesses/${businessId}/orders/restaurant`,
             payload,
-            credentials,
+            idempotencyKey
+                ? { ...credentials, headers: { 'Idempotency-Key': idempotencyKey } }
+                : credentials,
         ),
     ).then((body) => body.order)
 }
@@ -60,14 +68,17 @@ export function getOrders(
         ),
     )
 }
-export function getOrder(orderId: string) {
+export function getOrder(orderId: string, signal?: AbortSignal) {
     return request(() =>
-        apiClient.get<{ order: Order }>(`/businesses/orders/${orderId}`, credentials),
+        apiClient.get<{ order: Order }>(`/businesses/orders/${orderId}`, {
+            ...credentials,
+            signal,
+        }),
     ).then((body) => body.order)
 }
 export function updateOrderStatus(orderId: string, status: OrderStatus) {
     return request(() =>
-        apiClient.patch<{ order: Order }>(
+        apiClient.patch<{ order: OrderStatusUpdate }>(
             `/businesses/orders/${orderId}/status`,
             { status },
             credentials,
@@ -108,6 +119,23 @@ export function updateCustomer(customerId: string, payload: CustomerPayload) {
         ),
     ).then((body) => body.customer)
 }
+export function setCustomerDisabled(customerId: string, disabled: boolean) {
+    return request(() =>
+        apiClient.patch<{ customer: Customer }>(
+            `/businesses/customers/${customerId}/status`,
+            { disabled },
+            credentials,
+        ),
+    ).then((body) => body.customer)
+}
 export function deleteCustomer(customerId: string) {
     return request(() => apiClient.delete<void>(`/businesses/customers/${customerId}`, credentials))
+}
+export function getCustomerOrders(customerId: string, params: { page: number; limit: number }) {
+    return request(() =>
+        apiClient.get<CustomerOrdersResponse>(
+            `/businesses/customers/${customerId}/orders?${query(params)}`,
+            credentials,
+        ),
+    )
 }

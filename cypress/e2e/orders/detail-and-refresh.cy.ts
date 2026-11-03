@@ -136,7 +136,7 @@ describe('Detalle e historial de órdenes', () => {
             .within(() => {
                 cy.contains('h2', `Pedido #${orderNumber}`).should('be.visible')
                 cy.contains('Jorge Ramírez').should('be.visible')
-                cy.contains('668-321-4567').should('be.visible')
+                cy.contains('+52 66 8321 4567').should('be.visible')
                 cy.contains('2 × Pizza familiar').should('be.visible')
                 cy.contains('$358.00').should('be.visible')
                 cy.contains('Lista').should('be.visible')

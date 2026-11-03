@@ -25,6 +25,7 @@ describe('business WhatsApp orders', () => {
                 businessName: 'La Esquina',
                 customerName: 'Jorge',
                 customerPhone: '668-123-4567',
+                fulfillmentType: 'DINE_IN',
                 lines: ['2x Clásica — $258'],
                 total: '$258',
                 notes: 'Sin cebolla',

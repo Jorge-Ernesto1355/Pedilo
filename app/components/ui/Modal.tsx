@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from 'framer-motion'
 import { X } from 'lucide-react'
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useId, useRef, type ReactNode } from 'react'
 
 type ModalProps = {
     open: boolean
@@ -13,6 +13,7 @@ type ModalProps = {
     footer?: ReactNode
     size?: 'sm' | 'lg' | 'xl'
     closeDisabled?: boolean
+    testId?: string
 }
 
 export function Modal({
@@ -24,7 +25,11 @@ export function Modal({
     footer,
     size = 'sm',
     closeDisabled = false,
+    testId,
 }: ModalProps) {
+    const modalId = useId()
+    const titleId = `${modalId}-title`
+    const descriptionId = `${modalId}-description`
     const closeButtonRef = useRef<HTMLButtonElement>(null)
     const dialogRef = useRef<HTMLDivElement>(null)
     const onCloseRef = useRef(onClose)
@@ -85,8 +90,9 @@ export function Modal({
                         ref={dialogRef}
                         role="dialog"
                         aria-modal="true"
-                        aria-labelledby="modal-title"
-                        aria-describedby={description ? 'modal-description' : undefined}
+                        aria-labelledby={titleId}
+                        aria-describedby={description ? descriptionId : undefined}
+                        data-testid={testId}
                         className={`flex max-h-[calc(100svh-64px-env(safe-area-inset-bottom)-0.5rem)] w-full min-h-0 flex-col overflow-hidden rounded-t-[24px] border border-[#DCE5F3] bg-white shadow-[0_28px_90px_-34px_rgba(13,36,87,.4)] sm:max-h-[calc(100svh-3rem)] sm:rounded-[24px] ${size === 'xl' ? 'max-w-5xl' : size === 'lg' ? 'max-w-2xl' : 'max-w-md'}`}
                         initial={{ opacity: 0, y: 20, scale: 0.98 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -96,14 +102,14 @@ export function Modal({
                         <div className="flex shrink-0 items-start justify-between gap-4 border-b border-[#E8EEF6] px-4 py-4 sm:gap-5 sm:px-7 sm:py-5">
                             <div>
                                 <h2
-                                    id="modal-title"
+                                    id={titleId}
                                     className="font-display text-xl tracking-[-.035em] text-[#12234A]"
                                 >
                                     {title}
                                 </h2>
                                 {description && (
                                     <p
-                                        id="modal-description"
+                                        id={descriptionId}
                                         className="mt-1.5 text-sm leading-6 text-[#65738A]"
                                     >
                                         {description}

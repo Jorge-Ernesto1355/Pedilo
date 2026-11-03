@@ -68,6 +68,7 @@ function createCatalog() {
     cy.contains('Platillos').should('be.visible')
 
     cy.contains('button', 'Agregar producto').should('be.visible').click()
+    cy.get('[data-testid="product-type-dialog"]').contains('button', 'Continuar con producto').click()
     cy.get('#product-name')
         .should('be.visible')
         .parents('[role="dialog"]')
