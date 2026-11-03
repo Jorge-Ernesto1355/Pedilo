@@ -221,7 +221,8 @@ function installOrderApi(state: CatalogState) {
             createdAt: '2026-10-06T10:00:00.000Z',
             updatedAt: '2026-10-06T10:00:00.000Z',
         }
-        request.reply({
+            request.reply({
+                delay: 1000,
             statusCode: 201,
             body: {
                 order: createdOrder,
@@ -264,6 +265,7 @@ describe('E2E completo: crear catálogo y ordenar desde Pedidos', () => {
         cy.wait('@createCategory')
 
         cy.contains('button', 'Agregar producto').click()
+        cy.get('[data-testid="product-type-dialog"]').contains('button', 'Continuar con producto').click()
         cy.get('#product-name').type(product.name)
         cy.get('#product-description').type(product.description)
         cy.get('#product-price').type(String(product.price))
@@ -295,29 +297,8 @@ describe('E2E completo: crear catálogo y ordenar desde Pedidos', () => {
         cy.get('input[autocomplete="tel"]').type('6681234567')
         cy.get('textarea').type('Sin cebolla')
         cy.contains('button', 'Crear orden').click()
+        cy.get('[role="dialog"][aria-labelledby="new-restaurant-order-title"]').should('not.exist')
+        cy.contains('article', 'Nueva orden').should('be.visible')
         cy.wait('@createRestaurantOrder')
-        cy.wait('@orders')
-        cy.contains('h3', 'Orden creada').should('be.visible')
-        cy.contains('Orden #1').should('be.visible')
-        cy.contains('Total confirmado:').should('contain', '$190.00')
-        cy.contains('button', 'Ver orden').click()
-        cy.get('[role="dialog"][aria-labelledby="order-detail-title"]')
-            .should('be.visible')
-            .within(() => {
-                cy.contains('Pedido #1').should('be.visible')
-                cy.contains('Estado actual').should('be.visible')
-                cy.contains('Pendiente').should('be.visible')
-                cy.contains('$190.00').should('be.visible')
-                cy.contains('Cliente').should('be.visible')
-                cy.contains('Juan E2E').should('be.visible')
-                cy.contains('6681234567').should('be.visible')
-                cy.contains('Sin cebolla').should('be.visible')
-                cy.contains('Productos').should('be.visible')
-                cy.contains('2 × Hamburguesa creada E2E').should('be.visible')
-                cy.contains('Historial de la orden').should('be.visible')
-                cy.contains('Pendiente').should('be.visible')
-                cy.contains('Actual').should('be.visible')
-                cy.get('time[datetime="2026-10-06T10:00:00.000Z"]').should('be.visible')
-            })
     })
 })

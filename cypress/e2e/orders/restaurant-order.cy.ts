@@ -108,6 +108,7 @@ describe('Nueva orden desde el dashboard', () => {
 
     it('envía solamente el contrato de restaurante y muestra el total del backend', () => {
         cy.intercept('POST', '**/businesses/*/orders/restaurant', (request) => {
+            expect(request.headers['idempotency-key']).to.match(/^[A-Za-z0-9_-]{16,128}$/)
             expect(request.body).to.deep.equal({
                 customerName: 'Juan',
                 customerPhone: '6681234567',
@@ -121,6 +122,7 @@ describe('Nueva orden desde el dashboard', () => {
                 ],
             })
             request.reply({
+                delay: 1000,
                 statusCode: 201,
                 body: {
                     order: {
@@ -151,9 +153,10 @@ describe('Nueva orden desde el dashboard', () => {
         cy.get('input').filter('[autocomplete="tel"]').type('6681234567')
         cy.get('textarea').type('Sin cebolla')
         cy.contains('button', 'Crear orden').click()
+        cy.get('[role="dialog"][aria-labelledby="new-restaurant-order-title"]').should('not.exist')
+        cy.contains('article', 'Nueva orden').should('be.visible')
+        cy.contains('article', 'Juan').should('contain', 'Hamburguesa de la casa')
         cy.wait('@createRestaurantOrder')
-        cy.contains('Orden #31').should('be.visible')
-        cy.contains('Total confirmado:').should('contain', '$240.00')
     })
 
     it('muestra el estado vacío cuando el restaurante todavía no tiene catálogo', () => {
@@ -185,5 +188,31 @@ describe('Nueva orden desde el dashboard', () => {
         cy.wait('@restaurantProducts')
         cy.contains('[role="dialog"]', 'Este menú aún no tiene categorías').should('be.visible')
         cy.contains('Agrega una categoría para empezar a crear la orden.').should('be.visible')
+    })
+
+    it('muestra un skeleton del catálogo mientras carga el menú de la nueva orden', () => {
+        cy.intercept('GET', '**/businesses/mine/menus', {
+            delay: 5000,
+            statusCode: 200,
+            body: catalog.menus,
+        }).as('slowRestaurantMenus')
+        cy.intercept('GET', '**/businesses/*/products*', {
+            delay: 5000,
+            statusCode: 200,
+            body: {
+                products: [product],
+                page: 1,
+                limit: 100,
+                total: 1,
+            },
+        }).as('slowRestaurantProducts')
+
+        cy.contains('button', '+ Nueva orden').click()
+        cy.get('[data-testid="restaurant-catalog-skeleton"]')
+            .should('be.visible')
+            .and('have.attr', 'aria-label', 'Cargando catálogo')
+        cy.wait(['@slowRestaurantMenus', '@slowRestaurantProducts'])
+        cy.contains('Hamburguesa de la casa').should('be.visible')
+        cy.get('[data-testid="restaurant-catalog-skeleton"]').should('not.exist')
     })
 })

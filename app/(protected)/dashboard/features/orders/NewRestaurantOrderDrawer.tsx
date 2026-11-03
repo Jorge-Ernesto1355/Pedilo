@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import {
     AlertCircle,
     ArrowLeft,
-    Check,
     FolderOpen,
     LoaderCircle,
     Minus,
@@ -17,7 +16,6 @@ import {
 import type { LucideIcon } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { ApiError } from '@/app/auth/lib/client/api-error'
-import { getUserFriendlyError } from '@/src/lib/errors/user-friendly-error'
 import { useAuthStore } from '@/store/authStore'
 import type {
     PublicCatalog,
@@ -125,23 +123,12 @@ function useRestaurantCatalog(enabled: boolean) {
     }
 }
 
-function orderErrorMessage(error: unknown) {
-    return getUserFriendlyError(error, {
-        fallback: {
-            title: 'No pudimos crear la orden',
-            description: 'Revisa los datos e inténtalo nuevamente.',
-        },
-    }).description
-}
-
 export function NewRestaurantOrderDrawer({
     open,
     onClose,
-    onViewOrder,
 }: {
     open: boolean
     onClose: () => void
-    onViewOrder: (order: Order) => void
 }) {
     const catalog = useRestaurantCatalog(open)
     const router = useRouter()
@@ -155,7 +142,6 @@ export function NewRestaurantOrderDrawer({
     const [customerPhone, setCustomerPhone] = useState('')
     const [notes, setNotes] = useState('')
     const [error, setError] = useState<string | null>(null)
-    const [createdOrder, setCreatedOrder] = useState<Order | null>(null)
     const menus = useMemo(
         () => catalog.data?.menus.filter((menu) => menu.isActive) ?? [],
         [catalog.data],
@@ -179,7 +165,6 @@ export function NewRestaurantOrderDrawer({
         setCustomerPhone('')
         setNotes('')
         setError(null)
-        setCreatedOrder(null)
         setCustomizing(null)
     }
 
@@ -196,23 +181,60 @@ export function NewRestaurantOrderDrawer({
     function createOrder() {
         if (mutation.isPending || cart.lines.length === 0 || !phoneValid) return
         setError(null)
+        const createdAt = new Date().toISOString()
+        const idempotencyKey = crypto.randomUUID()
+        const optimisticOrder: Order = {
+            id: `optimistic-${idempotencyKey}`,
+            businessId: useAuthStore.getState().user?.businessId ?? undefined,
+            orderNumber: 0,
+            status: 'PENDING',
+            source: 'RESTAURANT',
+            customerId: null,
+            subtotal: cart.total,
+            discountAmount: 0,
+            total: cart.total,
+            customerName: customerName.trim() || null,
+            customerPhone: customerPhone.trim() || null,
+            notes: notes.trim() || null,
+            fulfillmentType: 'DINE_IN',
+            items: cart.lines.map((line) => ({
+                id: `${idempotencyKey}-${line.key}`,
+                productId: line.product.id,
+                productName: line.product.name,
+                quantity: line.quantity,
+                unitPrice: line.unitPrice,
+                subtotal: line.unitPrice * line.quantity,
+                options: line.selections.map((selection) => ({
+                    id: selection.id,
+                    name: selection.name,
+                    price: selection.price,
+                })),
+            })),
+            statusHistory: [{ status: 'PENDING', createdAt }],
+            createdAt,
+            updatedAt: createdAt,
+            creationState: 'pending',
+        }
+        const payload = {
+            ...(customerName.trim() ? { customerName: customerName.trim() } : {}),
+            ...(customerPhone.trim() ? { customerPhone: customerPhone.trim() } : {}),
+            ...(notes.trim() ? { notes: notes.trim() } : {}),
+            items: cart.lines.map((line) => ({
+                productId: line.product.id,
+                quantity: line.quantity,
+                optionIds: line.selections.flatMap((selection) =>
+                    Array.from({ length: selection.quantity }, () => selection.id),
+                ),
+            })),
+        }
         mutation.mutate(
             {
-                ...(customerName.trim() ? { customerName: customerName.trim() } : {}),
-                ...(customerPhone.trim() ? { customerPhone: customerPhone.trim() } : {}),
-                ...(notes.trim() ? { notes: notes.trim() } : {}),
-                items: cart.lines.map((line) => ({
-                    productId: line.product.id,
-                    quantity: line.quantity,
-                    optionIds: line.selections.flatMap((selection) =>
-                        Array.from({ length: selection.quantity }, () => selection.id),
-                    ),
-                })),
+                payload,
+                optimisticOrder,
+                idempotencyKey,
             },
             {
-                onSuccess: (order) => setCreatedOrder(order),
                 onError: (requestError) => {
-                    setError(orderErrorMessage(requestError))
                     if (
                         requestError instanceof ApiError &&
                         (requestError.status === 401 || requestError.code === 'NOT_AUTHENTICATED')
@@ -222,6 +244,8 @@ export function NewRestaurantOrderDrawer({
                 },
             },
         )
+        reset()
+        onClose()
     }
 
     if (!open) return null
@@ -266,62 +290,11 @@ export function NewRestaurantOrderDrawer({
                         <X className="size-4" />
                     </button>
                 </header>
-                {createdOrder ? (
-                    <div className="grid min-h-[360px] place-items-center overflow-y-auto p-8 text-center">
-                        <div className="max-w-sm">
-                            <div className="mx-auto grid size-16 place-items-center rounded-2xl bg-[#EEF8F2] text-[#23814C]">
-                                <Check className="size-8" />
-                            </div>
-                            <h3 className="mt-5 font-display text-2xl text-[#12234A]">
-                                Orden creada
-                            </h3>
-                            <p className="mt-2 text-sm text-[#65738A]">
-                                La orden quedó como Nueva y ya aparece en tu cola de pedidos.
-                            </p>
-                            <p className="mt-5 text-lg font-bold text-[#12234A]">
-                                Orden #{createdOrder.orderNumber}
-                            </p>
-                            <p className="mt-1 text-sm text-[#65738A]">
-                                Total confirmado:{' '}
-                                <strong className="text-[#2451C5]">
-                                    $
-                                    {createdOrder.total.toLocaleString('es-MX', {
-                                        minimumFractionDigits: 2,
-                                    })}
-                                </strong>
-                            </p>
-                            <div className="mt-7 flex flex-col gap-2 sm:flex-row sm:justify-center">
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        onViewOrder(createdOrder)
-                                        reset()
-                                    }}
-                                    className="rounded-xl bg-[#2451C5] px-4 py-3 text-sm font-bold text-white hover:bg-[#1E40AF]"
-                                >
-                                    Ver orden
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        reset()
-                                        onClose()
-                                    }}
-                                    className="rounded-xl border border-[#D7E1EF] bg-white px-4 py-3 text-sm font-bold text-[#243556] hover:border-[#B9CDFD]"
-                                >
-                                    Cerrar
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                ) : step === 1 ? (
+                {step === 1 ? (
                     <div className="grid min-h-0 flex-1 overflow-y-auto lg:grid-cols-[minmax(0,1fr)_360px]">
                         <div className="min-w-0 space-y-5 overflow-y-auto p-5 sm:p-7">
                             {catalog.isLoading ? (
-                                <div className="flex items-center gap-2 p-8 text-sm text-[#65738A]">
-                                    <LoaderCircle className="size-4 animate-spin" /> Cargando
-                                    catálogo…
-                                </div>
+                                <RestaurantCatalogSkeleton />
                             ) : catalog.isError ? (
                                 <div className="rounded-2xl border border-[#F3C2BD] bg-[#FFF8F7] p-5 text-sm text-[#B42318]">
                                     <AlertCircle className="mb-2 size-5" />
@@ -455,6 +428,57 @@ export function NewRestaurantOrderDrawer({
                         onAdd={(selections) => addProduct(customizing, selections)}
                     />
                 )}
+            </section>
+        </div>
+    )
+}
+
+function RestaurantCatalogSkeleton() {
+    return (
+        <div
+            className="space-y-5"
+            role="status"
+            aria-label="Cargando catálogo"
+            data-testid="restaurant-catalog-skeleton"
+        >
+            <span className="sr-only">Cargando catálogo…</span>
+            <div className="flex gap-2 overflow-hidden" aria-hidden="true">
+                {[1, 2, 3].map((item) => (
+                    <span
+                        key={item}
+                        className="h-10 w-28 shrink-0 animate-pulse rounded-xl bg-[#E8EEF8]"
+                    />
+                ))}
+            </div>
+            <div
+                className="flex gap-2 overflow-hidden rounded-xl border border-[#DCE5F3] bg-white p-1"
+                aria-hidden="true"
+            >
+                {[1, 2, 3, 4].map((item) => (
+                    <span
+                        key={item}
+                        className="h-10 w-24 shrink-0 animate-pulse rounded-lg bg-[#EEF3FF]"
+                    />
+                ))}
+            </div>
+            <section
+                className="rounded-2xl border border-[#DCE5F3] bg-white px-5 py-5"
+                aria-hidden="true"
+            >
+                <div className="mb-5 h-7 w-44 animate-pulse rounded-lg bg-[#E8EEF8]" />
+                <div className="divide-y divide-[#E8EEF6]">
+                    {[1, 2, 3].map((item) => (
+                        <div key={item} className="flex gap-4 py-5 first:pt-0 last:pb-0">
+                            <div className="size-24 shrink-0 animate-pulse rounded-xl bg-[#EEF3FF] sm:size-28" />
+                            <div className="min-w-0 flex-1 space-y-3 py-1">
+                                <div className="h-5 w-3/5 animate-pulse rounded-md bg-[#E8EEF8]" />
+                                <div className="h-4 w-11/12 animate-pulse rounded-md bg-[#F0F3F8]" />
+                                <div className="h-10 w-32 animate-pulse rounded-lg bg-[#EEF3FF] sm:h-8" />
+                            </div>
+                            <div className="h-6 w-20 shrink-0 animate-pulse rounded-md bg-[#E8EEF8]" />
+                        </div>
+                    ))}
+                </div>
             </section>
         </div>
     )

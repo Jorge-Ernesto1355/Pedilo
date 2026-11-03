@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
-import Image from 'next/image'
 import {
     ArrowRight,
     BellRing,
@@ -42,6 +41,9 @@ import { DashboardErrorState } from '../components/DashboardErrorState'
 import { OrdersSkeleton } from '../components/DashboardSkeletons'
 import { EmptyState } from '../components/EmptyState'
 import { useBusinessSettings } from '../../create-menu/features/business-settings/useBusinessSettings'
+import { useOrderEventsStore } from '@/store/orderEventsStore'
+import { groupOrderOptions } from '../features/orders/orderDisplay'
+import { CustomerDiscountPanel } from '../features/orders/CustomerDiscountPanel'
 import {
     formatBusinessDate,
     formatBusinessTime,
@@ -175,10 +177,12 @@ export default function OrdersPage() {
     const [debouncedSearch, setDebouncedSearch] = useState('')
     const [selectedId, setSelectedId] = useState<string | null>(null)
     const [newOrderOpen, setNewOrderOpen] = useState(false)
-    const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null)
     const [mutationErrorOrderId, setMutationErrorOrderId] = useState<string | null>(null)
     const [limit] = useState(10)
     const refetchAfterClear = useRef(false)
+    const unseenOrderIds = useOrderEventsStore((state) => state.unseenOrderIds)
+    const recentOrderIds = useOrderEventsStore((state) => state.recentOrderIds)
+    const markReviewed = useOrderEventsStore((state) => state.markReviewed)
     useEffect(() => {
         const timer = window.setTimeout(() => {
             setPage(1)
@@ -212,16 +216,25 @@ export default function OrdersPage() {
             totalPages <= 7 || value === 1 || value === totalPages || Math.abs(value - page) <= 1,
     )
 
+    useEffect(() => {
+        const markVisibleOrders = () => {
+            if (!query.isSuccess || query.isFetching || document.visibilityState !== 'visible')
+                return
+            const visibleIds = new Set(query.data.orders.map((order) => order.id))
+            markReviewed(unseenOrderIds.filter((id) => visibleIds.has(id)))
+        }
+        markVisibleOrders()
+        document.addEventListener('visibilitychange', markVisibleOrders)
+        return () => document.removeEventListener('visibilitychange', markVisibleOrders)
+    }, [markReviewed, query.data, query.isFetching, query.isSuccess, unseenOrderIds])
+
     function changeStatus(orderId: string, next: OrderStatus) {
-        if (mutation.isPending) return
-        setUpdatingOrderId(orderId)
         setMutationErrorOrderId(null)
-        mutation.mutate(
+        mutation.mutateStatus(
             { orderId, status: next },
             {
                 onError: () => setMutationErrorOrderId(orderId),
                 onSuccess: () => setMutationErrorOrderId(null),
-                onSettled: () => setUpdatingOrderId(null),
             },
         )
     }
@@ -231,6 +244,13 @@ export default function OrdersPage() {
         setSearch('')
         setDebouncedSearch('')
         setPage(1)
+    }
+
+    function showUnseenOrders() {
+        setStatus(undefined)
+        setPeriod(undefined)
+        setPage(1)
+        clearSearch()
     }
 
     if (query.isLoading) return <OrdersSkeleton />
@@ -246,6 +266,28 @@ export default function OrdersPage() {
     return (
         <main className="min-h-[calc(100svh-85px)] bg-[#F3F7FB]">
             <div className="mx-auto max-w-[1440px] space-y-7 px-5 py-8 sm:px-8 lg:px-12 lg:py-10">
+                {unseenOrderIds.length > 0 &&
+                    !unseenOrderIds.some((id) =>
+                        query.data?.orders.some((order) => order.id === id),
+                    ) && (
+                        <aside
+                            className="flex flex-col gap-3 rounded-xl border border-[#F0D28D] bg-[#FFFAEA] px-4 py-3 text-sm text-[#6E5012] sm:flex-row sm:items-center sm:justify-between"
+                            role="status"
+                        >
+                            <span>
+                                {unseenOrderIds.length === 1
+                                    ? 'Llegó una nueva orden que no aparece en esta página o con los filtros actuales.'
+                                    : `Llegaron ${unseenOrderIds.length} nuevas órdenes que no aparecen en esta página o con los filtros actuales.`}
+                            </span>
+                            <button
+                                type="button"
+                                onClick={showUnseenOrders}
+                                className="min-h-9 shrink-0 rounded-lg bg-[#2438A8] px-3 text-xs font-semibold text-white transition hover:bg-[#1D2F91] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2438A8] focus-visible:ring-offset-2"
+                            >
+                                Ver nuevas órdenes
+                            </button>
+                        </aside>
+                    )}
                 <header className="flex flex-col gap-7 xl:flex-row xl:items-start xl:justify-between">
                     <div className="flex min-w-0 gap-4">
                         <span className="grid size-14 shrink-0 place-items-center rounded-2xl bg-[#E4EDFF] text-[#1D5BFF]">
@@ -425,11 +467,12 @@ export default function OrdersPage() {
                                 order={order}
                                 currency={currency}
                                 timezone={timezone}
-                                isUpdating={updatingOrderId === order.id}
+                                isUpdating={mutation.pendingOrderIds.has(order.id)}
                                 hasMutationError={mutationErrorOrderId === order.id}
                                 errorMessage={
                                     mutation.error ? statusErrorMessage(mutation.error) : undefined
                                 }
+                                isNew={recentOrderIds.includes(order.id)}
                                 onOpen={() => setSelectedId(order.id)}
                                 onStatusChange={changeStatus}
                             />
@@ -478,7 +521,7 @@ export default function OrdersPage() {
                         isLoading={detail.isLoading}
                         currency={currency}
                         timezone={timezone}
-                        isUpdating={updatingOrderId === selectedId}
+                        isUpdating={mutation.pendingOrderIds.has(selectedId)}
                         hasMutationError={mutationErrorOrderId === selectedId}
                         errorMessage={
                             mutation.error ? statusErrorMessage(mutation.error) : undefined
@@ -490,10 +533,6 @@ export default function OrdersPage() {
                 <NewRestaurantOrderDrawer
                     open={newOrderOpen}
                     onClose={() => setNewOrderOpen(false)}
-                    onViewOrder={(order) => {
-                        setNewOrderOpen(false)
-                        setSelectedId(order.id)
-                    }}
                 />
                 <footer className="flex flex-col gap-3 border-t border-[#DCE5F3] pt-5 text-sm text-[#65738A] sm:flex-row sm:items-center sm:justify-between">
                     <span className="inline-flex items-center gap-2 text-base font-semibold text-[#53647D]">
@@ -557,6 +596,7 @@ function OrderCard({
     isUpdating,
     hasMutationError,
     errorMessage,
+    isNew,
     onOpen,
     onStatusChange,
 }: {
@@ -566,6 +606,7 @@ function OrderCard({
     isUpdating: boolean
     hasMutationError: boolean
     errorMessage?: string
+    isNew: boolean
     onOpen: () => void
     onStatusChange: (orderId: string, status: OrderStatus) => void
 }) {
@@ -577,21 +618,29 @@ function OrderCard({
         READY: 'bg-[#E3F7EA]',
         CANCELLED: 'bg-[#E7EDF3]',
     }[order.status]
-    const number = String(order.orderNumber).padStart(3, '0')
+    const isCreating = order.creationState === 'pending'
+    const isUncertain = order.creationState === 'uncertain'
+    const number = order.orderNumber > 0 ? String(order.orderNumber).padStart(3, '0') : '…'
 
     return (
         <article
-            className={`flex h-full flex-col overflow-hidden rounded-[22px] border bg-white shadow-[0_8px_22px_rgb(20_48_105_/_0.045)] transition hover:-translate-y-0.5 hover:shadow-[0_12px_30px_rgb(20_48_105_/_0.08)] ${isUpdating ? 'border-[#B9CDFD]' : 'border-[#DCE5F3]'}`}
+            className={`flex h-full flex-col overflow-hidden rounded-[22px] border bg-white shadow-[0_8px_22px_rgb(20_48_105_/_0.045)] transition hover:-translate-y-0.5 hover:shadow-[0_12px_30px_rgb(20_48_105_/_0.08)] ${isNew ? 'border-[#7D9EF4] ring-2 ring-[#DCE6FF] motion-safe:animate-[order-arrival_500ms_ease-out]' : isUpdating ? 'border-[#B9CDFD]' : 'border-[#DCE5F3]'}`}
         >
             <button
                 type="button"
                 onClick={onOpen}
+                disabled={isCreating || isUncertain}
                 className={`flex w-full items-center justify-between gap-3 px-4 py-3 text-left outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#1D5BFF] ${headerClass}`}
             >
                 <span className="flex items-center gap-2.5">
                     <span className="font-display text-lg font-bold tracking-[-.03em] text-[#12234A]">
-                        #{number}
+                        {isCreating ? 'Nueva orden' : `#${number}`}
                     </span>
+                    {isNew && !isCreating && (
+                        <span className="rounded-full bg-[#2451C5] px-2 py-1 text-[10px] font-bold text-white">
+                            Nueva orden
+                        </span>
+                    )}
                     <span className="inline-flex items-center gap-1 text-xs font-medium text-[#53647D]">
                         <Clock3 className="size-3.5" />
                         {formatBusinessTime(order.createdAt ?? '', timezone)}
@@ -608,11 +657,18 @@ function OrderCard({
                 <button
                     type="button"
                     onClick={onOpen}
+                    disabled={isCreating || isUncertain}
                     className="mb-4 block w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-[#1D5BFF] focus-visible:ring-offset-2"
                 >
                     <span className="flex items-center gap-2 text-sm font-bold text-[#243556]">
                         <UserRound className="size-4 text-[#71819A]" />
                         {displayCustomerName(order.customerName)}
+                    </span>
+                    <span className="mt-1 inline-flex items-center gap-1.5 rounded-md bg-[#F1F5F8] px-2 py-1 text-xs font-semibold text-[#53647D]">
+                        <Utensils className="size-3.5" />
+                        {order.fulfillmentType === 'PICKUP'
+                            ? 'Para llevar / recoger'
+                            : 'Comer aquí'}
                     </span>
                     {displayPhone(order.customerPhone) && (
                         <span className="mt-1 flex items-center gap-2 text-xs text-[#71819A]">
@@ -632,20 +688,9 @@ function OrderCard({
                             key={item.id ?? `${item.productId}-${index}`}
                             className="flex items-center gap-3"
                         >
-                            {item.productImageUrl ? (
-                                <Image
-                                    src={item.productImageUrl}
-                                    alt=""
-                                    width={56}
-                                    height={56}
-                                    unoptimized
-                                    className="size-14 shrink-0 rounded-xl object-cover"
-                                />
-                            ) : (
-                                <span className="grid size-14 shrink-0 place-items-center rounded-xl bg-[#F0F3F6] text-[#8A99AB]">
-                                    <Utensils className="size-5" />
-                                </span>
-                            )}
+                            <span className="grid size-14 shrink-0 place-items-center rounded-xl bg-[#F0F3F6] text-[#8A99AB]">
+                                <Utensils className="size-5" />
+                            </span>
                             <div className="min-w-0 text-sm">
                                 <p className="truncate text-[#243556]">
                                     <span className="mr-1 text-xs text-[#8996A9]">
@@ -655,11 +700,23 @@ function OrderCard({
                                         {item.productName ?? item.name ?? item.productId}
                                     </span>
                                 </p>
-                                {item.options?.length ? (
-                                    <p className="mt-0.5 truncate text-xs text-[#8996A9]">
-                                        ({item.options.map((option) => option.name).join(', ')})
-                                    </p>
-                                ) : null}
+                                {groupOrderOptions(item.options).length > 0 && (
+                                    <div className="mt-1 space-y-0.5 text-xs text-[#71819A]">
+                                        {groupOrderOptions(item.options).map((group) => (
+                                            <p key={group.name} className="truncate">
+                                                <span className="font-semibold text-[#53647D]">
+                                                    {group.name}:{' '}
+                                                </span>
+                                                {group.options
+                                                    .map(
+                                                        (option) =>
+                                                            `${option.name}${option.quantity > 1 ? ` × ${option.quantity}` : ''}`,
+                                                    )
+                                                    .join(', ')}
+                                            </p>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     ))}
@@ -677,7 +734,15 @@ function OrderCard({
                     </strong>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
-                    {next && (
+                    {isCreating ? (
+                        <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#65738A]" role="status">
+                            <LoaderCircle className="size-3.5 animate-spin" /> Guardando orden…
+                        </span>
+                    ) : isUncertain ? (
+                        <span className="text-xs font-semibold text-[#9A6500]" role="status">
+                            Verifica la lista para confirmar
+                        </span>
+                    ) : next ? (
                         <button
                             type="button"
                             disabled={isUpdating}
@@ -691,8 +756,8 @@ function OrderCard({
                             )}
                             {isUpdating ? 'Actualizando…' : meta.actionLabel}
                         </button>
-                    )}
-                    {canCancel(order.status) && (
+                    ) : null}
+                    {!isCreating && !isUncertain && canCancel(order.status) && (
                         <button
                             type="button"
                             disabled={isUpdating}
@@ -802,26 +867,65 @@ function OrderDetailModal({
                                 {formatMoney(order.total, currency)}
                             </p>
                         </div>
-                        <div className="grid gap-3 rounded-2xl bg-[#F8FAFE] p-4 text-sm sm:grid-cols-2">
-                            <div>
-                                <p className="text-xs text-[#8996A9]">Cliente</p>
-                                <p className="mt-1 font-bold text-[#243556]">
-                                    {order.customerName}
-                                </p>
-                                <p className="mt-1 text-[#65738A]">{order.customerPhone}</p>
-                            </div>
-                            <div className="sm:text-right">
-                                <p className="text-xs text-[#8996A9]">Recibida</p>
-                                <p className="mt-1 font-semibold text-[#243556]">
-                                    {formatBusinessDate(order.createdAt, timezone)}
-                                </p>
-                                {order.notes && (
-                                    <p className="mt-2 text-[#65738A] sm:ml-auto sm:max-w-xs">
-                                        {order.notes}
+                        <section
+                            aria-label="Información del pedido"
+                            className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
+                        >
+                            <div className="flex min-w-0 items-start gap-3 rounded-xl border border-[#E8EEF6] bg-white p-3.5">
+                                <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-[#EEF3FF] text-[#315FE8]">
+                                    <Utensils className="size-4" aria-hidden="true" />
+                                </span>
+                                <div className="min-w-0">
+                                    <p className="text-xs font-medium text-[#8996A9]">Modalidad</p>
+                                    <p className="mt-1 break-words text-sm font-semibold leading-5 text-[#243556]">
+                                        {order.fulfillmentType === 'PICKUP'
+                                            ? 'Para llevar / recoger'
+                                            : 'Comer aquí'}
                                     </p>
-                                )}
+                                </div>
                             </div>
-                        </div>
+                            <div className="flex min-w-0 items-start gap-3 rounded-xl border border-[#E8EEF6] bg-white p-3.5">
+                                <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-[#F1F5F8] text-[#65738A]">
+                                    <UserRound className="size-4" aria-hidden="true" />
+                                </span>
+                                <div className="min-w-0">
+                                    <p className="text-xs font-medium text-[#8996A9]">Cliente</p>
+                                    <p className="mt-1 break-words text-sm font-semibold leading-5 text-[#243556]">
+                                        {displayCustomerName(order.customerName)}
+                                    </p>
+                                    {order.customerPhone && (
+                                        <p className="mt-1 flex items-center gap-1.5 break-all text-xs leading-5 text-[#65738A]">
+                                            <Phone
+                                                className="size-3.5 shrink-0"
+                                                aria-hidden="true"
+                                            />
+                                            {displayPhone(order.customerPhone)}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="flex min-w-0 items-start gap-3 rounded-xl border border-[#E8EEF6] bg-white p-3.5">
+                                <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-[#F1F5F8] text-[#65738A]">
+                                    <Clock3 className="size-4" aria-hidden="true" />
+                                </span>
+                                <div className="min-w-0">
+                                    <p className="text-xs font-medium text-[#8996A9]">Recibida</p>
+                                    <p className="mt-1 break-words text-sm font-semibold leading-5 text-[#243556]">
+                                        {formatBusinessDate(order.createdAt, timezone)}
+                                    </p>
+                                </div>
+                            </div>
+                        </section>
+                        {order.notes?.trim() && (
+                            <aside className="flex items-start gap-3 rounded-xl border border-[#F0DDAF] bg-[#FFFAEC] p-3.5 text-sm text-[#6E5012]">
+                                <StickyNote className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+                                <div className="min-w-0">
+                                    <p className="text-xs font-semibold">Nota del cliente</p>
+                                    <p className="mt-1 break-words leading-5">{order.notes}</p>
+                                </div>
+                            </aside>
+                        )}
+                        <CustomerDiscountPanel order={order} currency={currency} />
                         <div>
                             <div className="mb-3 flex items-center justify-between">
                                 <h3 className="font-display text-lg text-[#12234A]">Productos</h3>
@@ -833,12 +937,56 @@ function OrderDetailModal({
                                 {order.items.map((item, index) => (
                                     <div
                                         key={item.id ?? `${item.productId}-${index}`}
-                                        className="flex justify-between gap-4 py-3 text-sm"
+                                        className="flex items-start justify-between gap-4 py-3 text-sm"
                                     >
-                                        <span className="text-[#243556]">
-                                            {item.quantity} ×{' '}
-                                            {item.productName ?? item.name ?? item.productId}
-                                        </span>
+                                        <div className="min-w-0 flex-1">
+                                            <p className="font-semibold text-[#243556]">
+                                                {item.quantity} ×{' '}
+                                                {item.productName ?? item.name ?? item.productId}
+                                            </p>
+                                            {groupOrderOptions(item.options).length > 0 && (
+                                                <div className="mt-2 space-y-2">
+                                                    {groupOrderOptions(item.options).map(
+                                                        (group) => (
+                                                            <div key={group.name}>
+                                                                <p className="text-xs font-semibold text-[#53647D]">
+                                                                    {group.name}
+                                                                </p>
+                                                                <ul className="mt-0.5 space-y-0.5 text-xs leading-5 text-[#71819A]">
+                                                                    {group.options.map((option) => (
+                                                                        <li
+                                                                            key={`${option.name}-${option.price ?? 'no-price'}`}
+                                                                            className="flex flex-wrap items-baseline justify-between gap-x-3"
+                                                                        >
+                                                                            <span>
+                                                                                {option.quantity > 1
+                                                                                    ? `${option.quantity} × `
+                                                                                    : ''}
+                                                                                {option.name}
+                                                                            </span>
+                                                                            {option.price !==
+                                                                                undefined &&
+                                                                                option.price >
+                                                                                    0 && (
+                                                                                    <span className="text-[#8996A9]">
+                                                                                        +{' '}
+                                                                                        {formatMoney(
+                                                                                            option.price *
+                                                                                                option.quantity *
+                                                                                                item.quantity,
+                                                                                            currency,
+                                                                                        )}
+                                                                                    </span>
+                                                                                )}
+                                                                        </li>
+                                                                    ))}
+                                                                </ul>
+                                                            </div>
+                                                        ),
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
                                         <span className="shrink-0 font-semibold text-[#243556]">
                                             {formatMoney(
                                                 item.subtotal ??

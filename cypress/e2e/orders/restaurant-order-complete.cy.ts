@@ -125,6 +125,7 @@ describe('Flujo completo de nueva orden desde el dashboard', () => {
                 'businessId',
             )
             request.reply({
+                delay: 1000,
                 statusCode: 201,
                 body: {
                     order: {
@@ -147,10 +148,8 @@ describe('Flujo completo de nueva orden desde el dashboard', () => {
         }).as('createRestaurantOrder')
 
         cy.contains('button', 'Crear orden').click()
+        cy.get('[role="dialog"][aria-labelledby="new-restaurant-order-title"]').should('not.exist')
+        cy.contains('article', 'Nueva orden').should('be.visible')
         cy.wait('@createRestaurantOrder')
-        cy.wait('@orders')
-        cy.contains('h3', 'Orden creada').should('be.visible')
-        cy.contains('Orden #1').should('be.visible')
-        cy.contains('Total confirmado:').should('contain', '$190.00')
     })
 })
