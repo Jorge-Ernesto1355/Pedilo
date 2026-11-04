@@ -340,10 +340,13 @@ export function OrderDrawer({
                                                     delay: reducedMotion ? 0 : index * 0.035,
                                                     ease: [0.22, 1, 0.36, 1],
                                                 }}
-                                                className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start"
+                                                className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-2"
                                             >
                                                 <div className="min-w-0 flex-1">
-                                                    <p className="max-w-full whitespace-normal break-words text-sm font-bold text-[#243556] [overflow-wrap:anywhere]">
+                                                    <p
+                                                        className="max-w-full truncate text-sm font-bold text-[#243556]"
+                                                        title={line.product.name}
+                                                    >
                                                         {line.product.name}
                                                     </p>
                                                     {line.product.includedProducts &&
@@ -374,48 +377,50 @@ export function OrderDrawer({
                                                             </p>
                                                         )
                                                     )}
-                                                        <p className="mt-1 max-w-full whitespace-normal break-words text-xs font-semibold text-[#2451C5] [overflow-wrap:anywhere]">
+                                                    <p className="mt-1 max-w-full whitespace-normal break-words text-xs font-semibold text-[#2451C5] [overflow-wrap:anywhere]">
                                                         ${line.unitPrice.toLocaleString('es-MX')}{' '}
                                                         c/u
                                                     </p>
                                                 </div>
-                                                {hasAvailableOptions(line.product) && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => onEditLine(line)}
-                                                        className="inline-flex min-h-9 items-center gap-1 self-start rounded-lg px-2 text-xs font-bold text-[#2451C5] hover:bg-[#EAF0FF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2451C5]/30 sm:self-center"
-                                                    >
-                                                        <Pencil
-                                                            className="size-3"
-                                                            aria-hidden="true"
-                                                        />
-                                                        Editar
-                                                    </button>
-                                                )}
-                                                <div className="flex h-11 shrink-0 items-center gap-1 self-start rounded-lg border border-[#DCE5F3] px-1 sm:self-center sm:h-8 sm:gap-2">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() =>
-                                                            onChangeQuantity(line.key, -1)
-                                                        }
-                                                        aria-label={`Quitar una unidad de ${line.product.name}`}
-                                                        className="grid size-10 place-items-center rounded text-[#65738A] hover:bg-[#F5F8FC] sm:size-6"
-                                                    >
-                                                        <Minus className="size-3" />
-                                                    </button>
-                                                    <span className="w-4 text-center text-xs font-bold text-[#12234A]">
-                                                        {line.quantity}
-                                                    </span>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() =>
-                                                            onChangeQuantity(line.key, 1)
-                                                        }
-                                                        aria-label={`Agregar una unidad de ${line.product.name}`}
-                                                        className="grid size-10 place-items-center rounded text-[#2451C5] hover:bg-[#EAF0FF] sm:size-6"
-                                                    >
-                                                        <Plus className="size-3" />
-                                                    </button>
+                                                <div className="flex shrink-0 items-center gap-2 self-start">
+                                                    {hasAvailableOptions(line.product) && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => onEditLine(line)}
+                                                            className="inline-flex min-h-9 items-center gap-1 rounded-lg px-2 text-xs font-bold text-[#2451C5] hover:bg-[#EAF0FF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2451C5]/30"
+                                                        >
+                                                            <Pencil
+                                                                className="size-3"
+                                                                aria-hidden="true"
+                                                            />
+                                                            Editar
+                                                        </button>
+                                                    )}
+                                                    <div className="flex h-11 items-center gap-1 rounded-lg border border-[#DCE5F3] px-1 sm:h-8 sm:gap-2">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() =>
+                                                                onChangeQuantity(line.key, -1)
+                                                            }
+                                                            aria-label={`Quitar una unidad de ${line.product.name}`}
+                                                            className="grid size-10 place-items-center rounded text-[#65738A] hover:bg-[#F5F8FC] sm:size-6"
+                                                        >
+                                                            <Minus className="size-3" />
+                                                        </button>
+                                                        <span className="w-4 text-center text-xs font-bold text-[#12234A]">
+                                                            {line.quantity}
+                                                        </span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() =>
+                                                                onChangeQuantity(line.key, 1)
+                                                            }
+                                                            aria-label={`Agregar una unidad de ${line.product.name}`}
+                                                            className="grid size-10 place-items-center rounded text-[#2451C5] hover:bg-[#EAF0FF] sm:size-6"
+                                                        >
+                                                            <Plus className="size-3" />
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             </motion.div>
                                         ))}
@@ -516,10 +521,17 @@ export function OrderDrawer({
                                             </p>
                                         )}
                                     {discountInvalidated && (
-                                        <div className="mt-3 rounded-xl border border-[#F4C7C3] bg-[#FFF5F4] p-3" role="alert" data-testid="discount-invalidated">
-                                            <p className="text-sm font-bold text-[#B42318]">Cupón invalidado</p>
+                                        <div
+                                            className="mt-3 rounded-xl border border-[#F4C7C3] bg-[#FFF5F4] p-3"
+                                            role="alert"
+                                            data-testid="discount-invalidated"
+                                        >
+                                            <p className="text-sm font-bold text-[#B42318]">
+                                                Cupón invalidado
+                                            </p>
                                             <p className="mt-1 text-xs leading-5 text-[#8F2B24]">
-                                                Este cupón fue eliminado y ya no será válido. No se te restará ningún importe de tu pedido.
+                                                Este cupón fue eliminado y ya no será válido. No se
+                                                te restará ningún importe de tu pedido.
                                             </p>
                                         </div>
                                     )}
@@ -618,17 +630,24 @@ export function OrderDrawer({
                                                 })}
                                             </span>
                                         </div>
-                                        {!discountInvalidated && availableDiscount && previewDiscountAmount > 0 && (
-                                            <div className="mt-2 flex items-center justify-between gap-3 text-sm">
-                                                <span className="text-[#23794A]">Tu descuento</span>
-                                                <span className="font-semibold text-[#23794A]">
-                                                    −$
-                                                    {previewDiscountAmount.toLocaleString('es-MX', {
-                                                        minimumFractionDigits: 2,
-                                                    })}
-                                                </span>
-                                            </div>
-                                        )}
+                                        {!discountInvalidated &&
+                                            availableDiscount &&
+                                            previewDiscountAmount > 0 && (
+                                                <div className="mt-2 flex items-center justify-between gap-3 text-sm">
+                                                    <span className="text-[#23794A]">
+                                                        Tu descuento
+                                                    </span>
+                                                    <span className="font-semibold text-[#23794A]">
+                                                        −$
+                                                        {previewDiscountAmount.toLocaleString(
+                                                            'es-MX',
+                                                            {
+                                                                minimumFractionDigits: 2,
+                                                            },
+                                                        )}
+                                                    </span>
+                                                </div>
+                                            )}
                                         <div className="mt-2 flex items-center justify-between gap-3 border-t border-[#E8EEF6] pt-2.5">
                                             <span className="text-sm font-bold text-[#243556]">
                                                 Total
@@ -665,33 +684,121 @@ export function OrderDrawer({
                                         </span>
                                     </button>
                                     {priceChange && (
-                                        <div className="mt-3 rounded-xl border border-[#F1C46A] bg-[#FFF9E8] px-3 py-3 text-left" data-testid="price-change-warning">
-                                            <p className="text-sm font-bold text-[#8A5A00]">El precio cambió mientras hacías tu pedido</p>
+                                        <div
+                                            className="mt-3 rounded-xl border border-[#F1C46A] bg-[#FFF9E8] px-3 py-3 text-left"
+                                            data-testid="price-change-warning"
+                                        >
+                                            <p className="text-sm font-bold text-[#8A5A00]">
+                                                El precio cambió mientras hacías tu pedido
+                                            </p>
                                             <p className="mt-1 text-xs leading-5 text-[#8A5A00]">
-                                                El subtotal ahora es ${priceChange.currentSubtotal.toLocaleString('es-MX', { minimumFractionDigits: 2 })} ({priceChange.difference > 0 ? 'subió' : 'bajó'} ${Math.abs(priceChange.difference).toLocaleString('es-MX', { minimumFractionDigits: 2 })}). ¿Quieres continuar?
+                                                El subtotal ahora es $
+                                                {priceChange.currentSubtotal.toLocaleString(
+                                                    'es-MX',
+                                                    { minimumFractionDigits: 2 },
+                                                )}{' '}
+                                                ({priceChange.difference > 0 ? 'subió' : 'bajó'} $
+                                                {Math.abs(priceChange.difference).toLocaleString(
+                                                    'es-MX',
+                                                    { minimumFractionDigits: 2 },
+                                                )}
+                                                ). ¿Quieres continuar?
                                             </p>
                                             <div className="mt-2 flex gap-2">
-                                                <button type="button" onClick={onCancelPriceChange} className="min-h-9 flex-1 rounded-lg border border-[#D7B35A] px-2 text-xs font-bold text-[#8A5A00]">Cancelar</button>
-                                                <button type="button" onClick={() => onCheckout(customerName.trim(), customerPhone.trim(), notes.trim(), fulfillmentType, false, true)} className="min-h-9 flex-1 rounded-lg bg-[#B77900] px-2 text-xs font-bold text-white">Continuar</button>
+                                                <button
+                                                    type="button"
+                                                    onClick={onCancelPriceChange}
+                                                    className="min-h-9 flex-1 rounded-lg border border-[#D7B35A] px-2 text-xs font-bold text-[#8A5A00]"
+                                                >
+                                                    Cancelar
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        onCheckout(
+                                                            customerName.trim(),
+                                                            customerPhone.trim(),
+                                                            notes.trim(),
+                                                            fulfillmentType,
+                                                            false,
+                                                            true,
+                                                        )
+                                                    }
+                                                    className="min-h-9 flex-1 rounded-lg bg-[#B77900] px-2 text-xs font-bold text-white"
+                                                >
+                                                    Continuar
+                                                </button>
                                             </div>
                                         </div>
                                     )}
                                     {discountInvalidated && (
-                                        <div className="mt-3 rounded-xl border border-[#F4C7C3] bg-[#FFF5F4] p-3" data-testid="discount-invalidated-confirmation">
-                                            <p className="text-sm font-bold text-[#8F2B24]">¿Quieres continuar sin el cupón?</p>
-                                            <p className="mt-1 text-xs leading-5 text-[#8F2B24]">El total volvió a su importe original porque el descuento ya no está disponible.</p>
+                                        <div
+                                            className="mt-3 rounded-xl border border-[#F4C7C3] bg-[#FFF5F4] p-3"
+                                            data-testid="discount-invalidated-confirmation"
+                                        >
+                                            <p className="text-sm font-bold text-[#8F2B24]">
+                                                ¿Quieres continuar sin el cupón?
+                                            </p>
+                                            <p className="mt-1 text-xs leading-5 text-[#8F2B24]">
+                                                El total volvió a su importe original porque el
+                                                descuento ya no está disponible.
+                                            </p>
                                             <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-                                                <button type="button" onClick={onClose} className="min-h-10 flex-1 rounded-lg border border-[#E7A29C] px-3 py-2 text-sm font-bold text-[#8F2B24]">Cancelar pedido</button>
-                                                <button type="button" onClick={() => onCheckout(customerName.trim(), customerPhone.trim(), notes.trim(), fulfillmentType)} className="min-h-10 flex-1 rounded-lg bg-[#B42318] px-3 py-2 text-sm font-bold text-white">Continuar sin descuento</button>
+                                                <button
+                                                    type="button"
+                                                    onClick={onClose}
+                                                    className="min-h-10 flex-1 rounded-lg border border-[#E7A29C] px-3 py-2 text-sm font-bold text-[#8F2B24]"
+                                                >
+                                                    Cancelar pedido
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        onCheckout(
+                                                            customerName.trim(),
+                                                            customerPhone.trim(),
+                                                            notes.trim(),
+                                                            fulfillmentType,
+                                                        )
+                                                    }
+                                                    className="min-h-10 flex-1 rounded-lg bg-[#B42318] px-3 py-2 text-sm font-bold text-white"
+                                                >
+                                                    Continuar sin descuento
+                                                </button>
                                             </div>
                                         </div>
                                     )}
                                     {couponApplicationError && (
-                                        <div className="mt-2 flex flex-wrap items-center justify-end gap-2" data-testid="coupon-application-error">
-                                            <p className="mr-auto text-xs font-bold text-[#B42318]">Error al aplicar el cupón</p>
+                                        <div
+                                            className="mt-2 flex flex-wrap items-center justify-end gap-2"
+                                            data-testid="coupon-application-error"
+                                        >
+                                            <p className="mr-auto text-xs font-bold text-[#B42318]">
+                                                Error al aplicar el cupón
+                                            </p>
                                             <div className="flex gap-1.5">
-                                                <button type="button" onClick={() => void handleCheckout()} className="min-h-8 rounded-md border border-[#E7A29C] px-2.5 py-1 text-[11px] font-bold text-[#8F2B24]">Reintentar</button>
-                                                <button type="button" onClick={() => onCheckout(customerName.trim(), customerPhone.trim(), notes.trim(), fulfillmentType, true)} className="min-h-8 rounded-md bg-[#B42318] px-2.5 py-1 text-[11px] font-bold text-white">Sin cupón</button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => void handleCheckout()}
+                                                    className="min-h-8 rounded-md border border-[#E7A29C] px-2.5 py-1 text-[11px] font-bold text-[#8F2B24]"
+                                                >
+                                                    Reintentar
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        onCheckout(
+                                                            customerName.trim(),
+                                                            customerPhone.trim(),
+                                                            notes.trim(),
+                                                            fulfillmentType,
+                                                            true,
+                                                        )
+                                                    }
+                                                    className="min-h-8 rounded-md bg-[#B42318] px-2.5 py-1 text-[11px] font-bold text-white"
+                                                >
+                                                    Sin cupón
+                                                </button>
                                             </div>
                                         </div>
                                     )}
