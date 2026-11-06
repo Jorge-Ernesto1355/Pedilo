@@ -55,7 +55,7 @@ export function ProductCard({
                         </h3>
                         {product.type === 'COMBO' && <span className="mt-1 inline-block text-xs font-semibold text-[#65738A]">Combo</span>}
                         {product.includedProducts && product.includedProducts.length > 0 && (
-                            <p className="mt-1 text-xs leading-5 text-[#65738A]">Incluye: {product.includedProducts.map((item) => item.product.name).join(', ')}</p>
+                            <p className="mt-1 text-xs leading-5 text-[#65738A]">Incluye: {product.includedProducts.map((item) => `${item.quantity && item.quantity > 1 ? `${item.quantity}× ` : ''}${item.product.name}`).join(', ')}</p>
                         )}
                         {hasOptions && (
                             <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-[#2451C5]">

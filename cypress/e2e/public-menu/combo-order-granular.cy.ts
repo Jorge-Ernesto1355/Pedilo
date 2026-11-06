@@ -47,6 +47,7 @@ function installComboCatalog(options: { unavailableChoice?: string; longNames?: 
                 id: 'included-burger-e2e',
                 productId: 'product-burger-e2e',
                 sortOrder: 0,
+                quantity: 2,
                 product: {
                     id: 'product-burger-e2e',
                     name: longIncludedName,
@@ -151,7 +152,9 @@ describe('Selección de combos en el catálogo público', () => {
         installComboCatalog()
         cy.visit(`/${slug}`)
         cy.wait('@getComboCatalog')
-        openComboSelector()().contains('Hamburguesa incluida').should('be.visible')
+        const dialog = openComboSelector()()
+        dialog.contains('Hamburguesa incluida').should('be.visible')
+        dialog.should('contain', '2× Hamburguesa incluida')
     })
 
     it('mantiene dentro del modal los nombres largos del combo y sus incluidos en móvil', () => {
@@ -224,6 +227,7 @@ describe('Selección de combos en el catálogo público', () => {
         dialog().contains('label', 'Agua fresca').click()
         dialog().contains('button', 'Agregar al pedido').click()
         cy.contains('button', 'Ver mi pedido').click()
+        cy.get('[role="dialog"]').should('contain', '2× Hamburguesa incluida')
         cy.get('#customer-name').type('Jorge')
         cy.get('#customer-phone').type('6691234567')
         cy.contains('[role="dialog"] button', 'Confirmar pedido').click()

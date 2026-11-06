@@ -284,6 +284,7 @@ export function ComboManagerModal({
     const [imageUrl, setImageUrl] = useState('')
     const [selectedCategoryId, setSelectedCategoryId] = useState(categoryId)
     const [included, setIncluded] = useState<string[]>([])
+    const [includedQuantities, setIncludedQuantities] = useState<Record<string, number>>({})
     const [groups, setGroups] = useState<DraftGroup[]>([])
     const [newGroup, setNewGroup] = useState<DraftGroup>({ name: '', productIds: [] })
     const [newChoice, setNewChoice] = useState<Record<string, string>>({})
@@ -306,6 +307,7 @@ export function ComboManagerModal({
         actions.create.isPending ||
         actions.addIncluded.isPending ||
         actions.removeIncluded.isPending ||
+        actions.updateIncludedQuantity.isPending ||
         actions.createGroup.isPending ||
         actions.updateGroup.isPending ||
         actions.deleteGroup.isPending ||
@@ -332,6 +334,7 @@ export function ComboManagerModal({
         setImageUrl('')
         setSelectedCategoryId(categoryId)
         setIncluded([])
+        setIncludedQuantities({})
         setGroups([])
         setNewGroup({ name: '', productIds: [] })
         setNewChoice({})
@@ -442,6 +445,7 @@ export function ComboManagerModal({
                 description: description.trim(),
                 price: numericPrice,
                 ...(imageUrl.trim() ? { imageUrl: imageUrl.trim() } : {}),
+                includedProducts: included.map((productId) => ({ productId, quantity: includedQuantities[productId] ?? 1 })),
                 includedProductIds: included,
                 optionGroups: groups as ComboGroupInput[],
             },
@@ -675,8 +679,9 @@ export function ComboManagerModal({
                                 data-testid="combo-included-product-list"
                                 className="mt-3 space-y-2"
                             >
-                                {currentCombo.includedProducts.map((item) => (
-                                    <div
+                                {currentCombo.includedProducts.map((item) => {
+                                    const quantity = item.quantity ?? 1
+                                    return <div
                                         key={item.id}
                                         data-testid={`combo-included-product-${item.productId}`}
                                         className="flex items-center justify-between gap-3 rounded-lg bg-[#F7F9FC] px-3 py-2"
@@ -689,12 +694,35 @@ export function ComboManagerModal({
                                                 ${Number(item.product.price).toFixed(2)}
                                             </p>
                                         </div>
-                                        <button
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                type="button"
+                                                aria-label={`Disminuir cantidad de ${item.product.name}`}
+                                                disabled={busy || quantity <= 1}
+                                                onClick={() => actions.updateIncludedQuantity.mutate(
+                                                    { comboId: combo!.id, includedId: item.id, quantity: quantity - 1 },
+                                                    { onError: (error) => notify.error({ title: 'No se pudo actualizar la cantidad', description: friendlyError(error) }) },
+                                                )}
+                                                className="grid size-8 place-items-center rounded-md border border-[#D7E1EF] text-[#53647D] disabled:opacity-40"
+                                            >−</button>
+                                            <span
+                                                data-testid={`combo-edit-included-quantity-${item.productId}`}
+                                                className={`min-w-6 text-center text-sm font-bold ${quantity >= 10 ? 'text-[#B42318]' : 'text-[#243556]'}`}
+                                            >{quantity}</span>
+                                            <button
+                                                type="button"
+                                                aria-label={`Aumentar cantidad de ${item.product.name}`}
+                                                disabled={busy || quantity >= 10}
+                                                onClick={() => actions.updateIncludedQuantity.mutate(
+                                                    { comboId: combo!.id, includedId: item.id, quantity: quantity + 1 },
+                                                    { onError: (error) => notify.error({ title: 'No se pudo actualizar la cantidad', description: friendlyError(error) }) },
+                                                )}
+                                                className={`grid size-8 place-items-center rounded-md border text-sm font-bold ${quantity >= 10 ? 'cursor-not-allowed border-[#F3C2BD] text-[#B42318]' : 'border-[#D7E1EF] text-[#2451C5]'}`}
+                                            >+</button>
+                                            <button
                                             type="button"
                                             aria-label={`Quitar ${item.product.name} de productos incluidos`}
-                                            disabled={
-                                                busy || currentCombo.includedProducts.length <= 1
-                                            }
+                                            disabled={busy || currentCombo.includedProducts.length <= 1}
                                             title={
                                                 currentCombo.includedProducts.length <= 1
                                                     ? 'El combo debe conservar al menos un producto incluido.'
@@ -719,11 +747,12 @@ export function ComboManagerModal({
                                                     )
                                             }}
                                             className="grid size-8 place-items-center rounded-md text-[#78869B] hover:bg-[#FDECEC] hover:text-[#B42318]"
-                                        >
-                                            <X className="size-4" />
-                                        </button>
+                                            >
+                                                <X className="size-4" />
+                                            </button>
+                                        </div>
                                     </div>
-                                ))}
+                                })}
                             </div>
                             {currentCombo.includedProducts.length === 0 && (
                                 <p className="mt-3 rounded-lg border border-dashed border-[#D7E1EF] p-3 text-xs text-[#8996A9]">
@@ -1342,10 +1371,7 @@ export function ComboManagerModal({
                                         (id) => !included.includes(id),
                                     )}
                                     onToggle={(id) => {
-                                        if (
-                                            !included.includes(id) &&
-                                            included.length >= COMBO_INCLUDED_PRODUCTS_MAX
-                                        ) {
+                                        if (!included.includes(id) && included.length >= COMBO_INCLUDED_PRODUCTS_MAX) {
                                             setCreateError({
                                                 title: 'Llegaste al máximo de productos',
                                                 description: `Un combo puede incluir hasta ${COMBO_INCLUDED_PRODUCTS_MAX} productos obligatorios.`,
@@ -1353,12 +1379,30 @@ export function ComboManagerModal({
                                             return
                                         }
                                         setCreateError(null)
-                                        toggle(included, id, setIncluded)
+                                        toggle(included, id, (productIds) => {
+                                            setIncluded(productIds)
+                                            setIncludedQuantities((current) => {
+                                                if (productIds.includes(id)) return { ...current, [id]: current[id] ?? 1 }
+                                                const next = { ...current }
+                                                delete next[id]
+                                                return next
+                                            })
+                                        })
                                     }}
                                 />
                             </div>
+                            {included.length > 0 && (
+                                <div className="mt-3 space-y-2 rounded-xl border border-[#DCE5F3] bg-[#FBFCFE] p-3">
+                                    <p className="text-xs font-bold uppercase tracking-[.08em] text-[#65738A]">Cantidad de cada producto</p>
+                                    {included.map((id) => {
+                                        const quantity = includedQuantities[id] ?? 1
+                                        const atProductLimit = quantity >= 10
+                                        return <div key={id} className="flex items-center justify-between gap-3 rounded-lg bg-white px-3 py-2"><span className="min-w-0 truncate text-sm font-semibold text-[#243556]">{products.find((item) => item.id === id)?.name}</span><div className="flex items-center gap-2"><button type="button" aria-label={`Disminuir cantidad de ${products.find((item) => item.id === id)?.name ?? 'producto'}`} onClick={() => setIncludedQuantities((current) => ({ ...current, [id]: Math.max(1, quantity - 1) }))} className="grid size-8 place-items-center rounded-lg border border-[#D7E1EF] text-[#53647D]">−</button><span data-testid={`combo-included-quantity-${id}`} className={`min-w-6 text-center text-sm font-bold ${atProductLimit ? 'text-[#B42318]' : 'text-[#243556]'}`}>{quantity}</span><button type="button" aria-label={`Aumentar cantidad de ${products.find((item) => item.id === id)?.name ?? 'producto'}`} disabled={atProductLimit} onClick={() => setIncludedQuantities((current) => ({ ...current, [id]: Math.min(10, quantity + 1) }))} className={`grid size-8 place-items-center rounded-lg border text-sm font-bold ${atProductLimit ? 'cursor-not-allowed border-[#F3C2BD] text-[#B42318]' : 'border-[#D7E1EF] text-[#2451C5]'}`}>+</button></div></div>
+                                    })}
+                                </div>
+                            )}
                             <p className="text-right text-xs text-[#8996A9]">
-                                {included.length}/{COMBO_INCLUDED_PRODUCTS_MAX} seleccionados
+                                {included.length}/{COMBO_INCLUDED_PRODUCTS_MAX} productos seleccionados
                             </p>
                             {included.length >= COMBO_INCLUDED_PRODUCTS_MAX && (
                                 <p
@@ -1552,7 +1596,7 @@ export function ComboManagerModal({
                                     {included.length ? (
                                         included.map((id) => (
                                             <p key={id} className="mt-1 text-sm text-[#53617A]">
-                                                {products.find((item) => item.id === id)?.name}
+                                                {includedQuantities[id] ?? 1}× {products.find((item) => item.id === id)?.name}
                                             </p>
                                         ))
                                     ) : (

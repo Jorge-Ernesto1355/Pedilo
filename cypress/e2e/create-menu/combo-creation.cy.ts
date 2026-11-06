@@ -174,6 +174,7 @@ function installComboCatalog() {
             description: 'Hamburguesa con acompañamiento y bebida a elegir.',
             price: 199,
             includedProductIds: ['product-required-burger-e2e'],
+            includedProducts: [{ productId: 'product-required-burger-e2e', quantity: 1 }],
             optionGroups: [
                 {
                     name: 'Acompañamiento',

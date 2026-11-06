@@ -224,6 +224,25 @@ describe('Creación granular de combos', () => {
         dialog().contains('button', 'Continuar').should('not.be.disabled')
     })
 
+    it('crea un combo con cantidades independientes por producto', () => {
+        installCatalog()
+        openCreation()
+        goToIncluded()
+        dialog().contains('button', 'Hamburguesa sencilla').click()
+        dialog().contains('button', 'Papas gajo').click()
+        dialog().find('[aria-label="Aumentar cantidad de Hamburguesa sencilla"]').click().click()
+        dialog().find('[aria-label="Aumentar cantidad de Papas gajo"]').click().click().click().click()
+        dialog().find('[data-testid="combo-included-quantity-product-required-burger-granular"]').should('contain', '3')
+        dialog().find('[data-testid="combo-included-quantity-product-fries-granular"]').should('contain', '5')
+        dialog().contains('button', 'Continuar').click()
+        dialog().contains('button', 'Continuar').click()
+        dialog().contains('button', 'Crear combo').click()
+        cy.wait('@createCombo').its('request.body.includedProducts').should('deep.equal', [
+            { productId: 'product-required-burger-granular', quantity: 3 },
+            { productId: 'product-fries-granular', quantity: 5 },
+        ])
+    })
+
     it('permite como máximo diez productos obligatorios y avisa al intentar agregar el número once', () => {
         installCatalog()
         openCreation()
@@ -233,10 +252,10 @@ describe('Creación granular de combos', () => {
             dialog().contains('button', product.name).click()
         })
 
-        dialog().contains('10/10 seleccionados').should('be.visible')
+        dialog().contains('10/10 productos seleccionados').should('be.visible')
         dialog().contains('button', products[10]!.name).click()
         dialog().find('[data-testid="combo-create-error"]').should('contain', 'hasta 10 productos obligatorios')
-        dialog().contains('10/10 seleccionados').should('be.visible')
+        dialog().contains('10/10 productos seleccionados').should('be.visible')
     })
 
     it('impide reutilizar un producto incluido dentro de un grupo', () => {
@@ -385,6 +404,7 @@ describe('Creación granular de combos', () => {
             description: '',
             price: 199,
             includedProductIds: ['product-required-burger-granular'],
+            includedProducts: [{ productId: 'product-required-burger-granular', quantity: 1 }],
             optionGroups: [{
                 name: 'Acompañamiento',
                 productIds: ['product-fries-granular', 'product-wings-granular'],

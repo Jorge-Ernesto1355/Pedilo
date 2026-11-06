@@ -26,7 +26,7 @@ const order = {
             options: [
                 {
                     id: 'order-option-included-burger',
-                    name: 'Hamburguesa clásica',
+                    name: '2× Hamburguesa clásica',
                     groupName: 'Productos incluidos',
                     price: 0,
                 },
@@ -106,7 +106,7 @@ describe('Detalle de orden con opciones de combo', () => {
                 cy.contains('Para llevar / recoger').should('be.visible')
                 cy.contains('Combo familiar').should('be.visible')
                 cy.contains('Productos incluidos').should('be.visible')
-                cy.contains('li', 'Hamburguesa clásica').should('be.visible')
+                cy.contains('li', '2× Hamburguesa clásica').should('be.visible')
                 cy.contains('li', 'Papas gajo').should('be.visible')
                 cy.contains('Complementos').should('be.visible')
                 cy.contains('li', '5 × Queso').should('be.visible')

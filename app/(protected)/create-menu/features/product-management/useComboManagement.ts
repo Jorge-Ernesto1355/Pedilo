@@ -7,6 +7,7 @@ import {
     getCombo,
     addIncludedProduct,
     removeIncludedProduct,
+    updateIncludedProductQuantity,
     createComboGroup,
     updateComboGroup,
     deleteComboGroup,
@@ -92,6 +93,23 @@ export function useComboManagement() {
             notify.success({
                 title: 'Producto quitado',
                 description: 'Se guardaron los cambios del combo.',
+            })
+        },
+    })
+    const updateIncludedQuantityMutation = useMutation({
+        mutationFn: ({ comboId, includedId, quantity }: { comboId: string; includedId: string; quantity: number }) =>
+            updateIncludedProductQuantity(comboId, includedId, quantity),
+        onSuccess: (included, variables) => {
+            updateDetailsCache(variables.comboId, (current) => ({
+                ...current,
+                includedProducts: current.includedProducts.map((item) =>
+                    item.id === included.id ? included : item,
+                ),
+            }))
+            refresh(variables.comboId)
+            notify.success({
+                title: 'Cantidad cambiada',
+                description: `Ahora incluye ${included.quantity ?? 1} de “${included.product.name}”.`,
             })
         },
     })
@@ -228,6 +246,7 @@ export function useComboManagement() {
         create: createMutation,
         addIncluded: addIncludedMutation,
         removeIncluded: removeIncludedMutation,
+        updateIncludedQuantity: updateIncludedQuantityMutation,
         createGroup: createGroupMutation,
         updateGroup: updateGroupMutation,
         deleteGroup: deleteGroupMutation,

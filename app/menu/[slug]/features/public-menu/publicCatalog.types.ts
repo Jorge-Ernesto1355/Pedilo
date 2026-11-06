@@ -26,6 +26,7 @@ export type PublicOptionGroup = {
 export type PublicComboChoice = {
     id: string
     productId: string
+    quantity?: number
     sortOrder: number
     product: { id: string; name: string; description: string | null; price: number; imageUrl: string | null; categoryId: string; isAvailable: boolean }
 }

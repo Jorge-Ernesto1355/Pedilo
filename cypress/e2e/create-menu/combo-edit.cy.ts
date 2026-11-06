@@ -62,7 +62,7 @@ function comboGroupProductIdsFromUrl(url: string) {
     return { groupId: match?.[1], productId: match?.[2] }
 }
 
-function installCatalog(options: { detailsDelay?: number; detailsError?: boolean; updateDelay?: number; updateError?: boolean } = {}) {
+function installCatalog(options: { detailsDelay?: number; detailsError?: boolean; updateDelay?: number; updateError?: boolean; quantityUpdateDelay?: number; quantityUpdateError?: boolean } = {}) {
     const combo = {
         id: comboId,
         businessId,
@@ -82,6 +82,7 @@ function installCatalog(options: { detailsDelay?: number; detailsError?: boolean
                 id: 'included-burger',
                 productId: 'edit-required-burger',
                 sortOrder: 0,
+                quantity: 2,
                 product: productRecord('edit-required-burger'),
             },
         ],
@@ -204,6 +205,16 @@ function installCatalog(options: { detailsDelay?: number; detailsError?: boolean
         combo.includedProducts.push(included)
         request.reply({ statusCode: 201, body: { includedProduct: included } })
     }).as('addIncluded')
+    cy.intercept('PATCH', `**/businesses/products/${comboId}/combo-included-products/*`, (request) => {
+        if (options.quantityUpdateError) {
+            request.reply({ statusCode: 500, body: { error: { code: 'INTERNAL_ERROR' } } })
+            return
+        }
+        const includedId = request.url.split('/').pop()
+        const included = combo.includedProducts.find((item) => item.id === includedId)
+        if (included) included.quantity = request.body.quantity
+        request.reply({ statusCode: 200, delay: options.quantityUpdateDelay, body: { includedProduct: included } })
+    }).as('updateIncludedQuantity')
     cy.intercept(
         'DELETE',
         `**/businesses/products/${comboId}/combo-included-products/*`,
@@ -399,7 +410,48 @@ describe('Edición granular de combos', () => {
     it('mantiene deshabilitado quitar el único producto incluido', () => {
         installCatalog()
         const dialog = openCombo()
-        dialog().find('[data-testid="combo-included-product-edit-required-burger"] button').should('be.disabled')
+        dialog().find('[data-testid="combo-included-product-edit-required-burger"] [aria-label^="Quitar "]').should('be.disabled')
+    })
+
+    it('muestra la cantidad actual y permite editarla con notificación de éxito', () => {
+        installCatalog()
+        const dialog = openCombo()
+        dialog().find('[data-testid="combo-edit-included-quantity-edit-required-burger"]')
+            .should('contain', '2')
+        dialog().find('[data-testid="combo-included-product-edit-required-burger"] [aria-label^="Aumentar cantidad de"]').click()
+        cy.wait('@updateIncludedQuantity').its('request.body').should('deep.equal', { quantity: 3 })
+        dialog().find('[data-testid="combo-edit-included-quantity-edit-required-burger"]').should('contain', '3')
+        cy.contains('Cantidad cambiada').should('be.visible')
+    })
+
+    it('limita cada producto a diez y permite que otros productos tengan su propio límite', () => {
+        const { combo } = installCatalog()
+        combo.includedProducts.push({ id: 'included-water', productId: 'edit-water', sortOrder: 1, quantity: 10, product: productRecord('edit-water') })
+        const dialog = openCombo()
+        dialog().find('[data-testid="combo-edit-included-quantity-edit-water"]')
+            .should('contain', '10')
+            .should('have.class', 'text-[#B42318]')
+        dialog().find('[data-testid="combo-included-product-edit-water"] [aria-label^="Aumentar cantidad de"]').should('be.disabled')
+        dialog().find('[data-testid="combo-included-product-edit-required-burger"] [aria-label^="Aumentar cantidad de"]').should('be.enabled').click()
+        cy.wait('@updateIncludedQuantity').its('request.body').should('deep.equal', { quantity: 3 })
+    })
+
+    it('conserva la cantidad anterior y muestra error controlado si falla', () => {
+        installCatalog({ quantityUpdateError: true })
+        const dialog = openCombo()
+        dialog().find('[data-testid="combo-included-product-edit-required-burger"] [aria-label^="Aumentar cantidad de"]').click()
+        cy.wait('@updateIncludedQuantity')
+        dialog().find('[data-testid="combo-edit-included-quantity-edit-required-burger"]').should('contain', '2')
+        cy.contains('No se pudo actualizar la cantidad').should('be.visible')
+    })
+
+    it('bloquea cambios rápidos mientras la actualización anterior está pendiente', () => {
+        installCatalog({ quantityUpdateDelay: 500 })
+        const dialog = openCombo()
+        dialog().find('[data-testid="combo-included-product-edit-required-burger"] [aria-label^="Aumentar cantidad de"]').click()
+        dialog().find('[data-testid="combo-included-product-edit-required-burger"] [aria-label^="Aumentar cantidad de"]').should('be.disabled')
+        cy.get('@updateIncludedQuantity.all').should('have.length', 1)
+        cy.wait('@updateIncludedQuantity')
     })
 
     it('permite agregar un producto incluido después de seleccionarlo', () => {
@@ -421,10 +473,10 @@ describe('Edición granular de combos', () => {
 
     it('permite quitar un producto incluido conservando otro', () => {
         const { combo } = installCatalog()
-        combo.includedProducts.push({ id: 'included-water', productId: 'edit-water', sortOrder: 1, product: productRecord('edit-water') })
+        combo.includedProducts.push({ id: 'included-water', productId: 'edit-water', sortOrder: 1, quantity: 1, product: productRecord('edit-water') })
         const dialog = openCombo()
         cy.on('window:confirm', () => true)
-        dialog().find('[data-testid="combo-included-product-edit-required-burger"] button').click()
+        dialog().find('[data-testid="combo-included-product-edit-required-burger"] [aria-label^="Quitar "]').click()
         cy.wait('@removeIncluded')
         dialog().find('[data-testid="combo-included-product-edit-required-burger"]').should('not.exist')
     })
@@ -435,6 +487,7 @@ describe('Edición granular de combos', () => {
             id: `included-${product.id}`,
             productId: product.id,
             sortOrder,
+            quantity: 1,
             product,
         }))
         const dialog = openCombo()

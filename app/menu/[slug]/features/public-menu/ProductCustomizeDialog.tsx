@@ -120,7 +120,7 @@ export function ProductCustomizeDialog({
                         <section aria-label="Productos incluidos" className="rounded-xl bg-[#F6F8FC] px-4 py-3">
                             <h3 className="text-sm font-bold text-[#243556]">Incluye</h3>
                             <p className="mt-1 max-w-full break-words text-sm leading-5 text-[#65738A] [overflow-wrap:anywhere]">
-                                {product.includedProducts.map((item) => item.product.name).join(', ')}
+                                {product.includedProducts.map((item) => `${item.quantity && item.quantity > 1 ? `${item.quantity}× ` : ''}${item.product.name}`).join(', ')}
                             </p>
                         </section>
                     )}

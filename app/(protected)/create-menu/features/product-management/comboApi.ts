@@ -28,6 +28,7 @@ export type ComboIncludedProduct = {
     id: string
     productId: string
     sortOrder: number
+    quantity?: number
     product: Pick<Product, 'id' | 'name' | 'price' | 'imageUrl' | 'categoryId' | 'isAvailable'>
 }
 
@@ -45,7 +46,8 @@ export type CreateComboInput = {
     description: string
     price: number
     imageUrl?: string
-    includedProductIds: string[]
+    includedProductIds?: string[]
+    includedProducts?: Array<{ productId: string; quantity: number }>
     optionGroups: ComboGroupInput[]
 }
 
@@ -145,6 +147,20 @@ export async function removeIncludedProduct(productId: string, includedId: strin
             credentials,
         ),
     )
+}
+
+export async function updateIncludedProductQuantity(
+    productId: string,
+    includedId: string,
+    quantity: number,
+) {
+    return request(() =>
+        apiClient.patch<ComboIncludedProduct | Envelope<ComboIncludedProduct>>(
+            `/businesses/products/${productId}/combo-included-products/${includedId}`,
+            { quantity },
+            credentials,
+        ),
+    ).then(unwrap)
 }
 
 export async function createComboGroup(productId: string, input: ComboGroupInput) {
