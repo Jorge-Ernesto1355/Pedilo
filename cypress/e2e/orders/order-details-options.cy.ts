@@ -22,6 +22,10 @@ const order = {
             productName: 'Combo familiar',
             quantity: 1,
             unitPrice: 240,
+            unitPriceOriginal: 300,
+            unitPriceFinal: 240,
+            discountAmount: 60,
+            discountLabel: '-20%',
             subtotal: 240,
             options: [
                 {
@@ -115,6 +119,9 @@ describe('Detalle de orden con opciones de combo', () => {
                 cy.contains('li', 'Salsa verde').should('be.visible')
                 cy.get('li').filter(':contains("Queso")').should('have.length', 1)
                 cy.contains('Salsa aparte').should('be.visible')
+                cy.contains('$300.00 c/u').should('be.visible')
+                cy.contains('$240.00 c/u').should('be.visible')
+                cy.contains('-20%').should('be.visible')
                 cy.contains('$240.00').should('be.visible')
             })
         cy.wait('@getCustomerDiscount')

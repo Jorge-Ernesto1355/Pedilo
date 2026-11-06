@@ -129,6 +129,16 @@ function nextStatus(status: OrderStatus): OrderStatus | null {
     return null
 }
 
+function itemPriceSummary(item: Order['items'][number]) {
+    const finalUnitPrice = item.unitPriceFinal ?? item.unitPrice ?? 0
+    const originalUnitPrice = item.unitPriceOriginal ?? finalUnitPrice
+    return {
+        finalUnitPrice,
+        originalUnitPrice,
+        hasProductDiscount: originalUnitPrice > finalUnitPrice,
+    }
+}
+
 function canCancel(status: OrderStatus) {
     return status !== 'CANCELLED'
 }
@@ -1051,13 +1061,33 @@ function OrderDetailModal({
                                                 </div>
                                             )}
                                         </div>
-                                        <span className="shrink-0 font-semibold text-[#243556]">
-                                            {formatMoney(
-                                                item.subtotal ??
-                                                    (item.unitPrice ?? 0) * item.quantity,
-                                                currency,
-                                            )}
-                                        </span>
+                                        {(() => {
+                                            const prices = itemPriceSummary(item)
+                                            return (
+                                                <span className="shrink-0 text-right">
+                                                    {prices.hasProductDiscount && (
+                                                        <span className="block text-xs text-[#8996A9] line-through">
+                                                            {formatMoney(prices.originalUnitPrice, currency)}{' '}
+                                                            c/u
+                                                        </span>
+                                                    )}
+                                                    <span className={`block font-semibold ${prices.hasProductDiscount ? 'text-[#16803D]' : 'text-[#243556]'}`}>
+                                                        {formatMoney(prices.finalUnitPrice, currency)} c/u
+                                                    </span>
+                                                    {prices.hasProductDiscount && item.discountLabel && (
+                                                        <span className="block text-[11px] font-bold text-[#16803D]">
+                                                            {item.discountLabel}
+                                                        </span>
+                                                    )}
+                                                    <span className="mt-0.5 block text-xs font-semibold text-[#53647D]">
+                                                        {formatMoney(
+                                                            item.subtotal ?? prices.finalUnitPrice * item.quantity,
+                                                            currency,
+                                                        )}
+                                                    </span>
+                                                </span>
+                                            )
+                                        })()}
                                     </div>
                                 ))}
                             </div>
