@@ -19,6 +19,7 @@ import { ApiError } from '@/app/auth/lib/client/api-error'
 import { useAuthStore } from '@/store/authStore'
 import type {
     PublicCatalog,
+    PublicDiscountPrice,
     PublicMenu,
     PublicProduct,
 } from '@/app/menu/[slug]/features/public-menu/publicCatalog.types'
@@ -26,7 +27,7 @@ import { CategoryTabs } from '@/app/menu/[slug]/features/public-menu/CategoryTab
 import { ProductCard } from '@/app/menu/[slug]/features/public-menu/ProductCard'
 import { ProductCustomizeDialog } from '@/app/menu/[slug]/features/public-menu/ProductCustomizeDialog'
 import { useOrderCart } from '@/app/menu/[slug]/features/public-menu/useOrderCart'
-import type { CartSelection } from '@/app/menu/[slug]/features/public-menu/types'
+import type { CartLine, CartSelection } from '@/app/menu/[slug]/features/public-menu/types'
 import { isValidPhone, sanitizePhoneInput } from '@/src/lib/validation/phone'
 import { useCreateRestaurantOrder } from './useCreateRestaurantOrder'
 import type { Order } from '@/src/lib/api/order-types'
@@ -69,6 +70,36 @@ function priceWithRestaurantDiscount(price: number, discount: RestaurantDiscount
     if (!discount) return price
     if (discount.type === 'PERCENT') return Math.round(price * (100 - discount.value)) / 100
     return Math.max(0, Math.round((price - discount.value) * 100) / 100)
+}
+
+function catalogDiscountPrices(catalog: PublicCatalog | undefined): PublicDiscountPrice[] {
+    return (
+        catalog?.menus.flatMap((menu) =>
+            menu.categories.flatMap((category) =>
+                category.products.map((product) => {
+                    const original = Number(
+                        product.priceOriginal ?? product.price_original ?? product.price,
+                    )
+                    const final = Number(product.priceFinal ?? product.price_final ?? product.price)
+                    return {
+                        productId: product.id,
+                        priceOriginal: original,
+                        priceFinal: final,
+                        price_original: original,
+                        price_final: final,
+                        discount: product.discount ?? null,
+                    }
+                }),
+            ),
+        ) ?? []
+    )
+}
+
+function lineUnitPrice(product: PublicProduct, selections: CartSelection[]) {
+    return (
+        Number(product.priceFinal ?? product.price_final ?? product.price) +
+        selections.reduce((total, selection) => total + selection.price * selection.quantity, 0)
+    )
 }
 
 function useRestaurantCatalog(enabled: boolean) {
@@ -190,6 +221,11 @@ export function NewRestaurantOrderDrawer({
     const [customerPhone, setCustomerPhone] = useState('')
     const [notes, setNotes] = useState('')
     const [error, setError] = useState<string | null>(null)
+    const [priceChange, setPriceChange] = useState<{
+        expectedSubtotal: number
+        currentSubtotal: number
+        difference: number
+    } | null>(null)
     const menus = useMemo(
         () => catalog.data?.menus.filter((menu) => menu.isActive) ?? [],
         [catalog.data],
@@ -213,6 +249,7 @@ export function NewRestaurantOrderDrawer({
         setCustomerPhone('')
         setNotes('')
         setError(null)
+        setPriceChange(null)
         setCustomizing(null)
     }
 
@@ -226,9 +263,47 @@ export function NewRestaurantOrderDrawer({
         setCustomizing(null)
     }
 
-    function createOrder() {
+    async function createOrder(skipPriceValidation = false) {
         if (mutation.isPending || cart.lines.length === 0 || !phoneValid) return
         setError(null)
+        if (!skipPriceValidation && cart.lines.some((line) => line.product.discount)) {
+            try {
+                const refreshedCatalog = await catalog.refetch()
+                const refreshedPrices = catalogDiscountPrices(refreshedCatalog.data)
+                const refreshedByProduct = new Map(
+                    refreshedPrices.map((product) => [product.productId, product]),
+                )
+                const currentSubtotal = cart.lines.reduce((total, line) => {
+                    const refreshedProduct = refreshedByProduct.get(line.product.id)
+                    if (!refreshedProduct) return total + line.unitPrice * line.quantity
+                    return (
+                        total +
+                        lineUnitPrice(
+                            {
+                                ...line.product,
+                                price: refreshedProduct.priceFinal,
+                                priceFinal: refreshedProduct.priceFinal,
+                                price_final: refreshedProduct.price_final,
+                            },
+                            line.selections,
+                        ) * line.quantity
+                    )
+                }, 0)
+                if (Math.abs(currentSubtotal - cart.total) > 0.001) {
+                    cart.syncDiscounts(refreshedPrices)
+                    setPriceChange({
+                        expectedSubtotal: cart.total,
+                        currentSubtotal,
+                        difference: currentSubtotal - cart.total,
+                    })
+                    return
+                }
+            } catch {
+                setError('No pudimos verificar los descuentos actuales. Inténtalo nuevamente.')
+                return
+            }
+        }
+        setPriceChange(null)
         const createdAt = new Date().toISOString()
         const idempotencyKey = crypto.randomUUID()
         const optimisticOrder: Order = {
@@ -460,12 +535,15 @@ export function NewRestaurantOrderDrawer({
                         notes={notes}
                         phoneValid={phoneValid}
                         error={error}
+                        priceChange={priceChange}
                         isSubmitting={mutation.isPending}
                         onNameChange={setCustomerName}
                         onPhoneChange={setCustomerPhone}
                         onNotesChange={setNotes}
                         onBack={() => setStep(1)}
-                        onSubmit={createOrder}
+                        onSubmit={() => void createOrder()}
+                        onCancelPriceChange={() => setPriceChange(null)}
+                        onContinueAfterPriceChange={() => void createOrder(true)}
                     />
                 )}
                 {customizing && (
@@ -562,6 +640,12 @@ function EmptyCatalogState({
     )
 }
 
+function originalUnitPrice(line: CartLine) {
+    const original = line.product.priceOriginal ?? line.product.price_original ?? line.product.price
+    const final = line.product.priceFinal ?? line.product.price_final ?? line.product.price
+    return line.unitPrice + Math.max(0, original - final)
+}
+
 function CartSummary({
     cart,
     onChangeQuantity,
@@ -599,8 +683,20 @@ function CartSummary({
                                             .join(', ')}
                                     </p>
                                 )}
-                                <p className="mt-1 text-xs text-[#65738A]">
-                                    ${line.unitPrice.toLocaleString('es-MX')} c/u
+                                <p className="mt-1 text-xs font-semibold text-[#65738A]">
+                                    {line.product.discount && originalUnitPrice(line) > line.unitPrice && (
+                                        <span className="mr-1 text-[#8996A9] line-through">
+                                            ${originalUnitPrice(line).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                                        </span>
+                                    )}
+                                    <span className={line.product.discount ? 'text-[#16803D]' : undefined}>
+                                        ${line.unitPrice.toLocaleString('es-MX', { minimumFractionDigits: 2 })} c/u
+                                    </span>
+                                    {line.product.discount && (
+                                        <span className="ml-1 text-[11px] font-bold text-[#16803D]">
+                                            {line.product.discount.label}
+                                        </span>
+                                    )}
                                 </p>
                             </div>
                             <div className="flex h-8 items-center gap-1 rounded-lg border border-[#DCE5F3] px-1">
@@ -657,24 +753,30 @@ function CustomerStep({
     notes,
     phoneValid,
     error,
+    priceChange,
     isSubmitting,
     onNameChange,
     onPhoneChange,
     onNotesChange,
     onBack,
     onSubmit,
+    onCancelPriceChange,
+    onContinueAfterPriceChange,
 }: {
     customerName: string
     customerPhone: string
     notes: string
     phoneValid: boolean
     error: string | null
+    priceChange: { expectedSubtotal: number; currentSubtotal: number; difference: number } | null
     isSubmitting: boolean
     onNameChange: (value: string) => void
     onPhoneChange: (value: string) => void
     onNotesChange: (value: string) => void
     onBack: () => void
     onSubmit: () => void
+    onCancelPriceChange: () => void
+    onContinueAfterPriceChange: () => void
 }) {
     const normalizedName = customerName.trim()
     const normalizedNotes = notes.trim()
@@ -776,6 +878,42 @@ function CustomerStep({
                         {error}
                     </p>
                 )}
+                {priceChange && (
+                    <div
+                        className="mt-5 rounded-xl border border-[#F1C46A] bg-[#FFF9E8] px-3 py-3"
+                        data-testid="restaurant-price-change-warning"
+                    >
+                        <p className="text-sm font-bold text-[#8A5A00]">
+                            El descuento cambió mientras preparabas la orden
+                        </p>
+                        <p className="mt-1 text-xs leading-5 text-[#8A5A00]">
+                            El subtotal ahora es $
+                            {priceChange.currentSubtotal.toLocaleString('es-MX', {
+                                minimumFractionDigits: 2,
+                            })}{' '}
+                            ({priceChange.difference > 0 ? 'subió' : 'bajó'} $
+                            {Math.abs(priceChange.difference).toLocaleString('es-MX', {
+                                minimumFractionDigits: 2,
+                            })}). El descuento ya no está disponible con el precio anterior.
+                        </p>
+                        <div className="mt-3 flex gap-2">
+                            <button
+                                type="button"
+                                onClick={onCancelPriceChange}
+                                className="min-h-9 flex-1 rounded-lg border border-[#D7B35A] px-2 text-xs font-bold text-[#8A5A00]"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                type="button"
+                                onClick={onContinueAfterPriceChange}
+                                className="min-h-9 flex-1 rounded-lg bg-[#B77900] px-2 text-xs font-bold text-white"
+                            >
+                                Continuar con precio actualizado
+                            </button>
+                        </div>
+                    </div>
+                )}
                 <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                     <button
                         type="button"
@@ -788,7 +926,7 @@ function CustomerStep({
                     <button
                         type="button"
                         onClick={onSubmit}
-                        disabled={isSubmitting || !formValid}
+                        disabled={isSubmitting || !formValid || Boolean(priceChange)}
                         className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#2451C5] px-5 py-3 text-sm font-bold text-white hover:bg-[#1E40AF] disabled:cursor-not-allowed disabled:opacity-45"
                     >
                         {isSubmitting && <LoaderCircle className="size-4 animate-spin" />}

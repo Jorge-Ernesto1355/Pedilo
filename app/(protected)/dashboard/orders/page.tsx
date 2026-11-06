@@ -1079,12 +1079,14 @@ function OrderDetailModal({
                                                             {item.discountLabel}
                                                         </span>
                                                     )}
-                                                    <span className="mt-0.5 block text-xs font-semibold text-[#53647D]">
-                                                        {formatMoney(
-                                                            item.subtotal ?? prices.finalUnitPrice * item.quantity,
-                                                            currency,
-                                                        )}
-                                                    </span>
+                                                    {item.quantity > 1 && (
+                                                        <span className="mt-0.5 block text-xs font-semibold text-[#53647D]">
+                                                            {formatMoney(
+                                                                item.subtotal ?? prices.finalUnitPrice * item.quantity,
+                                                                currency,
+                                                            )}
+                                                        </span>
+                                                    )}
                                                 </span>
                                             )
                                         })()}

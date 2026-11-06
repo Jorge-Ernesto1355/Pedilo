@@ -94,6 +94,38 @@ function productCard(productId: string) {
     return cy.get(`[data-cy="public-product-card"][data-product-id="${productId}"]`)
 }
 
+function selectMenu(name: string) {
+    cy.get('[role="dialog"]').get('div[aria-label="Menús"]').contains('button', name).click()
+}
+
+function addBurgerAndContinue() {
+    productCard('product-discount-burger').contains('button', 'Agregar al carrito').click()
+    cy.get('[role="dialog"]').contains('button', 'Continuar').click()
+    cy.get('[role="dialog"]').should('contain', 'Datos del cliente')
+}
+
+function interceptRestaurantOrder() {
+    cy.intercept('POST', '**/businesses/*/orders/restaurant', {
+        statusCode: 201,
+        body: {
+            order: {
+                id: 'order-restaurant-discount-refresh',
+                orderNumber: 99,
+                status: 'PENDING',
+                source: 'RESTAURANT',
+                customerId: null,
+                customerName: null,
+                customerPhone: null,
+                subtotal: 100,
+                discountAmount: 0,
+                total: 100,
+                items: [],
+                statusHistory: [],
+            },
+        },
+    }).as('createRestaurantOrder')
+}
+
 describe('Nueva orden: descuentos activos en el catálogo interno', () => {
     beforeEach(() => {
         cy.login()
@@ -108,9 +140,10 @@ describe('Nueva orden: descuentos activos en el catálogo interno', () => {
         visitOrders()
         openNewOrder()
         productCard('product-discount-burger').should('contain', '$75.00').and('contain', '$100.00').and('contain', '-25%')
-        productCard('product-discount-coke').should('contain', '$45.00').and('contain', '-10%')
         productCard('product-discount-sushi').should('contain', '$60.00').and('contain', '-25%')
-        productCard('product-discount-plain').should('contain', '$30.00').and('not.contain', 'descuento')
+        selectMenu('Bebidas con descuentos')
+        productCard('product-discount-coke').should('contain', '$45.00').and('contain', '-10%')
+        productCard('product-discount-plain').should('contain', '$30.00').and('not.contain', '-%').and('not.contain', '-$')
     })
 
     it('prioriza el descuento más reciente para el mismo producto', () => {
@@ -127,6 +160,7 @@ describe('Nueva orden: descuentos activos en el catálogo interno', () => {
         installApi([activeDiscount({ id: 'discount-fixed', name: 'Menos $12', type: 'FIXED', value: 12, product_ids: ['product-discount-coke'] })])
         visitOrders()
         openNewOrder()
+        selectMenu('Bebidas con descuentos')
         productCard('product-discount-coke').should('contain', '$38.00').and('contain', '-$12.00')
     })
 
@@ -140,7 +174,9 @@ describe('Nueva orden: descuentos activos en el catálogo interno', () => {
         visitOrders()
         openNewOrder()
         productCard('product-discount-burger').should('contain', '$100.00').and('not.contain', '-%')
+        selectMenu('Bebidas con descuentos')
         productCard('product-discount-coke').should('contain', '$50.00').and('not.contain', '-%')
+        selectMenu('Comidas con descuentos')
         productCard('product-discount-sushi').should('contain', '$80.00').and('not.contain', '-%')
     })
 
@@ -162,7 +198,7 @@ describe('Nueva orden: descuentos activos en el catálogo interno', () => {
         visitOrders()
         openNewOrder()
         productCard('product-discount-burger').should('contain', '$100.00')
-        cy.get('[role="dialog"]').find('button[aria-label="Cerrar"]').click()
+        cy.get('[role="dialog"]').find('button[aria-label="Cerrar nueva orden"]').click()
         openNewOrder()
         productCard('product-discount-burger').should('contain', '$80.00').and('contain', '-20%')
         cy.then(() => expect(attempts).to.eq(2))
@@ -173,9 +209,78 @@ describe('Nueva orden: descuentos activos en el catálogo interno', () => {
         visitOrders()
         openNewOrder()
         productCard('product-discount-burger').contains('button', 'Agregar al carrito').click()
+        cy.get('[role="dialog"]').should('contain', '$90.00 c/u').and('contain', '-10%')
+        selectMenu('Bebidas con descuentos')
         productCard('product-discount-plain').contains('button', 'Agregar al carrito').click()
-        cy.get('[role="dialog"]').contains('Tu orden').should('contain', '2 productos').and('contain', '$120.00')
+        cy.get('[role="dialog"]').should('contain', '2 productos').and('contain', '$120.00')
         cy.get('[role="dialog"]').contains('button', 'Continuar').click()
         cy.get('[role="dialog"]').should('contain', 'Datos del cliente')
+    })
+
+    it('detecta un descuento eliminado antes de confirmar y actualiza el carrito al precio base', () => {
+        let refreshCount = 0
+        installApi(() => {
+            refreshCount += 1
+            return refreshCount === 1
+                ? [activeDiscount({ value: 20, product_ids: ['product-discount-burger'] })]
+                : [activeDiscount({ status: 'DELETED', value: 20, product_ids: ['product-discount-burger'] })]
+        })
+        interceptRestaurantOrder()
+        visitOrders()
+        openNewOrder()
+        addBurgerAndContinue()
+
+        cy.contains('button', 'Crear orden').click()
+        cy.get('[data-testid="restaurant-price-change-warning"]')
+            .should('be.visible')
+            .and('contain', 'El descuento cambió mientras preparabas la orden')
+            .and('contain', 'El subtotal ahora es $100.00')
+            .and('contain', 'subió $20.00')
+        cy.get('@createRestaurantOrder.all').should('have.length', 0)
+
+        cy.contains('[data-testid="restaurant-price-change-warning"] button', 'Cancelar').click()
+        cy.get('[data-testid="restaurant-price-change-warning"]').should('not.exist')
+        cy.get('[role="dialog"]').contains('button', 'Volver').click()
+        productCard('product-discount-burger').should('contain', '$100.00').and('not.contain', '-20%')
+    })
+
+    it('detecta un descuento vencido antes de confirmar y permite continuar con el precio actualizado', () => {
+        let refreshCount = 0
+        installApi(() => {
+            refreshCount += 1
+            return refreshCount === 1
+                ? [activeDiscount({ value: 20, product_ids: ['product-discount-burger'] })]
+                : [activeDiscount({ endsAt: '2026-01-01T00:00:00.000Z', value: 20, product_ids: ['product-discount-burger'] })]
+        })
+        interceptRestaurantOrder()
+        visitOrders()
+        openNewOrder()
+        addBurgerAndContinue()
+
+        cy.contains('button', 'Crear orden').click()
+        cy.get('[data-testid="restaurant-price-change-warning"]').should('be.visible')
+        cy.contains('[data-testid="restaurant-price-change-warning"] button', 'Continuar con precio actualizado').click()
+        cy.wait('@createRestaurantOrder')
+        cy.get('[role="dialog"]').should('not.exist')
+    })
+
+    it('detecta un descuento finalizado y no crea la orden hasta que el usuario lo confirme', () => {
+        let refreshCount = 0
+        installApi(() => {
+            refreshCount += 1
+            return refreshCount === 1
+                ? [activeDiscount({ value: 20, product_ids: ['product-discount-burger'] })]
+                : [activeDiscount({ status: 'FINISHED', value: 20, product_ids: ['product-discount-burger'] })]
+        })
+        interceptRestaurantOrder()
+        visitOrders()
+        openNewOrder()
+        addBurgerAndContinue()
+
+        cy.contains('button', 'Crear orden').click()
+        cy.get('[data-testid="restaurant-price-change-warning"]')
+            .should('be.visible')
+            .and('contain', 'El descuento ya no está disponible')
+        cy.get('@createRestaurantOrder.all').should('have.length', 0)
     })
 })
