@@ -105,10 +105,11 @@ export function OrderDrawer({
         queryFn: () => getCheckoutCustomerDiscount(businessId, lookupPhone),
         enabled: Boolean(open && businessId && lookupPhone && lookupPhone === customerPhone),
         retry: false,
-        staleTime: 10_000,
+        staleTime: 0,
+        refetchOnMount: 'always',
     })
     const customerDiscount =
-        lookupPhone === customerPhone && discountQuery.data?.status === 'AVAILABLE'
+        lookupPhone === customerPhone && !discountQuery.isFetching && discountQuery.data?.status === 'AVAILABLE'
             ? discountQuery.data
             : null
     const availableDiscount = hasProductDiscount ? null : customerDiscount
@@ -117,6 +118,7 @@ export function OrderDrawer({
             knownDiscountRef.current = availableDiscount
         }
     }, [availableDiscount])
+
     const productSubtotal = lines.reduce(
         (subtotal, line) => subtotal + originalUnitPrice(line) * line.quantity,
         0,
@@ -156,6 +158,11 @@ export function OrderDrawer({
         setLookupPhone('')
     }
 
+    function closeDrawer() {
+        resetDiscountValidation()
+        onClose()
+    }
+
     useEffect(() => {
         onCloseRef.current = onClose
     }, [onClose])
@@ -178,6 +185,7 @@ export function OrderDrawer({
         const handleKeyDown = (event: KeyboardEvent) => {
             if (event.key === 'Escape') {
                 event.preventDefault()
+                resetDiscountValidation()
                 onCloseRef.current()
                 return
             }
@@ -285,7 +293,7 @@ export function OrderDrawer({
                         className="fixed inset-0 z-50 bg-[#10224A]/25"
                         role="presentation"
                         onMouseDown={(event) => {
-                            if (event.target === event.currentTarget) onClose()
+                            if (event.target === event.currentTarget) closeDrawer()
                         }}
                     >
                         <motion.aside
@@ -330,7 +338,7 @@ export function OrderDrawer({
                                 </div>
                                 <button
                                     type="button"
-                                    onClick={onClose}
+                                    onClick={closeDrawer}
                                     ref={closeButtonRef}
                                     aria-label="Cerrar pedido"
                                     className="grid size-9 place-items-center rounded-lg text-[#8996A9] transition hover:bg-[#F5F8FC] hover:text-[#12234A]"
@@ -549,7 +557,7 @@ export function OrderDrawer({
                                     {open &&
                                         isValidPhone(customerPhone) &&
                                         customerPhone.length === 10 &&
-                                        lookupPhone !== customerPhone && (
+                                        (lookupPhone !== customerPhone || discountQuery.isFetching) && (
                                             <p
                                                 className="mt-2 flex items-center gap-1.5 text-xs text-[#65738A]"
                                                 role="status"
@@ -571,8 +579,9 @@ export function OrderDrawer({
                                                 Cupón invalidado
                                             </p>
                                             <p className="mt-1 text-xs leading-5 text-[#8F2B24]">
-                                                Este cupón fue eliminado y ya no será válido. No se
-                                                te restará ningún importe de tu pedido.
+                                                Este cupón ya no está disponible y no se te restará
+                                                ningún importe de tu pedido. Puede haberse usado,
+                                                vencido o revocado.
                                             </p>
                                         </div>
                                     )}
@@ -789,7 +798,7 @@ export function OrderDrawer({
                                             <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                                                 <button
                                                     type="button"
-                                                    onClick={onClose}
+                                                    onClick={closeDrawer}
                                                     className="min-h-10 flex-1 rounded-lg border border-[#E7A29C] px-3 py-2 text-sm font-bold text-[#8F2B24]"
                                                 >
                                                     Cancelar pedido
