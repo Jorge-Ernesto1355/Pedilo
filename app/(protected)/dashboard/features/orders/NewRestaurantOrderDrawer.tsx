@@ -32,9 +32,44 @@ import { useCreateRestaurantOrder } from './useCreateRestaurantOrder'
 import type { Order } from '@/src/lib/api/order-types'
 import { getMenus } from '@/app/(protected)/create-menu/features/category-management/menuApi'
 import { getProductsPaged } from '@/app/(protected)/create-menu/features/product-management/productApi'
+import { apiClient } from '@/src/lib/api/client'
 
 const CUSTOMER_NAME_MAX_LENGTH = 80
 const CUSTOMER_NOTES_MAX_LENGTH = 200
+
+type RestaurantDiscount = {
+    id: string
+    name: string
+    type: 'PERCENT' | 'FIXED'
+    value: number
+    scope: 'MENU' | 'PRODUCTS' | 'CATEGORIES'
+    status: string
+    startsAt?: string
+    endsAt: string
+    createdAt?: string
+    product_ids?: string[]
+    category_ids?: string[]
+    menu_ids?: string[]
+}
+
+function discountForProduct(product: { id: string; categoryId: string; price: number }, menuId: string, discounts: RestaurantDiscount[]) {
+    const now = Date.now()
+    const candidates = discounts.filter((discount) => {
+        if (discount.status !== 'ACTIVE') return false
+        if (discount.startsAt && new Date(discount.startsAt).getTime() > now) return false
+        if (new Date(discount.endsAt).getTime() <= now) return false
+        if (discount.scope === 'PRODUCTS') return discount.product_ids?.includes(product.id) ?? false
+        if (discount.scope === 'CATEGORIES') return discount.category_ids?.includes(product.categoryId) ?? false
+        return discount.menu_ids?.includes(menuId) ?? false
+    })
+    return candidates.sort((a, b) => new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime())[0] ?? null
+}
+
+function priceWithRestaurantDiscount(price: number, discount: RestaurantDiscount | null) {
+    if (!discount) return price
+    if (discount.type === 'PERCENT') return Math.round(price * (100 - discount.value)) / 100
+    return Math.max(0, Math.round((price - discount.value) * 100) / 100)
+}
 
 function useRestaurantCatalog(enabled: boolean) {
     const businessId = useAuthStore((state) => state.user?.businessId)
@@ -42,7 +77,7 @@ function useRestaurantCatalog(enabled: boolean) {
         queryKey: ['restaurant-order-catalog', businessId],
         queryFn: async () => {
             if (!businessId) throw new Error('No encontramos el negocio del usuario.')
-            const [menus, productsResponse] = await Promise.all([
+            const [menus, productsResponse, discountsResponse] = await Promise.all([
                 getMenus(),
                 getProductsPaged(businessId, {
                     page: 1,
@@ -50,8 +85,12 @@ function useRestaurantCatalog(enabled: boolean) {
                     sortBy: 'sortOrder',
                     sortOrder: 'asc',
                 }),
+                apiClient
+                    .get<{ discounts: RestaurantDiscount[] }>(`/businesses/${businessId}/discounts`)
+                    .catch(() => ({ data: { discounts: [] } })),
             ])
             const products = productsResponse.products
+            const discounts = discountsResponse.data.discounts
             const productsById = new Map(products.map((product) => [product.id, product]))
             const normalizedMenus: PublicMenu[] = menus.map((menu) => ({
                 id: menu.id,
@@ -79,6 +118,9 @@ function useRestaurantCatalog(enabled: boolean) {
                               }))
                     ).map((menuProduct) => {
                         const product = productsById.get(menuProduct.id)
+                        const basePrice = Number(product?.price ?? menuProduct.price ?? 0)
+                        const discount = discountForProduct({ id: menuProduct.id, categoryId: product?.categoryId ?? menuProduct.categoryId ?? category.id, price: basePrice }, menu.id, discounts)
+                        const finalPrice = priceWithRestaurantDiscount(basePrice, discount)
                         return {
                             id: menuProduct.id,
                             businessId,
@@ -86,7 +128,12 @@ function useRestaurantCatalog(enabled: boolean) {
                                 product?.categoryId ?? menuProduct.categoryId ?? category.id,
                             name: product?.name ?? menuProduct.name,
                             description: product?.description ?? null,
-                            price: Number(product?.price ?? menuProduct.price ?? 0),
+                            price: finalPrice,
+                            priceOriginal: basePrice,
+                            priceFinal: finalPrice,
+                            price_original: basePrice,
+                            price_final: finalPrice,
+                            discount: discount ? { id: discount.id, name: discount.name, type: discount.type, value: discount.value, label: discount.type === 'PERCENT' ? `-${discount.value}%` : `-$${discount.value.toFixed(2)}`, endsAt: discount.endsAt } : null,
                             imageUrl: product?.imageUrl ?? null,
                             sortOrder: product?.sortOrder ?? 0,
                             isAvailable: product?.isAvailable ?? product?.active !== false,
@@ -114,7 +161,8 @@ function useRestaurantCatalog(enabled: boolean) {
             } satisfies PublicCatalog
         },
         enabled: enabled && Boolean(businessId),
-        staleTime: 5 * 60 * 1000,
+        staleTime: 0,
+        refetchOnMount: 'always',
     })
     return {
         ...catalog,
