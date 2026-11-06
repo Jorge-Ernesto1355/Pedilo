@@ -32,6 +32,8 @@ import { GoogleReviewsModal } from './features/google-reviews/GoogleReviewsModal
 import { BusinessPreviewSkeleton } from './components/CreateMenuStates'
 import Link from 'next/link'
 import { CreateMenuErrorState } from './components/CreateMenuStates'
+import { PaymentCardSettingsPanel } from './features/payment-card/PaymentCardSettingsPanel'
+import { DiscountsPanel } from './features/discounts/DiscountsPanel'
 import {
     useCurrentBusiness,
     type CurrentBusiness,
@@ -376,6 +378,7 @@ export default function BusinessSetupScreen({
                                         Dale forma a tu escaparate.
                                     </h2>
                                 </div>
+                                <div className="flex items-center gap-2">
                                 <button
                                     type="button"
                                     onClick={categories.open}
@@ -384,6 +387,7 @@ export default function BusinessSetupScreen({
                                     <span className="text-lg leading-none text-[#2451C5]">+</span>
                                     <span>Crear menú</span>
                                 </button>
+                                </div>
                             </div>
                             {!businessConfirmed ? (
                                 <BusinessPreviewSkeleton />
@@ -420,6 +424,14 @@ export default function BusinessSetupScreen({
                                 hasBusiness={Boolean(businessQuery.data)}
                                 isBusinessReady={businessConfirmed}
                                 isNewBusiness={isNewBusinessCreated}
+                            />
+                            <PaymentCardSettingsPanel business={businessQuery.data ?? undefined} />
+                            <DiscountsPanel
+                                businessId={businessQuery.data?.id}
+                                menus={categories.menus}
+                                menusLoading={categories.menusQuery.isLoading}
+                                menusError={categories.menusQuery.isError}
+                                onRetryMenus={() => void categories.menusQuery.refetch()}
                             />
                         </div>
                     </div>

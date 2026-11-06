@@ -34,6 +34,13 @@ const order = {
     updatedAt: createdAt,
 }
 
+const discountedOrder = {
+    ...order,
+    orderNumber: 6383,
+    discountAmount: 50,
+    total: 190,
+}
+
 type Discount = {
     id: string
     type: 'PERCENTAGE' | 'FIXED_AMOUNT'
@@ -95,10 +102,11 @@ const publicCatalog = {
     ],
 }
 
-function installDashboardApi(options: { initiallyListed?: boolean } = {}) {
+function installDashboardApi(options: { initiallyListed?: boolean; listedOrder?: typeof order } = {}) {
     const state: { orderIsAvailable: boolean } = {
         orderIsAvailable: options.initiallyListed ?? true,
     }
+    const listedOrder = options.listedOrder ?? order
 
     cy.intercept('GET', '**/businesses/settings', {
         statusCode: 200,
@@ -121,13 +129,13 @@ function installDashboardApi(options: { initiallyListed?: boolean } = {}) {
         if (!isCountRequest) request.alias = 'ordersList'
         const orderMatchesSearch =
             !url.searchParams.get('search') ||
-            order.customerName
+            listedOrder.customerName
                 .toLowerCase()
                 .includes((url.searchParams.get('search') ?? '').toLowerCase())
         request.reply({
             statusCode: 200,
             body: {
-                orders: state.orderIsAvailable && orderMatchesSearch ? [order] : [],
+                orders: state.orderIsAvailable && orderMatchesSearch ? [listedOrder] : [],
                 page: 1,
                 limit: 20,
                 total: state.orderIsAvailable && orderMatchesSearch ? 1 : 0,
@@ -138,14 +146,14 @@ function installDashboardApi(options: { initiallyListed?: boolean } = {}) {
     cy.intercept('GET', `**/businesses/orders/${order.id}`, (request) => {
         state.orderIsAvailable = true
         request.alias = 'getOrderDetail'
-        request.reply({ statusCode: 200, body: { order } })
+        request.reply({ statusCode: 200, body: { order: listedOrder } })
     })
 
     return state
 }
 
-function orderCard() {
-    return cy.contains('article', `#${String(order.orderNumber).padStart(3, '0')}`)
+function orderCard(target = order) {
+    return cy.contains('article', `#${String(target.orderNumber).padStart(3, '0')}`)
 }
 
 function discountPanel() {
@@ -205,7 +213,10 @@ describe('Descuentos personales para clientes', () => {
         cy.wait('@ordersList')
         orderCard().contains('button', `#${String(order.orderNumber).padStart(3, '0')}`).click()
         cy.wait('@getOrderDetail')
-        discountPanel().find('[role="status"]').should('contain', 'Consultando descuentos')
+        discountPanel()
+            .find('[data-testid="customer-discount-skeleton"]')
+            .should('be.visible')
+            .and('have.attr', 'aria-label', 'Cargando información del cupón')
         cy.wait('@getCustomerDiscount')
     })
 
@@ -227,11 +238,47 @@ describe('Descuentos personales para clientes', () => {
         orderCard().contains('button', `#${String(order.orderNumber).padStart(3, '0')}`).click()
         cy.wait('@getOrderDetail')
         cy.wait('@getCustomerDiscount')
-        discountPanel().should('contain', 'No pudimos consultar el descuento')
+        discountPanel()
+            .find('[data-testid="customer-discount-error"]')
+            .should('contain', 'No pudimos cargar el cupón de esta orden correctamente')
         discountPanel().contains('button', 'Intentar de nuevo').click()
         cy.wait('@getCustomerDiscount')
         discountPanel().contains('button', 'Crear descuento').should('be.visible')
         cy.then(() => expect(reads).to.eq(2))
+    })
+
+    it('muestra el cupón canjeado en la tarjeta y en el detalle de la orden', () => {
+        installDashboardApi({ listedOrder: discountedOrder })
+        cy.intercept('GET', `**/businesses/orders/${order.id}/discount`, {
+            statusCode: 200,
+            body: {
+                discount: {
+                    id: 'discount-used-in-order',
+                    type: 'FIXED_AMOUNT',
+                    value: 50,
+                    status: 'USED',
+                    expiresAt: '2026-11-30T18:00:00.000Z',
+                    createdAt,
+                    usedAt: createdAt,
+                    usedOrder: { id: order.id, orderNumber: discountedOrder.orderNumber },
+                },
+            },
+        }).as('getRedeemedCustomerDiscount')
+
+        cy.login()
+        cy.visit('/dashboard/orders')
+        cy.wait('@ordersList')
+        orderCard(discountedOrder)
+            .should('contain', 'Cupón canjeado')
+            .and('contain', '$50.00')
+            .contains('button', `#${String(discountedOrder.orderNumber).padStart(3, '0')}`)
+            .click()
+        cy.wait('@getOrderDetail')
+        cy.wait('@getRedeemedCustomerDiscount')
+        cy.get('[role="dialog"]')
+            .should('contain', 'Cupón canjeado')
+            .and('contain', 'El cliente ahorró')
+            .and('contain', '$50.00')
     })
 
     it('abre el formulario con porcentaje y valida el valor mínimo', () => {
@@ -471,11 +518,14 @@ describe('Descuentos personales para clientes', () => {
             .and('contain', '−$50.00')
             .and('contain', '$190.00')
         cy.intercept('POST', `**/businesses/${businessId}/orders`, (request) => {
-            expect(request.body).to.deep.equal({
+            expect(request.body).to.deep.include({
                 customer: { name: checkoutCustomerName, phone: '6681234567' },
                 fulfillmentType: 'DINE_IN',
-                items: [{ productId: publicProductId, quantity: 1, optionIds: [] }],
             })
+            expect(request.body.items).to.deep.equal([
+                { productId: publicProductId, quantity: 1, optionIds: [] },
+            ])
+            expect(request.body.expectedSubtotal).to.equal(240)
             expect(request.body).not.to.have.any.keys('discountId', 'discountAmount', 'total')
             state.discount!.status = 'USED'
             request.reply({
@@ -510,7 +560,7 @@ describe('Descuentos personales para clientes', () => {
             const whatsappMessage =
                 new URL(whatsappPopup.location.href).searchParams.get('text') ?? ''
             expect(whatsappPopup.location.href).to.contain('https://wa.me/526681234567?text=')
-            expect(whatsappMessage).to.contain('Descuento personal: −$50.00')
+            expect(whatsappMessage).to.contain('Cupón canjeado: −$50.00')
             expect(whatsappMessage).to.contain('Total: $190.00')
         })
 
@@ -601,11 +651,14 @@ describe('Descuentos personales para clientes', () => {
             request.reply({ statusCode: 200, body: { discount: percentageDiscount } })
         }).as('previewPercentageDiscount')
         cy.intercept('POST', `**/businesses/${businessId}/orders`, (request) => {
-            expect(request.body).to.deep.equal({
+            expect(request.body).to.deep.include({
                 customer: { name: checkoutCustomerName, phone: '6681234567' },
                 fulfillmentType: 'DINE_IN',
-                items: [{ productId: publicProductId, quantity: 1, optionIds: [] }],
             })
+            expect(request.body.items).to.deep.equal([
+                { productId: publicProductId, quantity: 1, optionIds: [] },
+            ])
+            expect(request.body.expectedSubtotal).to.equal(240)
             request.reply({
                 statusCode: 201,
                 body: {
@@ -650,7 +703,7 @@ describe('Descuentos personales para clientes', () => {
         cy.wait('@createPercentageDiscountOrder')
         cy.then(() => {
             const message = new URL(whatsappPopup.location.href).searchParams.get('text') ?? ''
-            expect(message).to.contain('Descuento personal: −$36.00')
+            expect(message).to.contain('Cupón canjeado: −$36.00')
             expect(message).to.contain('Total: $204.00')
         })
     })

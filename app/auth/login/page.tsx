@@ -2,7 +2,6 @@
 
 import { FormEvent, Suspense, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Inter, Source_Serif_4 } from 'next/font/google'
 import Image from 'next/image'
 import { loginSchema } from '@/app/auth/lib/validation'
 import { networkAuthError, safeAuthError } from '@/app/auth/lib/client/error-message'
@@ -11,22 +10,6 @@ import { authClient } from '@/authClient'
 import { useSearchParams } from 'next/navigation'
 import { SiteFooter } from '@/app/components/SiteFooter'
 import { RedirectedUrls } from '@/src/lib/RedirectUrls'
-
-// ---------------------------------------------------------------------------
-// Fuentes (equivalente a los <link> de Google Fonts del HTML original)
-// ---------------------------------------------------------------------------
-const inter = Inter({
-    subsets: ['latin'],
-    weight: ['300', '400', '700', '900'],
-    style: ['normal', 'italic'],
-    variable: '--font-inter',
-})
-
-const sourceSerif = Source_Serif_4({
-    subsets: ['latin'],
-    weight: ['400', '500', '600'],
-    variable: '--font-source-serif',
-})
 
 function GoogleIcon(props: React.SVGProps<SVGSVGElement>) {
     return (
@@ -148,7 +131,7 @@ function LoginForm() {
     return (
         <main
             id="main-content"
-            className={`${inter.variable} ${sourceSerif.variable} grid min-h-[100svh] grid-cols-1 bg-[#F5F7FB] font-[var(--font-space-grotesk)] lg:grid-cols-[1fr_1.15fr]`}
+            className="grid min-h-[100svh] grid-cols-1 bg-[#F5F7FB] font-[var(--font-space-grotesk)] lg:grid-cols-[1fr_1.15fr]"
         >
             {/* ============ IZQUIERDA: panel de historia ============ */}
             <motion.section

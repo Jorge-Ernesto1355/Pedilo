@@ -2,7 +2,6 @@
 
 import { useMutation } from '@tanstack/react-query'
 import { AlertCircle, CheckCircle2, Eye, EyeOff, LoaderCircle } from 'lucide-react'
-import { Inter, Source_Serif_4 } from 'next/font/google'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useState } from 'react'
@@ -13,17 +12,6 @@ import {
     getUserFriendlyError,
     getUserFriendlyFieldError,
 } from '@/src/lib/errors/user-friendly-error'
-
-const inter = Inter({
-    subsets: ['latin'],
-    weight: ['400', '600', '700', '900'],
-    variable: '--font-inter',
-})
-const sourceSerif = Source_Serif_4({
-    subsets: ['latin'],
-    weight: ['400', '500', '600'],
-    variable: '--font-source-serif',
-})
 
 function resetError(error: unknown) {
     if (!(error instanceof ApiError))
@@ -135,7 +123,7 @@ export default function ResetPasswordForm() {
     return (
         <main
             id="main-content"
-            className={`${inter.variable} ${sourceSerif.variable} flex min-h-screen items-center justify-center bg-[#F5F7FB] px-5 py-10 font-[var(--font-inter)] sm:px-8`}
+            className="flex min-h-screen items-center justify-center bg-[#F5F7FB] px-5 py-10 font-[var(--font-inter)] sm:px-8"
         >
             <div className="pointer-events-none fixed inset-0 -z-0 bg-[radial-gradient(circle_at_50%_0%,rgba(30,64,175,.08),transparent_40%)]" />
             <section className="relative z-10 w-full max-w-[480px] rounded-[24px] border border-[#E6EAF2] bg-white p-6 shadow-[0_24px_70px_-28px_rgba(30,64,175,.25)] sm:p-10">

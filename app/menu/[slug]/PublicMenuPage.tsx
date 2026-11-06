@@ -21,7 +21,7 @@ import {
 } from './features/public-menu/whatsapp'
 import type { PublicProduct } from './features/public-menu/publicCatalog.types'
 import type { CartLine } from './features/public-menu/types'
-import type { OrderFulfillmentType } from '@/src/lib/api/order-types'
+import type { OrderFulfillmentType, OrderPaymentMethod, TransferCardSnapshot } from '@/src/lib/api/order-types'
 
 function LoadingMenu() {
     return (
@@ -383,6 +383,10 @@ export default function PublicMenuPage({ slug }: { slug: string }) {
     } | null>(null)
     const [orderConfirmed, setOrderConfirmed] = useState(false)
     const [manualWhatsAppUrl, setManualWhatsAppUrl] = useState<string | null>(null)
+    const [transferCard, setTransferCard] = useState<TransferCardSnapshot | null>(null)
+    const [confirmedOrderTotal, setConfirmedOrderTotal] = useState<number | null>(null)
+    const [confirmedOrderNumber, setConfirmedOrderNumber] = useState<number | undefined>()
+    const [confirmedCustomerName, setConfirmedCustomerName] = useState('cliente')
     const menus = useMemo(
         () => query.data?.menus.filter((menu) => menu.isActive) ?? [],
         [query.data],
@@ -520,6 +524,7 @@ export default function PublicMenuPage({ slug }: { slug: string }) {
         fulfillmentType: OrderFulfillmentType,
         ignoreCustomerDiscount = false,
         acceptPriceChange = false,
+        paymentMethod: OrderPaymentMethod = 'CASH',
     ) {
         const businessWhatsAppNumber = normalizeBusinessWhatsAppNumber(
             catalog.business.whatsappNumber,
@@ -534,27 +539,17 @@ export default function PublicMenuPage({ slug }: { slug: string }) {
         setOrderError(null)
         setCouponApplicationError(false)
 
-        // Reserve a blank tab synchronously so the eventual WhatsApp tab is
-        // not blocked by the browser after the asynchronous order request.
         let whatsappWindow: Window | null = null
-        try {
-            whatsappWindow = window.open('about:blank', '_blank')
-            if (whatsappWindow?.document) {
-                whatsappWindow.document.title = 'Continuando en WhatsApp · Pedilo'
-                whatsappWindow.document.body.innerHTML = getWhatsAppRedirectMarkup()
-            }
-        } catch {
-            whatsappWindow?.close()
-            whatsappWindow = null
-        }
 
         try {
             const createdOrder = await createPublicOrder(catalog.business.id, {
                 customer: { name: customerName, phone: customerPhone },
                 fulfillmentType,
+                ...(paymentMethod === 'TRANSFER' ? { paymentMethod } : {}),
                 items: cart.lines.map((line) => ({
                     productId: line.product.id,
                     quantity: line.quantity,
+                    expectedUnitPrice: line.unitPrice,
                     optionIds: line.selections
                         .filter((selection) => selection.kind === 'product-option')
                         .flatMap((selection) =>
@@ -583,7 +578,7 @@ export default function PublicMenuPage({ slug }: { slug: string }) {
                 `${line.quantity}x ${line.product.name} — $${(line.unitPrice * line.quantity).toLocaleString('es-MX')}`,
                 ...(line.product.includedProducts?.length
                     ? [
-                          `  Incluye: ${line.product.includedProducts.map((item) => item.product.name).join(', ')}`,
+                          `  Incluye: ${line.product.includedProducts.map((item) => `${item.quantity && item.quantity > 1 ? `${item.quantity}x ` : ''}${item.product.name}`).join(', ')}`,
                       ]
                     : []),
                 ...(line.selections.length
@@ -610,19 +605,26 @@ export default function PublicMenuPage({ slug }: { slug: string }) {
                 notes,
             })
             const whatsappUrl = `https://wa.me/${businessWhatsAppNumber}?text=${encodeURIComponent(message)}`
+            setTransferCard(createdOrder.transferCard ?? null)
+            setConfirmedOrderTotal(createdOrder.total)
+            setConfirmedOrderNumber(createdOrder.orderNumber)
+            setConfirmedCustomerName(customerName)
 
-            let redirected = false
-            if (whatsappWindow?.document?.body) {
-                try {
+            // Only attempt to open WhatsApp after the backend has confirmed the
+            // order. Errors, warnings and price conflicts stay in checkout.
+            try {
+                whatsappWindow = window.open('about:blank', '_blank')
+                if (whatsappWindow?.document?.body) {
+                    whatsappWindow.document.title = 'Continuando en WhatsApp · Pedilo'
                     whatsappWindow.document.body.innerHTML = getWhatsAppRedirectMarkup(whatsappUrl)
                     whatsappWindow.location.href = whatsappUrl
-                    redirected = true
-                } catch {
-                    whatsappWindow.close()
-                    whatsappWindow = null
+                } else {
+                    setManualWhatsAppUrl(whatsappUrl)
                 }
-            }
-            if (!redirected) {
+            } catch {
+                if (whatsappWindow) {
+                    whatsappWindow.close()
+                }
                 setManualWhatsAppUrl(whatsappUrl)
             }
 
@@ -637,7 +639,6 @@ export default function PublicMenuPage({ slug }: { slug: string }) {
             setOrderOpen(false)
             setOrderConfirmed(true)
         } catch (error) {
-            whatsappWindow?.close()
             const discountFailed =
                 error instanceof ApiError &&
                 error.code === 'CUSTOMER_DISCOUNT_APPLICATION_FAILED'
@@ -649,6 +650,12 @@ export default function PublicMenuPage({ slug }: { slug: string }) {
                     difference?: number
                 } | undefined
                 if (typeof details?.expectedSubtotal === 'number' && typeof details.currentSubtotal === 'number') {
+                    try {
+                        const refreshedDiscounts = await query.discountsQuery.refetch()
+                        cart.syncDiscounts(refreshedDiscounts.data ?? [])
+                    } catch {
+                        // The warning remains visible and the user can retry the synchronization.
+                    }
                     setPriceChange({
                         expectedSubtotal: details.expectedSubtotal,
                         currentSubtotal: details.currentSubtotal,
@@ -659,16 +666,23 @@ export default function PublicMenuPage({ slug }: { slug: string }) {
                 return
             }
             setCouponApplicationError(discountFailed)
+            const friendlyOrderError = getUserFriendlyError(error, {
+                fallback: {
+                    title: 'No pudimos crear tu pedido',
+                    description: 'No pudimos crear tu pedido. Inténtalo nuevamente.',
+                },
+            }).description
+            const controlledOrderError = error instanceof ApiError && (error.code === 'INTERNAL_ERROR' || (error.status !== undefined && error.status >= 500))
+                ? 'No pudimos crear tu pedido. Inténtalo nuevamente.'
+                : friendlyOrderError
             setOrderError(
                 discountFailed || customerDisabled
                     ? null
-                    : getUserFriendlyError(error, {
-                    fallback: {
-                        title: 'No pudimos crear tu pedido',
-                        description: 'No pudimos crear tu pedido. Inténtalo nuevamente.',
-                    },
-                }).description,
+                    : controlledOrderError,
             )
+            if (error instanceof ApiError && error.code === 'PAYMENT_CARD_UNAVAILABLE') {
+                setOrderError('La tarjeta para transferencias no se cargó correctamente. Selecciona efectivo para continuar.')
+            }
             if (customerDisabled) {
                 setOrderError('Este cliente está deshabilitado y no puede realizar pedidos en este negocio.')
             }
@@ -773,6 +787,7 @@ export default function PublicMenuPage({ slug }: { slug: string }) {
                 open={orderOpen}
                 businessName={query.data.business.name}
                 businessId={query.data.business.id}
+                paymentCardAvailable={query.data.business.paymentCardAvailable ?? query.data.business.payment_card_available}
                 onChangeQuantity={cart.changeQuantity}
                 onEditLine={(line) => {
                     setEditingLineKey(line.key)
@@ -784,14 +799,23 @@ export default function PublicMenuPage({ slug }: { slug: string }) {
                     setOrderOpen(false)
                     setOrderError(null)
                 }}
-                onCheckout={(customerName, customerPhone, notes, fulfillmentType, ignoreCustomerDiscount, acceptPriceChange) => {
-                    void sendWhatsAppOrder(customerName, customerPhone, notes, fulfillmentType, ignoreCustomerDiscount, acceptPriceChange)
+                onCheckout={(customerName, customerPhone, notes, fulfillmentType, ignoreCustomerDiscount, acceptPriceChange, paymentMethod) => {
+                    void sendWhatsAppOrder(customerName, customerPhone, notes, fulfillmentType, ignoreCustomerDiscount, acceptPriceChange, paymentMethod)
                 }}
                 isSubmitting={isSubmittingOrder}
                 orderError={orderError}
                 couponApplicationError={couponApplicationError}
                 priceChange={priceChange}
-                onCancelPriceChange={() => setPriceChange(null)}
+                onCancelPriceChange={() => {
+                    void (async () => {
+                        try {
+                            const refreshedDiscounts = await query.discountsQuery.refetch()
+                            cart.syncDiscounts(refreshedDiscounts.data ?? [])
+                        } finally {
+                            setPriceChange(null)
+                        }
+                    })()
+                }}
             />
             <ProductCustomizeDialog
                 key={`${product?.id ?? 'empty'}:${editingLineKey ?? 'new'}`}
@@ -814,8 +838,16 @@ export default function PublicMenuPage({ slug }: { slug: string }) {
                     onClose={() => {
                         setOrderConfirmed(false)
                         setManualWhatsAppUrl(null)
+                        setTransferCard(null)
+                        setConfirmedOrderNumber(undefined)
                     }}
                     whatsappUrl={manualWhatsAppUrl}
+                    paymentMethod={transferCard ? 'TRANSFER' : 'CASH'}
+                    transferCard={transferCard}
+                    total={confirmedOrderTotal ?? 0}
+                    businessWhatsAppNumber={catalog.business.whatsappNumber}
+                    orderNumber={confirmedOrderNumber}
+                    customerName={confirmedCustomerName}
                 />
             )}
         </main>

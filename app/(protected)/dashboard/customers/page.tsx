@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import posthog from 'posthog-js'
 import {
     LoaderCircle,
@@ -16,6 +17,7 @@ import {
     Users,
     Wallet,
     X,
+    CreditCard,
 } from 'lucide-react'
 import { ApiError } from '@/app/auth/lib/client/api-error'
 import { getUserFriendlyFieldError } from '@/src/lib/errors/user-friendly-error'
@@ -26,6 +28,9 @@ import { DashboardErrorState } from '../components/DashboardErrorState'
 import { CustomersSkeleton } from '../components/DashboardSkeletons'
 import { EmptyState } from '../components/EmptyState'
 import { CustomerDetailPanel } from '../features/customers/CustomerDetailPanel'
+import { getPaymentCard } from '../../create-menu/features/payment-card/paymentCardApi'
+import { useCurrentBusiness } from '../../create-menu/features/business-profile/useCurrentBusiness'
+import { createTransferCardMessage, normalizeMexicanWhatsAppNumber } from '../../../menu/[slug]/features/public-menu/whatsapp'
 
 const CUSTOMER_NAME_MAX_LENGTH = 20
 
@@ -72,6 +77,8 @@ export default function CustomersPage() {
         return () => window.clearTimeout(timer)
     }, [search])
     const query = useCustomers({ page, limit, search: debouncedSearch })
+    const paymentCardQuery = useQuery({ queryKey: ['payment-card'], queryFn: getPaymentCard, staleTime: 60_000 })
+    const business = useCurrentBusiness()
     const detail = useCustomer(selected?.id ?? null)
     const mutations = useCustomerMutations()
     const customerMutationError = mutations.create.error ?? mutations.update.error
@@ -302,6 +309,25 @@ export default function CustomersPage() {
                                                     Enviar WhatsApp
                                                 </a>
                                             )}
+                                            <button
+                                                type="button"
+                                                role="menuitem"
+                                                data-cy="customer-send-transfer-card"
+                                                disabled={!paymentCardQuery.data?.paymentCard?.isActive || !normalizeMexicanWhatsAppNumber(customer.phone)}
+                                                title={!customer.phone ? 'El cliente no tiene teléfono registrado' : !paymentCardQuery.data?.paymentCard?.isActive ? 'Configura una tarjeta activa para transferencias' : undefined}
+                                                onClick={() => {
+                                                    const card = paymentCardQuery.data?.paymentCard
+                                                    const phone = normalizeMexicanWhatsAppNumber(customer.phone)
+                                                    if (!card?.isActive || !phone) return
+                                                    const message = createTransferCardMessage({ customerName: customer.name, businessName: business.data?.name ?? 'Restaurante', bankName: card.bankName, clabe: card.clabe, beneficiaryName: card.beneficiaryName })
+                                                    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer')
+                                                    setOpenCustomerMenu(null)
+                                                }}
+                                                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-[#53647D] hover:bg-[#EEF3FF] disabled:cursor-not-allowed disabled:opacity-45"
+                                            >
+                                                <CreditCard className="size-4" />
+                                                Enviar tarjeta
+                                            </button>
                                             <button
                                                 type="button"
                                                 role="menuitem"

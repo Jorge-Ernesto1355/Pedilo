@@ -25,7 +25,7 @@ export function ProductCard({
     }
 
     return (
-        <article className="flex w-full gap-4 border-b border-[#E8EEF6] py-5 text-left last:border-b-0 last:pb-0 first:pt-0 sm:gap-5">
+        <article data-cy="public-product-card" data-product-id={product.id} className="flex w-full gap-4 border-b border-[#E8EEF6] py-5 text-left last:border-b-0 last:pb-0 first:pt-0 sm:gap-5">
             <div
                 data-product-image={product.id}
                 className="grid size-24 shrink-0 place-items-center overflow-hidden rounded-xl bg-[#EEF3FF] text-[#2451C5] sm:size-28"
@@ -69,9 +69,7 @@ export function ProductCard({
                             </p>
                         )}
                     </button>
-                    <p className="shrink-0 text-lg font-bold text-[#1E40AF]">
-                        ${product.price.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
-                    </p>
+                    <div className="shrink-0 text-right"><p className={`text-lg font-bold ${product.discount ? 'text-[#16803D]' : 'text-[#1E40AF]'}`}>${(product.priceFinal ?? product.price_final ?? product.price).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</p>{product.discount && <><p className="text-xs text-[#8996A9] line-through">${(product.priceOriginal ?? product.price_original ?? product.price).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</p><span className="text-[10px] font-bold text-[#16803D]">{product.discount.label}</span></>}</div>
                 </div>
                 <button
                     type="button"

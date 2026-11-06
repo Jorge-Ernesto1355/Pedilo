@@ -80,14 +80,24 @@ export function CustomerDiscountPanel({ order, currency, customerId, onCancel }:
                     reservarle un descuento.
                 </p>
             ) : discountQuery.isLoading ? (
-                <div className="mt-4 flex items-center gap-2 text-sm text-[#65738A]" role="status">
-                    <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
-                    Consultando descuentos disponibles…
+                <div
+                    className="mt-4 space-y-2 rounded-xl border border-[#E8EEF6] bg-white p-3.5"
+                    role="status"
+                    data-testid="customer-discount-skeleton"
+                    aria-label="Cargando información del cupón"
+                >
+                    <div className="h-3 w-36 animate-pulse rounded-full bg-[#E8EEF6]" />
+                    <div className="h-3 w-3/4 animate-pulse rounded-full bg-[#F1F5F8]" />
+                    <span className="sr-only">Consultando descuentos disponibles…</span>
                 </div>
             ) : discountQuery.isError ? (
-                <div className="mt-4 rounded-xl border border-[#F3C2BD] bg-white p-3.5">
+                <div
+                    className="mt-4 rounded-xl border border-[#F3C2BD] bg-white p-3.5"
+                    role="alert"
+                    data-testid="customer-discount-error"
+                >
                     <p className="text-sm text-[#8F2B24]">
-                        No pudimos consultar el descuento de este cliente.
+                        No pudimos cargar el cupón de esta orden correctamente.
                     </p>
                     <button
                         type="button"

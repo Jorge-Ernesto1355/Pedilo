@@ -1,0 +1,17 @@
+import { installPaymentPublicApi, openPaymentCheckout, paymentSlug, validBbvaClabe } from '../support/payment-card-fixtures'
+
+function placed(paymentMethod: 'TRANSFER' | 'CASH') {
+    installPaymentPublicApi({ available: true, orderBody: { id: 'order-placed-e2e', orderNumber: 42, status: 'PENDING', customerId: 'customer', customerName: 'Cliente Cypress', customerPhone: '6691234567', subtotal: 240, total: paymentMethod === 'TRANSFER' ? 204 : 240, discountAmount: paymentMethod === 'TRANSFER' ? 36 : 0, fulfillmentType: 'DINE_IN', paymentMethod, payment_method: paymentMethod.toLowerCase(), items: [], statusHistory: [], ...(paymentMethod === 'TRANSFER' ? { transferCard: { clabe: validBbvaClabe, beneficiaryName: 'Restaurante Cypress SA de CV', bankCode: '012', bankName: 'BBVA', restaurantName: 'Restaurante Cypress Transferencias' } } : {}) } })
+    cy.visit(`/${paymentSlug}`); cy.wait('@paymentCatalog'); openPaymentCheckout(); if (paymentMethod === 'TRANSFER') cy.get('[data-cy="payment-method-transfer"]').check(); cy.contains('button', 'Confirmar pedido').click(); cy.wait('@createPaymentOrder'); cy.get('[role="dialog"][aria-labelledby="order-confirmation-title"]').should('be.visible')
+}
+
+describe('Tarjeta para transferencias · pedido realizado', () => {
+    it('O-01: pedido transfer muestra Ver tarjeta para pagar', () => { placed('TRANSFER'); cy.get('[data-cy="open-transfer-card"]').should('be.visible') })
+    it('O-02: el CTA de tarjeta es visible en móvil y tiene data-cy', () => { cy.viewport(375, 812); placed('TRANSFER'); cy.get('[data-cy="open-transfer-card"]').should('be.visible').and('have.attr', 'data-cy') })
+    it('O-03: abre modal con banco, CLABE, beneficiario, restaurante y monto', () => { placed('TRANSFER'); cy.get('[data-cy="open-transfer-card"]').click(); cy.get('[data-cy="transfer-card-modal"]').should('contain', 'BBVA').and('contain', validBbvaClabe).and('contain', 'Restaurante Cypress SA de CV').and('contain', '$204.00') })
+    it('O-04: copia CLABE y muestra feedback', () => { placed('TRANSFER'); cy.get('[data-cy="open-transfer-card"]').click(); cy.window().then((win) => { cy.stub(win.navigator.clipboard, 'writeText').resolves() }); cy.get('[data-cy="copy-transfer-clabe"]').click(); cy.get('[data-cy="transfer-clabe-copied"]').should('be.visible') })
+    it('O-05: permite cerrar y volver a abrir la tarjeta', () => { placed('TRANSFER'); cy.get('[data-cy="open-transfer-card"]').click(); cy.get('[data-cy="transfer-card-modal"]').should('be.visible'); cy.get('[aria-label="Cerrar confirmación"]').click(); cy.get('[role="dialog"][aria-labelledby="order-confirmation-title"]').should('not.exist') })
+    it('O-06: genera WhatsApp con número de pedido y monto', () => { placed('TRANSFER'); cy.get('[data-cy="open-transfer-card"]').click(); cy.get('[data-cy="transfer-whatsapp-link"]').invoke('attr', 'href').then((href) => { expect(decodeURIComponent(String(href))).to.contain('wa.me/526691234567').and.contain('Pedido #42').and.contain('Total: $204.00') }) })
+    it('O-07: pedido cash no muestra controles de transferencia', () => { placed('CASH'); cy.get('[data-cy="open-transfer-card"]').should('not.exist'); cy.get('[data-cy="transfer-whatsapp-link"]').should('not.exist') })
+    it('O-08: muestra los datos de la tarjeta del restaurante correcto', () => { placed('TRANSFER'); cy.get('[data-cy="open-transfer-card"]').click(); cy.get('[data-cy="transfer-card-modal"]').should('contain', 'Restaurante Cypress Transferencias') })
+})

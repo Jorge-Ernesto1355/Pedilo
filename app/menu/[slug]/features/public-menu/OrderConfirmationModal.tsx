@@ -1,16 +1,42 @@
 'use client'
 
-import { Check, MessageCircle, X } from 'lucide-react'
+import { Check, Copy, MessageCircle, X } from 'lucide-react'
 import { motion, useReducedMotion } from 'framer-motion'
+import { useState } from 'react'
+import type { OrderPaymentMethod, TransferCardSnapshot } from '@/src/lib/api/order-types'
+import { createTransferCardMessage, normalizeBusinessWhatsAppNumber } from './whatsapp'
+import { PaymentCardView } from '@/app/(protected)/create-menu/features/payment-card/PaymentCard'
+import { detectBank } from '@/src/lib/validation/clabe'
 
 export function OrderConfirmationModal({
     onClose,
     whatsappUrl,
+    paymentMethod = 'CASH',
+    transferCard,
+    total = 0,
+    businessWhatsAppNumber,
+    orderNumber,
+    customerName = 'cliente',
 }: {
     onClose: () => void
     whatsappUrl?: string | null
+    paymentMethod?: OrderPaymentMethod
+    transferCard?: TransferCardSnapshot | null
+    total?: number
+    businessWhatsAppNumber?: string | null
+    orderNumber?: number
+    customerName?: string
 }) {
     const reducedMotion = useReducedMotion()
+    const [copied, setCopied] = useState(false)
+    const [showCard, setShowCard] = useState(false)
+    const isTransfer = paymentMethod === 'TRANSFER' && transferCard
+    const copyClabe = async () => {
+        if (!transferCard) return
+        await navigator.clipboard?.writeText(transferCard.clabe)
+        setCopied(true)
+        window.setTimeout(() => setCopied(false), 1800)
+    }
 
     return (
         <div
@@ -52,8 +78,18 @@ export function OrderConfirmationModal({
                     ¡Tu pedido está listo!
                 </h2>
                 <p className="mx-auto mt-4 max-w-md text-base leading-7 text-[#65738A]">
-                    Continúa en WhatsApp para enviarlo al negocio y esperar su respuesta.
+                    {isTransfer ? 'Tu pedido fue creado. Realiza la transferencia con los datos del negocio.' : 'Continúa en WhatsApp para enviarlo al negocio y esperar su respuesta.'}
                 </p>
+                {isTransfer && !showCard && (
+                    <button type="button" data-cy="open-transfer-card" onClick={() => setShowCard(true)} className="mt-6 flex min-h-12 w-full items-center justify-center rounded-xl bg-[#1E40AF] px-5 text-base font-bold text-white">Ver tarjeta para pagar</button>
+                )}
+                {isTransfer && showCard && (
+                    <div data-cy="transfer-card-modal" className="mt-6 rounded-2xl border border-[#DCE5F3] bg-[#F8FAFE] p-4 text-left">
+                        <PaymentCardView card={{ id: 'transfer-order', clabe: transferCard.clabe, beneficiaryName: transferCard.beneficiaryName, bankCode: transferCard.bankCode, bankName: transferCard.bankName, isActive: true }} bank={detectBank(transferCard.clabe)} restaurantName={transferCard.restaurantName} />
+                        <div className="mt-3 flex items-center justify-between gap-2"><span className="text-sm font-semibold text-[#53647D]">Total a transferir: <strong>${total.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</strong></span><button type="button" data-cy="copy-transfer-clabe" onClick={() => void copyClabe()} className="grid size-10 shrink-0 place-items-center rounded-lg bg-white text-[#2451C5]" aria-label="Copiar CLABE"><Copy className="size-4" /></button></div>
+                        {copied && <p data-cy="transfer-clabe-copied" className="mt-2 text-xs font-bold text-[#16803D]">CLABE copiada</p>}
+                    </div>
+                )}
                 {whatsappUrl && (
                     <a
                         href={whatsappUrl}
@@ -65,6 +101,9 @@ export function OrderConfirmationModal({
                         <MessageCircle className="size-5 fill-current" />
                         Abrir WhatsApp
                     </a>
+                )}
+                {isTransfer && normalizeBusinessWhatsAppNumber(businessWhatsAppNumber) && (
+                    <a data-cy="transfer-whatsapp-link" href={`https://wa.me/${normalizeBusinessWhatsAppNumber(businessWhatsAppNumber)}?text=${encodeURIComponent(createTransferCardMessage({ businessName: transferCard.restaurantName, customerName, bankName: transferCard.bankName, clabe: transferCard.clabe, beneficiaryName: transferCard.beneficiaryName, orderNumber, total }))}`} target="_blank" rel="noreferrer" className="mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-[#B8DDC6] bg-[#F3FBF5] px-5 text-base font-bold text-[#16803D]">Enviar mensaje por WhatsApp</a>
                 )}
                 <button
                     type="button"

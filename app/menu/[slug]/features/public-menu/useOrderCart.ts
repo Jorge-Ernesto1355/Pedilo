@@ -2,10 +2,11 @@
 
 import { useMemo, useState } from 'react'
 import type { CartLine, CartSelection, PublicMenuProduct } from './types'
+import type { PublicDiscountPrice } from './publicCatalog.types'
 
 function getUnitPrice(product: PublicMenuProduct, selections: CartSelection[]) {
     return (
-        product.price +
+        (product.priceFinal ?? product.price_final ?? product.price) +
         selections.reduce((total, selection) => total + selection.price * selection.quantity, 0)
     )
 }
@@ -77,5 +78,23 @@ export function useOrderCart() {
         setLines([])
     }
 
-    return { lines, totalItems, total, add, edit, changeQuantity, clear }
+    function removeDiscounts() {
+        setLines((current) => current.map((line) => {
+            const product = { ...line.product, discount: null, priceOriginal: undefined, priceFinal: undefined, price_original: undefined, price_final: undefined }
+            return { ...line, product, unitPrice: getUnitPrice(product, line.selections) }
+        }))
+    }
+
+    function syncDiscounts(discounts: PublicDiscountPrice[]) {
+        const discountByProduct = new Map(discounts.map((discount) => [discount.productId, discount]))
+        setLines((current) => current.map((line) => {
+            const currentDiscount = discountByProduct.get(line.product.id)
+            const product = currentDiscount
+                ? { ...line.product, ...currentDiscount }
+                : { ...line.product, discount: null, priceOriginal: undefined, priceFinal: undefined, price_original: undefined, price_final: undefined }
+            return { ...line, product, unitPrice: getUnitPrice(product, line.selections) }
+        }))
+    }
+
+    return { lines, totalItems, total, add, edit, changeQuantity, clear, removeDiscounts, syncDiscounts }
 }

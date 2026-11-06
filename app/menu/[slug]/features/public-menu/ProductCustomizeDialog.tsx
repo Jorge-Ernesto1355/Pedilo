@@ -52,7 +52,8 @@ export function ProductCustomizeDialog({
         const choice = group.products.find((item) => item.productId === comboSelected[group.id])
         return choice ? [{ id: choice.id, name: `${group.name}: ${choice.product.name}`, price: 0, quantity: 1, kind: 'combo-choice', groupId: group.id, productId: choice.productId }] : []
     })
-    const total = product.price + selectedOptions.reduce((sum, option) => sum + option.price * option.quantity, 0)
+    const basePrice = product.priceFinal ?? product.price_final ?? product.price
+    const total = basePrice + selectedOptions.reduce((sum, option) => sum + option.price * option.quantity, 0)
     function changeQuantity(groupId: string, optionId: string, delta: number) {
         setSelected((current) => {
             const group = groups.find((item) => item.id === groupId)
@@ -113,7 +114,7 @@ export function ProductCustomizeDialog({
                     <p className="text-sm text-[#65738A]">
                         Precio base:{' '}
                         <strong className="text-[#12234A]">
-                            ${product.price.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                            ${basePrice.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
                         </strong>
                     </p>
                     {product.includedProducts && product.includedProducts.length > 0 && (

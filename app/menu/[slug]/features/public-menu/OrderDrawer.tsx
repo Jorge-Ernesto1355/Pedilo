@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import Link from 'next/link'
 import type { CartLine } from './types'
-import type { CustomerDiscount, OrderFulfillmentType } from '@/src/lib/api/order-types'
+import type { CustomerDiscount, OrderFulfillmentType, OrderPaymentMethod } from '@/src/lib/api/order-types'
 import { getCheckoutCustomerDiscount } from '@/src/lib/api/customerDiscountApi'
 import { Gift, LoaderCircle } from 'lucide-react'
 import { hasAvailableOptions } from './optionGroupValidation'
@@ -15,6 +15,16 @@ import { isValidPhone, sanitizePhoneInput } from '@/src/lib/validation/phone'
 const PUBLIC_ORDER_TEXT_MAX_LENGTH = 200
 const PUBLIC_CUSTOMER_NAME_MAX_LENGTH = 20
 
+function originalUnitPrice(line: CartLine) {
+    const original = line.product.priceOriginal ?? line.product.price_original ?? line.product.price
+    const final = line.product.priceFinal ?? line.product.price_final ?? line.product.price
+    return line.unitPrice + Math.max(0, original - final)
+}
+
+function cartDiscountSavings(lines: CartLine[]) {
+    return lines.reduce((total, line) => total + Math.max(0, originalUnitPrice(line) - line.unitPrice) * line.quantity, 0)
+}
+
 type OrderDrawerProps = {
     lines: CartLine[]
     totalItems: number
@@ -22,6 +32,7 @@ type OrderDrawerProps = {
     open: boolean
     businessName: string
     businessId: string
+    paymentCardAvailable?: boolean
     onChangeQuantity: (key: string, delta: number) => void
     onEditLine: (line: CartLine) => void
     onOpen: () => void
@@ -33,6 +44,7 @@ type OrderDrawerProps = {
         fulfillmentType: OrderFulfillmentType,
         ignoreCustomerDiscount?: boolean,
         acceptPriceChange?: boolean,
+        paymentMethod?: OrderPaymentMethod,
     ) => void
     isSubmitting?: boolean
     phoneError?: string | null
@@ -49,6 +61,7 @@ export function OrderDrawer({
     open,
     businessName,
     businessId,
+    paymentCardAvailable = false,
     onChangeQuantity,
     onEditLine,
     onOpen,
@@ -65,6 +78,7 @@ export function OrderDrawer({
     const [customerPhone, setCustomerPhone] = useState('')
     const [notes, setNotes] = useState('')
     const [fulfillmentType, setFulfillmentType] = useState<OrderFulfillmentType>('DINE_IN')
+    const [paymentMethod, setPaymentMethod] = useState<OrderPaymentMethod>('CASH')
     const [cartPulseKey, setCartPulseKey] = useState(0)
     const previousTotalItems = useRef(totalItems)
     const dialogRef = useRef<HTMLElement>(null)
@@ -76,6 +90,7 @@ export function OrderDrawer({
     const [lookupPhone, setLookupPhone] = useState('')
     const [discountInvalidated, setDiscountInvalidated] = useState(false)
     const knownDiscountRef = useRef<CustomerDiscount | null>(null)
+    const hasProductDiscount = lines.some((line) => line.product.discount && originalUnitPrice(line) > line.unitPrice)
 
     useEffect(() => {
         if (!open || !phoneIsValid || customerPhone.length !== 10) {
@@ -92,30 +107,39 @@ export function OrderDrawer({
         retry: false,
         staleTime: 10_000,
     })
-    const availableDiscount =
+    const customerDiscount =
         lookupPhone === customerPhone && discountQuery.data?.status === 'AVAILABLE'
             ? discountQuery.data
             : null
+    const availableDiscount = hasProductDiscount ? null : customerDiscount
     useEffect(() => {
         if (availableDiscount) {
             knownDiscountRef.current = availableDiscount
         }
     }, [availableDiscount])
+    const productSubtotal = lines.reduce(
+        (subtotal, line) => subtotal + originalUnitPrice(line) * line.quantity,
+        0,
+    )
+    const productSavings = cartDiscountSavings(lines)
+    const checkoutSubtotal = productSubtotal
+    const checkoutProductSavings = productSavings
+    const checkoutTotalBeforeCustomerDiscount = Math.max(0, productSubtotal - productSavings)
     const previewDiscountAmount = availableDiscount
         ? Math.min(
-              total,
+              checkoutTotalBeforeCustomerDiscount,
               Math.round(
                   (availableDiscount.type === 'PERCENTAGE'
-                      ? (total * availableDiscount.value) / 100
+                      ? (checkoutTotalBeforeCustomerDiscount * availableDiscount.value) / 100
                       : availableDiscount.value) * 100,
               ) / 100,
           )
         : 0
-    const previewTotal = Math.max(0, total - previewDiscountAmount)
+    const previewTotal = Math.max(0, checkoutTotalBeforeCustomerDiscount - previewDiscountAmount)
 
     async function handleCheckout() {
         const knownDiscount = knownDiscountRef.current
-        if (knownDiscount && lookupPhone === customerPhone) {
+        if (knownDiscount && lookupPhone === customerPhone && !hasProductDiscount) {
             const refreshed = await discountQuery.refetch()
             const currentDiscount = refreshed.data
             if (!currentDiscount || currentDiscount.status !== 'AVAILABLE') {
@@ -123,7 +147,7 @@ export function OrderDrawer({
                 return
             }
         }
-        onCheckout(customerName.trim(), customerPhone.trim(), notes.trim(), fulfillmentType)
+        onCheckout(customerName.trim(), customerPhone.trim(), notes.trim(), fulfillmentType, false, false, paymentMethod)
     }
 
     function resetDiscountValidation() {
@@ -355,9 +379,7 @@ export function OrderDrawer({
                                                             <p className="mt-0.5 max-w-full whitespace-normal break-words text-xs leading-5 text-[#65738A] [overflow-wrap:anywhere]">
                                                                 Incluye:{' '}
                                                                 {line.product.includedProducts
-                                                                    .map(
-                                                                        (item) => item.product.name,
-                                                                    )
+                                                                    .map((item) => `${item.quantity && item.quantity > 1 ? `${item.quantity}× ` : ''}${item.product.name}`)
                                                                     .join(', ')}
                                                             </p>
                                                         )}
@@ -378,8 +400,9 @@ export function OrderDrawer({
                                                         )
                                                     )}
                                                     <p className="mt-1 max-w-full whitespace-normal break-words text-xs font-semibold text-[#2451C5] [overflow-wrap:anywhere]">
-                                                        ${line.unitPrice.toLocaleString('es-MX')}{' '}
-                                                        c/u
+                                                        {line.product.discount && originalUnitPrice(line) > line.unitPrice && <span className="mr-1 text-[#8996A9] line-through">${originalUnitPrice(line).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>}
+                                                        <span className={line.product.discount ? 'text-[#16803D]' : undefined}>${line.unitPrice.toLocaleString('es-MX', { minimumFractionDigits: 2 })} c/u</span>
+                                                        {line.product.discount && <span className="ml-1 text-[11px] font-bold text-[#16803D]">{line.product.discount.label}</span>}
                                                     </p>
                                                 </div>
                                                 <div className="flex shrink-0 items-center gap-2 self-start">
@@ -459,9 +482,22 @@ export function OrderDrawer({
                                             ))}
                                         </div>
                                     </fieldset>
+                                    {paymentCardAvailable && (
+                                        <fieldset className="mt-5" data-cy="payment-method-selector">
+                                            <legend className="mb-2 block text-sm font-bold text-[#243556]">Método de pago</legend>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                {([['CASH', 'Efectivo'], ['TRANSFER', 'Transferencia']] as const).map(([value, label]) => (
+                                                    <label key={value} className={`flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-semibold ${paymentMethod === value ? 'border-[#2451C5] bg-[#F2F6FF] text-[#1E40AF]' : 'border-[#D7E1EF] text-[#53647D]'}`}>
+                                                        <input type="radio" name="paymentMethod" value={value} checked={paymentMethod === value} onChange={() => setPaymentMethod(value)} className="accent-[#2451C5]" data-cy={`payment-method-${value.toLowerCase()}`} />
+                                                        {label}
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        </fieldset>
+                                    )}
                                     <label
                                         htmlFor="customer-name"
-                                        className="mb-2 block text-sm font-bold text-[#243556]"
+                                        className="mb-2 mt-5 block text-sm font-bold text-[#243556]"
                                     >
                                         ¿A nombre de quién va?
                                     </label>
@@ -503,6 +539,11 @@ export function OrderDrawer({
                                     {phoneError && (
                                         <p role="alert" className="mt-1.5 text-xs text-[#B42318]">
                                             {phoneError}
+                                        </p>
+                                    )}
+                                    {open && hasProductDiscount && customerDiscount && isValidPhone(customerPhone) && customerPhone.length === 10 && (
+                                        <p className="mt-2 text-xs leading-5 text-[#65738A]" role="status" data-testid="customer-discount-unavailable-with-product-discount">
+                                            Este cupón no se puede combinar con descuentos de productos.
                                         </p>
                                     )}
                                     {open &&
@@ -620,20 +661,21 @@ export function OrderDrawer({
                                         </Link>
                                         .
                                     </p>
-                                    <div className="mt-3 rounded-xl border border-[#E8EEF6] bg-white px-3.5 py-3">
+                                    <div data-cy="checkout-summary" className="mt-3 rounded-xl border border-[#E8EEF6] bg-white px-3.5 py-3">
                                         <div className="flex items-center justify-between gap-3 text-sm">
                                             <span className="text-[#65738A]">Subtotal</span>
-                                            <span className="font-medium text-[#243556]">
+                                            <span data-cy="checkout-subtotal" className="font-medium text-[#243556]">
                                                 $
-                                                {total.toLocaleString('es-MX', {
+                                                {checkoutSubtotal.toLocaleString('es-MX', {
                                                     minimumFractionDigits: 2,
                                                 })}
                                             </span>
                                         </div>
+                                        {checkoutProductSavings > 0 && <div data-cy="checkout-product-savings" className="mt-2 flex items-center justify-between gap-3 text-sm"><span className="text-[#23794A]">Ahorro en productos</span><span className="font-semibold text-[#23794A]">−${checkoutProductSavings.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span></div>}
                                         {!discountInvalidated &&
                                             availableDiscount &&
                                             previewDiscountAmount > 0 && (
-                                                <div className="mt-2 flex items-center justify-between gap-3 text-sm">
+                                                <div data-cy="checkout-customer-savings" className="mt-2 flex items-center justify-between gap-3 text-sm">
                                                     <span className="text-[#23794A]">
                                                         Tu descuento
                                                     </span>
@@ -648,7 +690,7 @@ export function OrderDrawer({
                                                     </span>
                                                 </div>
                                             )}
-                                        <div className="mt-2 flex items-center justify-between gap-3 border-t border-[#E8EEF6] pt-2.5">
+                                                <div data-cy="checkout-total" className="mt-2 flex items-center justify-between gap-3 border-t border-[#E8EEF6] pt-2.5">
                                             <span className="text-sm font-bold text-[#243556]">
                                                 Total
                                             </span>
@@ -673,6 +715,7 @@ export function OrderDrawer({
                                         onClick={() => {
                                             void handleCheckout()
                                         }}
+                                        data-cy="checkout-submit"
                                         className="mt-3 flex w-full items-center justify-between rounded-xl bg-[#1E40AF] px-4 py-3.5 text-sm font-bold text-white transition hover:bg-[#183991] disabled:cursor-not-allowed disabled:opacity-45"
                                     >
                                         {isSubmitting ? 'Enviando pedido…' : 'Confirmar pedido'}{' '}
@@ -803,13 +846,10 @@ export function OrderDrawer({
                                         </div>
                                     )}
                                     {orderError && (
-                                        <p
-                                            role="alert"
-                                            data-testid="order-error"
-                                            className="mt-3 rounded-xl border border-[#F4C7C3] bg-[#FFF5F4] px-3 py-2.5 text-center text-xs font-semibold leading-5 text-[#B42318]"
-                                        >
-                                            {orderError}
-                                        </p>
+                                        <div role="alert" data-testid="order-error" className="mt-3 rounded-xl border border-[#F4C7C3] bg-[#FFF5F4] px-3 py-2.5 text-center text-xs font-semibold leading-5 text-[#B42318]">
+                                            <p>{orderError}</p>
+                                            {orderError.includes('tarjeta para transferencias') && paymentMethod === 'TRANSFER' && <button type="button" data-cy="transfer-continue-cash" onClick={() => { setPaymentMethod('CASH'); onCheckout(customerName.trim(), customerPhone.trim(), notes.trim(), fulfillmentType, false, false, 'CASH') }} className="mt-2 rounded-lg bg-[#B42318] px-3 py-2 text-xs font-bold text-white">Continuar en efectivo</button>}
+                                        </div>
                                     )}
                                     <p className="mt-2 text-center text-[11px] leading-4 text-[#8996A9]">
                                         El teléfono se usará para identificar y contactar tu pedido.

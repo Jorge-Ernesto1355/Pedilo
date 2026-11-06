@@ -243,6 +243,10 @@ const knownErrors: Record<string, UserFriendlyError> = {
         title: 'Ocurrió un problema en Pedilo',
         description: 'Ocurrió un problema en el servidor. Inténtalo nuevamente en unos momentos.',
     },
+    DISCOUNT_STORAGE_UNAVAILABLE: {
+        title: 'Descuentos temporalmente no disponibles',
+        description: 'No pudimos guardar el descuento en este momento. Inténtalo nuevamente en unos momentos.',
+    },
     BAD_REQUEST: {
         title: 'Solicitud no válida',
         description: 'Revisa la información e inténtalo nuevamente.',

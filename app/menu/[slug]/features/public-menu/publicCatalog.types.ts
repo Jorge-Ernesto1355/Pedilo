@@ -46,6 +46,11 @@ export type PublicProduct = {
     name: string
     description: string | null
     price: number
+    priceOriginal?: number
+    priceFinal?: number
+    price_original?: number
+    price_final?: number
+    discount?: { id: string; name: string; type: 'PERCENT' | 'FIXED'; value: number; label: string; endsAt: string } | null
     imageUrl: string | null
     sortOrder: number
     isAvailable: boolean
@@ -90,5 +95,15 @@ export type PublicBusiness = {
         isClosed: boolean
     } | null
     whatsappNumber?: string | null
+    paymentCardAvailable?: boolean
+    payment_card_available?: boolean
 }
 export type PublicCatalog = { business: PublicBusiness; menus: PublicMenu[] }
+export type PublicDiscountPrice = {
+    productId: string
+    priceOriginal: number
+    priceFinal: number
+    price_original: number
+    price_final: number
+    discount: NonNullable<PublicProduct['discount']> | null
+}

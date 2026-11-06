@@ -74,6 +74,7 @@ export function BusinessActionsPanel({
 
     return (
         <section
+            data-cy="business-actions-panel"
             aria-labelledby="business-actions-title"
             className="rounded-[24px] border border-[#E6EAF5] bg-white p-4 shadow-[0_8px_30px_rgba(30,50,120,0.06)] sm:p-5"
         >

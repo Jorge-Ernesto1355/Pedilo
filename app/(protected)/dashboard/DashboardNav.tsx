@@ -11,6 +11,7 @@ import {
     LayoutDashboard,
     Menu,
     Package,
+    Percent,
     ShoppingBag,
     Users,
     Volume2,
@@ -30,6 +31,7 @@ const links = [
     { href: '/dashboard/orders', label: 'Pedidos', icon: ShoppingBag },
     { href: '/dashboard/customers', label: 'Clientes', icon: Users },
     { href: '/dashboard/products', label: 'Productos', icon: Package },
+    { href: '/dashboard/discounts', label: 'Descuentos', icon: Percent },
 ]
 
 function getInitials(name: string) {

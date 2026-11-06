@@ -89,6 +89,12 @@
 
 :root {
     color-scheme: light;
+    --font-inter-tight: "Avenir Next", "Segoe UI", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-sora: "Avenir Next", "Segoe UI", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-ibm-plex-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    --font-inter: "Avenir Next", "Segoe UI", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-source-serif: Georgia, "Times New Roman", serif;
+    --font-space-grotesk: "Avenir Next", "Segoe UI", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
     --background: oklch(0.985 0.008 250);
     --foreground: oklch(0.16 0.025 255);
     --card: oklch(1 0 0);
@@ -129,15 +135,67 @@
 
 html {
     scroll-behavior: smooth;
-    background: var(--background);
+    min-height: 100%;
+    background: var(--pedilo-blue-pale);
 }
 
 body {
     margin: 0;
     min-height: 100%;
-    background: var(--background);
+    background: var(--pedilo-blue-pale);
     color: var(--foreground);
     font-family: var(--font-inter-tight), Arial, Helvetica, sans-serif;
+}
+
+.app-root {
+    isolation: isolate;
+}
+
+.app-background {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    overflow: hidden;
+    background-color: var(--pedilo-blue-pale);
+    background-image:
+        radial-gradient(circle at 0% 0%, rgb(112 158 255 / 0.12), transparent 27rem),
+        radial-gradient(circle at 100% 28%, rgb(177 207 255 / 0.18), transparent 25rem),
+        linear-gradient(rgb(36 81 197 / 0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgb(36 81 197 / 0.035) 1px, transparent 1px);
+    background-size:
+        auto,
+        auto,
+        40px 40px,
+        40px 40px;
+}
+
+.app-background-curve {
+    position: absolute;
+    pointer-events: none;
+    z-index: 0;
+    border: 1px solid rgb(36 81 197 / 0.08);
+    border-radius: 38%;
+    transform: rotate(18deg);
+}
+
+.app-background-curve-top {
+    top: 8rem;
+    right: -14rem;
+    width: 38rem;
+    height: 38rem;
+    box-shadow:
+        0 0 0 5rem rgb(36 81 197 / 0.018),
+        0 0 0 10rem rgb(36 81 197 / 0.012);
+}
+
+.app-background-curve-bottom {
+    bottom: -24rem;
+    left: -12rem;
+    width: 32rem;
+    height: 32rem;
+    transform: rotate(-24deg);
+    border-color: rgb(36 81 197 / 0.05);
 }
 
 h1,
@@ -161,53 +219,12 @@ h6 {
     isolation: isolate;
     overflow-x: clip;
     color: var(--pedilo-ink);
-    background-color: var(--pedilo-blue-pale);
-    background-image:
-        radial-gradient(circle at 0% 0%, rgb(112 158 255 / 0.12), transparent 27rem),
-        radial-gradient(circle at 100% 28%, rgb(177 207 255 / 0.18), transparent 25rem),
-        linear-gradient(rgb(36 81 197 / 0.035) 1px, transparent 1px),
-        linear-gradient(90deg, rgb(36 81 197 / 0.035) 1px, transparent 1px);
-    background-size:
-        auto,
-        auto,
-        40px 40px,
-        40px 40px;
-}
-
-.dashboard-shell::before,
-.dashboard-shell::after {
-    position: absolute;
-    pointer-events: none;
-    content: '';
-    z-index: 0;
-    border: 1px solid rgb(36 81 197 / 0.08);
-    border-radius: 38%;
-    transform: rotate(18deg);
 }
 
 .dashboard-shell > header,
 .dashboard-shell > #main-content {
     position: relative;
     z-index: 1;
-}
-
-.dashboard-shell::before {
-    top: 8rem;
-    right: -14rem;
-    width: 38rem;
-    height: 38rem;
-    box-shadow:
-        0 0 0 5rem rgb(36 81 197 / 0.018),
-        0 0 0 10rem rgb(36 81 197 / 0.012);
-}
-
-.dashboard-shell::after {
-    bottom: -24rem;
-    left: -12rem;
-    width: 32rem;
-    height: 32rem;
-    transform: rotate(-24deg);
-    border-color: rgb(36 81 197 / 0.05);
 }
 
 code,

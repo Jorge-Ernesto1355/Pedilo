@@ -2,6 +2,8 @@ export const ORDER_STATUSES = ['PENDING', 'PREPARING', 'READY', 'CANCELLED'] as 
 export type OrderStatus = (typeof ORDER_STATUSES)[number]
 export type OrderSource = 'PUBLIC' | 'RESTAURANT'
 export type OrderFulfillmentType = 'DINE_IN' | 'PICKUP'
+export type OrderPaymentMethod = 'CASH' | 'TRANSFER'
+export type TransferCardSnapshot = { clabe: string; beneficiaryName: string; bankCode: string; bankName: string; restaurantName: string }
 export type CustomerDiscountType = 'PERCENTAGE' | 'FIXED_AMOUNT'
 export type CustomerDiscountStatus = 'AVAILABLE' | 'RESERVED' | 'USED' | 'EXPIRED' | 'CANCELLED'
 export type CustomerDiscount = {
@@ -23,6 +25,11 @@ export type OrderItem = {
     name?: string
     quantity: number
     unitPrice?: number
+    unitPriceOriginal?: number
+    unitPriceFinal?: number
+    discountAmount?: number
+    discountId?: string | null
+    discountLabel?: string | null
     subtotal?: number
     options?: Array<{
         id?: string
@@ -47,6 +54,8 @@ export type Order = {
     customerPhone: string | null
     notes: string | null
     fulfillmentType: OrderFulfillmentType
+    paymentMethod?: OrderPaymentMethod
+    transferCard?: TransferCardSnapshot
     items: OrderItem[]
     statusHistory: OrderStatusHistory[]
     /** Monotonic version of persisted status changes; older events are ignored. */
@@ -65,7 +74,8 @@ export type OrdersResponse = { orders: Order[]; page: number; limit: number; tot
 export type CreateOrderPayload = {
     customer: { name: string; phone: string }
     fulfillmentType: OrderFulfillmentType
-    items: Array<{ productId: string; quantity: number; optionIds: string[] }>
+    paymentMethod?: OrderPaymentMethod
+    items: Array<{ productId: string; quantity: number; optionIds: string[]; comboChoiceIds?: string[]; expectedUnitPrice?: number }>
     notes?: string
     ignoreCustomerDiscount?: boolean
     expectedSubtotal?: number

@@ -1,9 +1,11 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import dynamic from 'next/dynamic'
 import {
     ArrowRight,
+    BadgePercent,
     BellRing,
     CalendarDays,
     ChefHat,
@@ -21,6 +23,7 @@ import {
     Utensils,
     UserRound,
     X,
+    CreditCard,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { ApiError } from '@/app/auth/lib/client/api-error'
@@ -49,6 +52,9 @@ import {
     formatBusinessTime,
     formatMoney,
 } from '../features/dashboard-data/formatters'
+import { getPaymentCard, type PaymentCard } from '../../create-menu/features/payment-card/paymentCardApi'
+import { createTransferCardMessage, normalizeMexicanWhatsAppNumber } from '../../../menu/[slug]/features/public-menu/whatsapp'
+import { useCurrentBusiness } from '../../create-menu/features/business-profile/useCurrentBusiness'
 
 const NewRestaurantOrderDrawer = dynamic(
     () =>
@@ -208,6 +214,12 @@ export default function OrdersPage() {
     const detail = useOrder(selectedId)
     const mutation = useOrderStatusMutation()
     const settings = useBusinessSettings(true)
+    const business = useCurrentBusiness()
+    const paymentCardQuery = useQuery({
+        queryKey: ['payment-card'],
+        queryFn: getPaymentCard,
+        staleTime: 60_000,
+    })
     const currency = settings.settings.data?.currency ?? 'MXN'
     const timezone = settings.settings.data?.timezone ?? 'America/Mazatlan'
     const totalPages = query.data ? Math.max(1, Math.ceil(query.data.total / limit)) : 1
@@ -475,6 +487,8 @@ export default function OrdersPage() {
                                 isNew={recentOrderIds.includes(order.id)}
                                 onOpen={() => setSelectedId(order.id)}
                                 onStatusChange={changeStatus}
+                                paymentCard={paymentCardQuery.data?.paymentCard ?? null}
+                                businessName={business.data?.name ?? 'Restaurante'}
                             />
                         ))}
                     </div>
@@ -528,6 +542,8 @@ export default function OrdersPage() {
                         }
                         onClose={() => setSelectedId(null)}
                         onStatusChange={changeStatus}
+                        paymentCard={paymentCardQuery.data?.paymentCard ?? null}
+                        businessName={business.data?.name ?? 'Restaurante'}
                     />
                 )}
                 <NewRestaurantOrderDrawer
@@ -599,6 +615,8 @@ function OrderCard({
     isNew,
     onOpen,
     onStatusChange,
+    paymentCard,
+    businessName,
 }: {
     order: Order
     currency: string
@@ -609,6 +627,8 @@ function OrderCard({
     isNew: boolean
     onOpen: () => void
     onStatusChange: (orderId: string, status: OrderStatus) => void
+    paymentCard: PaymentCard | null
+    businessName: string
 }) {
     const meta = statusMeta[order.status]
     const next = nextStatus(order.status)
@@ -621,6 +641,11 @@ function OrderCard({
     const isCreating = order.creationState === 'pending'
     const isUncertain = order.creationState === 'uncertain'
     const number = order.orderNumber > 0 ? String(order.orderNumber).padStart(3, '0') : '…'
+    const transferPhone = normalizeMexicanWhatsAppNumber(order.customerPhone)
+    const canSendTransferCard = order.paymentMethod === 'TRANSFER' && paymentCard?.isActive && transferPhone
+    const transferUrl = canSendTransferCard
+        ? `https://wa.me/${transferPhone}?text=${encodeURIComponent(createTransferCardMessage({ customerName: order.customerName ?? 'cliente', businessName, bankName: paymentCard.bankName, clabe: paymentCard.clabe, beneficiaryName: paymentCard.beneficiaryName, orderNumber: order.orderNumber, total: order.total }))}`
+        : null
 
     return (
         <article
@@ -681,6 +706,12 @@ function OrderCard({
                             <StickyNote className="size-3.5" /> Tiene nota
                         </span>
                     )}
+                    {order.discountAmount && order.discountAmount > 0 ? (
+                        <span className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-[#B8E2C8] bg-[#F3FAF5] px-2.5 py-1 text-[11px] font-bold text-[#23794A]">
+                            <BadgePercent className="size-3.5" aria-hidden="true" /> Cupón canjeado · −
+                            {formatMoney(order.discountAmount, currency)}
+                        </span>
+                    ) : null}
                 </button>
                 <div className="max-h-[192px] min-h-[192px] space-y-3 overflow-y-auto pr-1 [scrollbar-color:#B9CDFD_transparent] [scrollbar-width:thin]">
                     {order.items.map((item, index) => (
@@ -734,6 +765,13 @@ function OrderCard({
                     </strong>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
+                    {order.paymentMethod === 'TRANSFER' && paymentCard?.isActive && (
+                        transferUrl ? (
+                            <a data-cy="order-send-transfer-card" href={transferUrl} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()} className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-[#B8DDC6] bg-[#F3FBF5] px-3 text-xs font-bold text-[#17643A]"><CreditCard className="size-3.5" /> Enviar tarjeta</a>
+                        ) : (
+                            <button data-cy="order-send-transfer-card-disabled" type="button" disabled title="El cliente no tiene teléfono registrado" className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-[#D7E1EF] px-3 text-xs font-bold text-[#8996A9]"><CreditCard className="size-3.5" /> Enviar tarjeta</button>
+                        )
+                    )}
                     {isCreating ? (
                         <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#65738A]" role="status">
                             <LoaderCircle className="size-3.5 animate-spin" /> Guardando orden…
@@ -793,6 +831,8 @@ function OrderDetailModal({
     errorMessage,
     onClose,
     onStatusChange,
+    paymentCard,
+    businessName,
 }: {
     order?: Order
     isLoading: boolean
@@ -803,7 +843,13 @@ function OrderDetailModal({
     errorMessage?: string
     onClose: () => void
     onStatusChange: (orderId: string, status: OrderStatus) => void
+    paymentCard: PaymentCard | null
+    businessName: string
 }) {
+    const transferPhone = normalizeMexicanWhatsAppNumber(order?.customerPhone)
+    const transferUrl = order && paymentCard?.isActive && order.paymentMethod === 'TRANSFER' && transferPhone
+        ? `https://wa.me/${transferPhone}?text=${encodeURIComponent(createTransferCardMessage({ customerName: order.customerName ?? 'cliente', businessName, bankName: paymentCard.bankName, clabe: paymentCard.clabe, beneficiaryName: paymentCard.beneficiaryName, orderNumber: order.orderNumber, total: order.total }))}`
+        : null
     return (
         <div className="fixed inset-0 z-50 grid place-items-center bg-[#10224A]/35 p-4 backdrop-blur-[2px]">
             <section
@@ -925,6 +971,24 @@ function OrderDetailModal({
                                 </div>
                             </aside>
                         )}
+                        {order.discountAmount && order.discountAmount > 0 ? (
+                            <aside className="flex items-start gap-3 rounded-xl border border-[#B8E2C8] bg-[#F6FCF7] p-3.5 text-sm text-[#205E3E]">
+                                <BadgePercent
+                                    className="mt-0.5 size-4 shrink-0"
+                                    aria-hidden="true"
+                                />
+                                <div className="min-w-0">
+                                    <p className="text-xs font-semibold">Cupón canjeado</p>
+                                    <p className="mt-1 break-words leading-5 text-[#53647D]">
+                                        El cliente ahorró{' '}
+                                        <strong className="font-bold text-[#23794A]">
+                                            {formatMoney(order.discountAmount, currency)}
+                                        </strong>{' '}
+                                        en este pedido.
+                                    </p>
+                                </div>
+                            </aside>
+                        ) : null}
                         <CustomerDiscountPanel order={order} currency={currency} />
                         <div>
                             <div className="mb-3 flex items-center justify-between">
@@ -1005,6 +1069,9 @@ function OrderDetailModal({
                         />
                         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#E8EEF6] pt-5">
                             <div className="flex flex-wrap gap-2">
+                                {order.paymentMethod === 'TRANSFER' && paymentCard?.isActive && (
+                                    transferUrl ? <a data-cy="order-detail-send-transfer-card" href={transferUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[#B8DDC6] bg-[#F3FBF5] px-4 text-sm font-bold text-[#17643A]"><CreditCard className="size-4" /> Enviar tarjeta</a> : <button data-cy="order-detail-send-transfer-card-disabled" type="button" disabled title="El cliente no tiene teléfono registrado" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[#D7E1EF] px-4 text-sm font-bold text-[#8996A9]"><CreditCard className="size-4" /> Enviar tarjeta</button>
+                                )}
                                 {nextStatus(order.status) && (
                                     <button
                                         type="button"
