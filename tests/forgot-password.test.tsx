@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import LoginPage from "@/app/auth/login/page";
-import { ForgotPasswordFlow } from "@/app/auth/forgot-password/page";
+import { ForgotPasswordFlow } from "@/app/auth/forgot-password/ForgotPasswordFlow";
 import type { PasswordRecoveryClient } from "@/app/auth/lib/client/password-recovery";
 
 function makeClient(overrides: Partial<PasswordRecoveryClient> = {}): PasswordRecoveryClient {

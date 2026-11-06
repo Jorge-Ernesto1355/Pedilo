@@ -200,6 +200,7 @@ function installCatalog(options: { detailsDelay?: number; detailsError?: boolean
             id: `included-${product.id}`,
             productId: product.id,
             sortOrder: combo.includedProducts.length,
+            quantity: 1,
             product,
         }
         combo.includedProducts.push(included)
