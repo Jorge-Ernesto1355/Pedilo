@@ -282,6 +282,8 @@ export function ComboManagerModal({
     const [description, setDescription] = useState('')
     const [price, setPrice] = useState('')
     const [imageUrl, setImageUrl] = useState('')
+    const [imageFile, setImageFile] = useState<File | null>(null)
+    const [imagePreview, setImagePreview] = useState('')
     const [selectedCategoryId, setSelectedCategoryId] = useState(categoryId)
     const [included, setIncluded] = useState<string[]>([])
     const [includedQuantities, setIncludedQuantities] = useState<Record<string, number>>({})
@@ -332,6 +334,8 @@ export function ComboManagerModal({
         setDescription('')
         setPrice('')
         setImageUrl('')
+        setImageFile(null)
+        setImagePreview('')
         setSelectedCategoryId(categoryId)
         setIncluded([])
         setIncludedQuantities({})
@@ -346,6 +350,27 @@ export function ComboManagerModal({
         setEditingComboDetails(false)
         setComboDetailsError('')
         onClose()
+    }
+
+    function selectImage(file: File | undefined) {
+        if (!file) return
+        if (!file.type.startsWith('image/')) {
+            setCreateError({ title: 'Imagen no válida', description: 'Selecciona un archivo de imagen válido.' })
+            setComboDetailsError('Selecciona un archivo de imagen válido.')
+            return
+        }
+        if (file.size > 5 * 1024 * 1024) {
+            setCreateError({ title: 'La imagen es demasiado grande', description: 'La imagen no puede superar 5 MB.' })
+            setComboDetailsError('La imagen no puede superar 5 MB.')
+            return
+        }
+        setImageFile(file)
+        setImageUrl('')
+        const reader = new FileReader()
+        reader.onload = () => setImagePreview(String(reader.result ?? ''))
+        reader.readAsDataURL(file)
+        setCreateError(null)
+        setComboDetailsError('')
     }
 
     function toggle(ids: string[], id: string, setter: (next: string[]) => void) {
@@ -444,7 +469,11 @@ export function ComboManagerModal({
                 name: name.trim(),
                 description: description.trim(),
                 price: numericPrice,
-                ...(imageUrl.trim() ? { imageUrl: imageUrl.trim() } : {}),
+                ...(imageFile
+                    ? { imageFile }
+                    : imageUrl.trim()
+                      ? { imageUrl: imageUrl.trim() }
+                      : {}),
                 includedProducts: included.map((productId) => ({ productId, quantity: includedQuantities[productId] ?? 1 })),
                 includedProductIds: included,
                 optionGroups: groups as ComboGroupInput[],
@@ -457,6 +486,8 @@ export function ComboManagerModal({
                     setDescription('')
                     setPrice('')
                     setImageUrl('')
+                    setImageFile(null)
+                    setImagePreview('')
                     setSelectedCategoryId(categoryId)
                     setIncluded([])
                     setGroups([])
@@ -538,6 +569,9 @@ export function ComboManagerModal({
                                                 setComboName(currentCombo.name)
                                                 setComboDescription(currentCombo.description ?? '')
                                                 setComboPrice(String(currentCombo.price))
+                                                setImageFile(null)
+                                                setImageUrl('')
+                                                setImagePreview(currentCombo.imageUrl ?? '')
                                                 setComboDetailsError('')
                                                 setEditingComboDetails(true)
                                             }}
@@ -585,6 +619,7 @@ export function ComboManagerModal({
                                                     name: trimmedName,
                                                     description: comboDescription.trim(),
                                                     price: Number(comboPrice),
+                                                    ...(imageFile ? { imageFile } : {}),
                                                 },
                                             })
                                             .then(() => setEditingComboDetails(false))
@@ -627,6 +662,19 @@ export function ComboManagerModal({
                                             value={comboPrice}
                                             onChange={(event) => setComboPrice(event.target.value)}
                                         />
+                                    </label>
+                                    <label className="block text-xs font-semibold text-[#43536E]">
+                                        Imagen del combo <span className="font-normal text-[#8996A9]">(opcional)</span>
+                                        <span className="mt-1 flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-[#BFCDE1] bg-[#FAFCFF] p-2.5 hover:border-[#2451C5]">
+                                            <span className="grid size-12 shrink-0 place-items-center overflow-hidden rounded-lg bg-[#EAF0FF] text-[#2451C5]">
+                                                {imagePreview ? <img src={imagePreview} alt="Vista previa del combo" className="h-full w-full object-cover" /> : <ImagePlus className="size-5" />}
+                                            </span>
+                                            <span className="text-left">
+                                                <span className="block text-sm font-semibold text-[#243556]">{imagePreview ? 'Cambiar imagen' : 'Seleccionar imagen'}</span>
+                                                <span className="block text-xs font-normal text-[#8996A9]">JPG, PNG o WebP · máximo 5 MB</span>
+                                            </span>
+                                            <input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={(event) => selectImage(event.target.files?.[0])} />
+                                        </span>
                                     </label>
                                     {comboDetailsError && (
                                         <p
@@ -1333,21 +1381,19 @@ export function ComboManagerModal({
                             <label className="block text-sm font-medium text-[#243556]">
                                 Imagen del combo{' '}
                                 <span className="font-normal text-[#8996A9]">(opcional)</span>
-                                <input
-                                    className={`${fieldClass} mt-1`}
-                                    type="url"
-                                    value={imageUrl}
-                                    onChange={(event) => setImageUrl(event.target.value)}
-                                    placeholder="https://..."
-                                />
+                                <span className="mt-1 flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-[#BFCDE1] bg-[#FAFCFF] p-2.5 hover:border-[#2451C5]">
+                                    <span className="grid size-12 shrink-0 place-items-center overflow-hidden rounded-lg bg-[#EAF0FF] text-[#2451C5]">
+                                        {imagePreview || imageUrl ? (
+                                            <img src={imagePreview || imageUrl} alt="Vista previa del combo" className="h-full w-full object-cover" />
+                                        ) : <ImagePlus className="size-5" />}
+                                    </span>
+                                    <span className="text-left">
+                                        <span className="block text-sm font-semibold text-[#243556]">{imagePreview || imageUrl ? 'Cambiar imagen' : 'Seleccionar imagen'}</span>
+                                        <span className="block text-xs font-normal text-[#8996A9]">JPG, PNG o WebP · máximo 5 MB</span>
+                                    </span>
+                                    <input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={(event) => selectImage(event.target.files?.[0])} />
+                                </span>
                             </label>
-                            {imageUrl && /^https?:\/\//i.test(imageUrl) && (
-                                <img
-                                    src={imageUrl}
-                                    alt="Vista previa del combo"
-                                    className="h-32 w-full rounded-lg border border-[#E8EEF6] object-cover"
-                                />
-                            )}
                         </section>
                     )}
                     {step === 1 && (

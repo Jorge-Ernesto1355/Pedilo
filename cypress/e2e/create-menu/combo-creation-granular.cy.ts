@@ -156,6 +156,20 @@ describe('Creación granular de combos', () => {
         dialog().find('input[placeholder="Nombre del combo"]').type('x'.repeat(100)).should('have.value', 'x'.repeat(80))
     })
 
+    it('permite seleccionar una imagen del combo y la envía como multipart al crearlo', () => {
+        installCatalog()
+        openCreation()
+        fillValidBasics()
+        dialog().find('input[type="file"]').selectFile('public/logoPediloSinfondo.png', { force: true })
+        dialog().find('img[alt="Vista previa del combo"]').should('be.visible')
+        dialog().contains('button', 'Continuar').click()
+        dialog().contains('button', 'Hamburguesa sencilla').click()
+        dialog().contains('button', 'Continuar').click()
+        dialog().contains('button', 'Continuar').click()
+        dialog().contains('button', 'Crear combo').click()
+        cy.wait('@createCombo').its('request.headers.content-type').should('contain', 'multipart/form-data')
+    })
+
     it('mantiene dentro del modal la revisión con nombre, descripción y precio máximos', () => {
         installCatalog()
         openCreation()

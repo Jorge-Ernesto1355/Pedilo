@@ -236,6 +236,7 @@ export function useComboManagement() {
                 name: product.name,
                 description: product.description,
                 price: product.price,
+                imageUrl: product.imageUrl,
             }))
             refresh(variables.comboId)
             notify.success({ title: 'Combo actualizado', description: 'Se guardaron los cambios.' })

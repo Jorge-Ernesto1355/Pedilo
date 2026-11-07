@@ -354,6 +354,15 @@ describe('Edición granular de combos', () => {
         cy.get('@updateCombo.all').should('have.length', 0)
     })
 
+    it('permite cambiar la imagen del combo y envía el archivo como multipart', () => {
+        installCatalog()
+        const dialog = openEditInformation()
+        dialog().find('input[type="file"]').selectFile('public/logoPediloSinfondo.png', { force: true })
+        dialog().find('img[alt="Vista previa del combo"]').should('be.visible')
+        dialog().contains('button', 'Guardar cambios').click()
+        cy.wait('@updateCombo').its('request.headers.content-type').should('contain', 'multipart/form-data')
+    })
+
     it('valida nombre vacío sin enviar actualización', () => {
         installCatalog()
         const dialog = openEditInformation()

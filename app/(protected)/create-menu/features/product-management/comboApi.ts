@@ -46,6 +46,7 @@ export type CreateComboInput = {
     description: string
     price: number
     imageUrl?: string
+    imageFile?: File
     includedProductIds?: string[]
     includedProducts?: Array<{ productId: string; quantity: number }>
     optionGroups: ComboGroupInput[]
@@ -55,6 +56,7 @@ export type UpdateComboDetailsInput = {
     name: string
     description: string
     price: number
+    imageFile?: File
 }
 
 const credentials = { withCredentials: true }
@@ -99,12 +101,25 @@ export async function createCombo(input: CreateComboInput): Promise<ComboDetails
             maxSelections: 1,
         })),
     }
+    if (!input.imageFile) {
+        return request(() =>
+            apiClient.post<ComboDetails | Envelope<ComboDetails>>(
+                '/businesses/products/combos',
+                payload,
+                credentials,
+            ),
+        ).then(unwrap)
+    }
+    const form = new FormData()
+    form.append('categoryId', input.categoryId)
+    form.append('name', input.name)
+    form.append('description', input.description)
+    form.append('price', String(input.price))
+    form.append('includedProducts', JSON.stringify(input.includedProducts ?? []))
+    form.append('optionGroups', JSON.stringify(payload.optionGroups))
+    form.append('image', input.imageFile)
     return request(() =>
-        apiClient.post<ComboDetails | Envelope<ComboDetails>>(
-            '/businesses/products/combos',
-            payload,
-            credentials,
-        ),
+        apiClient.post<ComboDetails | Envelope<ComboDetails>>('/businesses/products/combos', form, credentials),
     ).then(unwrap)
 }
 
@@ -121,12 +136,22 @@ export async function updateComboDetails(
     productId: string,
     input: UpdateComboDetailsInput,
 ): Promise<Product> {
+    if (!input.imageFile) {
+        return request(() =>
+            apiClient.patch<Product | Envelope<Product>>(
+                `/businesses/products/${productId}`,
+                input,
+                credentials,
+            ),
+        ).then(unwrap)
+    }
+    const form = new FormData()
+    form.append('name', input.name)
+    form.append('description', input.description)
+    form.append('price', String(input.price))
+    form.append('image', input.imageFile)
     return request(() =>
-        apiClient.patch<Product | Envelope<Product>>(
-            `/businesses/products/${productId}`,
-            input,
-            credentials,
-        ),
+        apiClient.patch<Product | Envelope<Product>>(`/businesses/products/${productId}`, form, credentials),
     ).then(unwrap)
 }
 
