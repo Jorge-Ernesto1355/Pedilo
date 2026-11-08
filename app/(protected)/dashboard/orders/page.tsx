@@ -55,13 +55,14 @@ import {
 import { getPaymentCard, type PaymentCard } from '../../create-menu/features/payment-card/paymentCardApi'
 import { createTransferCardMessage, normalizeMexicanWhatsAppNumber } from '../../../menu/[slug]/features/public-menu/whatsapp'
 import { useCurrentBusiness } from '../../create-menu/features/business-profile/useCurrentBusiness'
+import { NewRestaurantOrderDrawerSkeleton } from '../features/orders/NewRestaurantOrderDrawerSkeleton'
 
 const NewRestaurantOrderDrawer = dynamic(
     () =>
         import('../features/orders/NewRestaurantOrderDrawer').then(
             (module) => module.NewRestaurantOrderDrawer,
         ),
-    { ssr: false },
+    { ssr: false, loading: () => <NewRestaurantOrderDrawerSkeleton /> },
 )
 
 type StatusMeta = {

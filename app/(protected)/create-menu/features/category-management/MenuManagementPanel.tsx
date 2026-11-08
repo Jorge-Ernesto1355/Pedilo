@@ -2,6 +2,7 @@
 
 'use client'
 
+import dynamic from 'next/dynamic'
 import { useState } from 'react'
 import type { UseFormSetError } from 'react-hook-form'
 import { motion, useReducedMotion } from 'framer-motion'
@@ -11,8 +12,8 @@ import { Modal } from '@/app/components/ui/Modal'
 import { ApiError } from '@/app/auth/lib/client/api-error'
 import type { Menu, MenuCategory } from './menu.types'
 import type { useCategoryManagement } from './useCategoryManagement'
-import { AddProductModal } from '../product-management/AddProductModal'
-import { ComboManagerModal } from '../product-management/ComboManagerModal'
+import { AddProductModalSkeleton } from '../product-management/AddProductModalSkeleton'
+import { ComboManagerModalSkeleton } from '../product-management/ComboManagerModalSkeleton'
 import {
     useProductManagement,
     useProductsByCategory,
@@ -31,6 +32,15 @@ import {
 
 type MenuManagement = ReturnType<typeof useCategoryManagement>
 type ProductManagement = ReturnType<typeof useProductManagement>
+
+const LazyAddProductModal = dynamic(
+    () => import('../product-management/AddProductModal').then((module) => module.AddProductModal),
+    { loading: () => <AddProductModalSkeleton /> },
+)
+const LazyComboManagerModal = dynamic(
+    () => import('../product-management/ComboManagerModal').then((module) => module.ComboManagerModal),
+    { loading: () => <ComboManagerModalSkeleton /> },
+)
 
 function errorMessage(error: unknown, fallback: string) {
     if (!(error instanceof ApiError)) return fallback
@@ -378,7 +388,7 @@ function CategoryProducts({
                     </motion.div>
                 ))}
             </div>
-            <AddProductModal
+            <LazyAddProductModal
                 open={productModalOpen && !isComboProduct(editingProduct)}
                 categoryName={category.name}
                 product={isComboProduct(editingProduct) ? null : editingProduct}
@@ -456,7 +466,7 @@ function CategoryProducts({
                 </div>
             </Modal>
             {comboModalOpen && (
-                <ComboManagerModal
+                <LazyComboManagerModal
                     open={comboModalOpen}
                     categoryId={category.id}
                     categoryName={category.name}

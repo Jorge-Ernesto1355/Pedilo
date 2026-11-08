@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import dynamic from 'next/dynamic'
 import posthog from 'posthog-js'
 import { AlertCircle, Utensils } from 'lucide-react'
 import { ApiError } from '@/app/auth/lib/client/api-error'
@@ -9,8 +10,8 @@ import { CategoryTabs } from './features/public-menu/CategoryTabs'
 import { MenuHeader } from './features/public-menu/MenuHeader'
 import { OrderDrawer } from './features/public-menu/OrderDrawer'
 import { ProductCard } from './features/public-menu/ProductCard'
-import { ProductCustomizeDialog } from './features/public-menu/ProductCustomizeDialog'
 import { OrderConfirmationModal } from './features/public-menu/OrderConfirmationModal'
+import { ProductCustomizeDialogSkeleton } from './features/public-menu/ProductCustomizeDialogSkeleton'
 import { CatalogEmptyState } from './features/public-menu/CatalogEmptyState'
 import { useBusinessMenu } from './features/public-menu/useBusinessMenu'
 import { useOrderCart } from './features/public-menu/useOrderCart'
@@ -22,6 +23,11 @@ import {
 import type { PublicProduct } from './features/public-menu/publicCatalog.types'
 import type { CartLine } from './features/public-menu/types'
 import type { OrderFulfillmentType, OrderPaymentMethod, TransferCardSnapshot } from '@/src/lib/api/order-types'
+
+const LazyProductCustomizeDialog = dynamic(
+    () => import('./features/public-menu/ProductCustomizeDialog').then((module) => module.ProductCustomizeDialog),
+    { loading: () => <ProductCustomizeDialogSkeleton /> },
+)
 
 export function LoadingMenu() {
     return (
@@ -817,7 +823,7 @@ export default function PublicMenuPage({ slug }: { slug: string }) {
                     })()
                 }}
             />
-            <ProductCustomizeDialog
+            <LazyProductCustomizeDialog
                 key={`${product?.id ?? 'empty'}:${editingLineKey ?? 'new'}`}
                 product={product}
                 initialSelections={editingSelections}

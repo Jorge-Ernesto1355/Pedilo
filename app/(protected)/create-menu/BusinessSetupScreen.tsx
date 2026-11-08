@@ -2,6 +2,7 @@
 
 import { FormProvider, useWatch } from 'react-hook-form'
 import { useEffect, useRef, useState } from 'react'
+import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import posthog from 'posthog-js'
 import { Store } from 'lucide-react'
@@ -28,7 +29,7 @@ import { notify } from '@/src/lib/notifications/notify'
 import { locationCoordinatesSchema } from './features/business-location/location.schema'
 import { BusinessSettingsModal } from './features/business-settings/BusinessSettingsModal'
 import { BusinessActionsPanel } from './features/business-settings/BusinessActionsPanel'
-import { GoogleReviewsModal } from './features/google-reviews/GoogleReviewsModal'
+import { GoogleReviewsModalSkeleton } from './features/google-reviews/GoogleReviewsModalSkeleton'
 import { BusinessPreviewSkeleton } from './components/CreateMenuStates'
 import Link from 'next/link'
 import { CreateMenuErrorState } from './components/CreateMenuStates'
@@ -38,6 +39,11 @@ import {
     useCurrentBusiness,
     type CurrentBusiness,
 } from './features/business-profile/useCurrentBusiness'
+
+const LazyGoogleReviewsModal = dynamic(
+    () => import('./features/google-reviews/GoogleReviewsModal').then((module) => module.GoogleReviewsModal),
+    { loading: () => <GoogleReviewsModalSkeleton /> },
+)
 
 const apiDayKeys: Record<string, BusinessProfileValues['businessHours']['days'][number]['key']> = {
     mon: 'mon',
@@ -459,7 +465,7 @@ export default function BusinessSetupScreen({
                     open={businessSettingsOpen}
                     onClose={() => setBusinessSettingsOpen(false)}
                 />
-                <GoogleReviewsModal
+                <LazyGoogleReviewsModal
                     open={googleReviewsOpen}
                     onClose={() => setGoogleReviewsOpen(false)}
                 />

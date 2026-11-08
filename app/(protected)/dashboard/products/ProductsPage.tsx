@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import dynamic from 'next/dynamic'
 import { Package, Plus, RefreshCw } from 'lucide-react'
 import { friendlyNotificationError, notify } from '@/src/lib/notifications/notify'
 import { getUserFriendlyFieldError } from '@/src/lib/errors/user-friendly-error'
@@ -10,7 +11,7 @@ import {
     type Product,
     type ProductInput,
 } from '@/app/(protected)/create-menu/features/product-management/product.types'
-import { ComboManagerModal } from '@/app/(protected)/create-menu/features/product-management/ComboManagerModal'
+import { ComboManagerModalSkeleton } from '@/app/(protected)/create-menu/features/product-management/ComboManagerModalSkeleton'
 import type { ProductListParams } from '@/app/(protected)/create-menu/features/product-management/productApi'
 import { useProduct } from './hooks/useProduct'
 import { useProductMutations } from './hooks/useProductMutations'
@@ -40,6 +41,11 @@ type Filters = {
     sortBy: NonNullable<ProductListParams['sortBy']>
     sortOrder: 'asc' | 'desc'
 }
+
+const LazyComboManagerModal = dynamic(
+    () => import('@/app/(protected)/create-menu/features/product-management/ComboManagerModal').then((module) => module.ComboManagerModal),
+    { loading: () => <ComboManagerModalSkeleton /> },
+)
 
 export default function ProductsPage() {
     const [page, setPage] = useState(1)
@@ -340,7 +346,7 @@ export default function ProductsPage() {
                 }
             />
             {comboEditorOpen && selectedProduct && (
-                <ComboManagerModal
+                <LazyComboManagerModal
                     open
                     categoryId={selectedProduct.categoryId}
                     categoryName={
