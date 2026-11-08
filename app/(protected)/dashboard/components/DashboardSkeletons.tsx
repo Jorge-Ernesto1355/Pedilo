@@ -179,7 +179,7 @@ export function OverviewSkeleton() {
             </section>
             <ChartSkeleton />
             <div className="grid gap-4 lg:grid-cols-2">
-                {['Lo más vendido', 'Cómo va tu negocio'].map((title) => (
+                {['Lo más vendido'].map((title) => (
                     <section
                         key={title}
                         className="rounded-2xl border border-[#DCE5F3] bg-white p-5 sm:p-6"

@@ -27,6 +27,7 @@ export function useOrders(params: {
     status?: OrderStatus
     search?: string
     period?: OrderPeriod
+    summary?: boolean
 }) {
     const businessId = useAuthStore((state) => state.user?.businessId)
     return useQuery({

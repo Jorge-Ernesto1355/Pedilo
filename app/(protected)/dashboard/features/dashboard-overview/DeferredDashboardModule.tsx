@@ -11,7 +11,7 @@ type DeferredDashboardModuleProps = {
 export function DeferredDashboardModule({
     children,
     fallback,
-    rootMargin = '0px',
+    rootMargin = '75px',
 }: DeferredDashboardModuleProps) {
     const containerRef = useRef<HTMLDivElement>(null)
     const [shouldRender, setShouldRender] = useState(false)

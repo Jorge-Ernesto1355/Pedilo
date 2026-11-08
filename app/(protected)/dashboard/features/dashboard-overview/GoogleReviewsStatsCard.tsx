@@ -25,8 +25,8 @@ export interface QRAnalyticsCardProps {
     isError?: boolean
 }
 
-export function GoogleReviewsStatsCard({ period }: { period: GoogleReviewsStatsPeriod }) {
-    const statsQuery = useGoogleReviewsStats(period)
+export function GoogleReviewsStatsCard({ period, enabled = true }: { period: GoogleReviewsStatsPeriod; enabled?: boolean }) {
+    const statsQuery = useGoogleReviewsStats(period, enabled)
     const stats = statsQuery.data?.data
 
     return (

@@ -33,8 +33,8 @@ type ChartInterval = {
     previousVisits: number
 }
 
-export function MenuVisitsCard({ period = 'today' }: { period?: StoreVisitsPeriod }) {
-    const visitsQuery = useStoreVisitsStats(period)
+export function MenuVisitsCard({ period = 'today', enabled = true }: { period?: StoreVisitsPeriod; enabled?: boolean }) {
+    const visitsQuery = useStoreVisitsStats(period, enabled)
     const stats = visitsQuery.data?.data
 
     return (

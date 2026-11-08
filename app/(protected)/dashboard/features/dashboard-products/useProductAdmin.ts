@@ -68,3 +68,13 @@ export function useProductAnalytics(params: ProductAnalyticsParams) {
     })
     return { bestSelling, mostRequested, summary }
 }
+
+export function useBestSellingProducts(params: ProductAnalyticsParams) {
+    const businessId = useAuthStore((state) => state.user?.businessId)
+    return useQuery({
+        queryKey: ['product-analytics', 'best-selling', businessId, params],
+        queryFn: () => getBestSellingProducts(businessId as string, params),
+        enabled: Boolean(businessId),
+        staleTime: 5 * 60 * 1000,
+    })
+}

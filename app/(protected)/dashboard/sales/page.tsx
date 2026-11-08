@@ -15,7 +15,6 @@ import { useHistoricalSalesData } from '../features/dashboard-sales/useHistorica
 import { SalesPointsTable } from '../features/dashboard-sales/SalesPointsTable'
 import { OrdersKpiCard } from '../features/dashboard-orders/OrdersKpiCard'
 import { DashboardCardError } from '../components/DashboardCardError'
-import { useBusinessSettings } from '../../create-menu/features/business-settings/useBusinessSettings'
 import { SalesAccountingNotice } from '../features/dashboard-sales/SalesAccountingNotice'
 
 export default function SalesPage() {
@@ -24,8 +23,7 @@ export default function SalesPage() {
     const trend = useTrendData(range)
     const historicalSales = useHistoricalSalesData()
     const averageTicket = useAverageTicketData(range)
-    const settings = useBusinessSettings(true)
-    const currency = settings.settings.data?.currency ?? 'MXN'
+    const currency = 'MXN'
 
     return (
         <main

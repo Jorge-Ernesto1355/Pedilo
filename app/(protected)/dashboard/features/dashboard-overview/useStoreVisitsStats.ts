@@ -5,7 +5,7 @@ import { useAuthStore } from '@/store/authStore'
 import { getStoreVisitsStats } from './storeVisitsStats'
 import type { StoreVisitsPeriod } from './storeVisitsStats'
 
-export function useStoreVisitsStats(period: StoreVisitsPeriod = 'today') {
+export function useStoreVisitsStats(period: StoreVisitsPeriod = 'today', enabled = true) {
     const user = useAuthStore((state) => state.user)
     const businessId = user?.businessId
 
@@ -18,7 +18,7 @@ export function useStoreVisitsStats(period: StoreVisitsPeriod = 'today') {
             period,
         ],
         queryFn: () => getStoreVisitsStats(period),
-        enabled: Boolean(user?.id && businessId),
+        enabled: enabled && Boolean(user?.id && businessId),
         staleTime: 60 * 1000,
     })
 }

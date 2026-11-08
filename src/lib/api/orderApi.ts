@@ -16,7 +16,7 @@ import type {
 } from './order-types'
 
 const credentials = { withCredentials: true }
-function query(params: Record<string, string | number | undefined>) {
+function query(params: Record<string, string | number | boolean | undefined>) {
     const search = new URLSearchParams()
     Object.entries(params).forEach(([key, value]) => {
         if (value !== undefined && value !== '') search.set(key, String(value))
@@ -59,6 +59,7 @@ export function getOrders(
         status?: OrderStatus
         search?: string
         period?: OrderPeriod
+        summary?: boolean
     },
 ) {
     return request(() =>

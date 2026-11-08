@@ -5,7 +5,7 @@ import { useAuthStore } from '@/store/authStore'
 import { getGoogleReviewsStats } from './googleReviewsStats'
 import type { GoogleReviewsStatsPeriod } from './googleReviewsStats'
 
-export function useGoogleReviewsStats(period: GoogleReviewsStatsPeriod) {
+export function useGoogleReviewsStats(period: GoogleReviewsStatsPeriod, enabled = true) {
     const user = useAuthStore((state) => state.user)
     const businessId = user?.businessId
 
@@ -18,7 +18,7 @@ export function useGoogleReviewsStats(period: GoogleReviewsStatsPeriod) {
             period,
         ],
         queryFn: () => getGoogleReviewsStats(period),
-        enabled: Boolean(user?.id && businessId),
+        enabled: enabled && Boolean(user?.id && businessId),
         staleTime: 60 * 1000,
     })
 }

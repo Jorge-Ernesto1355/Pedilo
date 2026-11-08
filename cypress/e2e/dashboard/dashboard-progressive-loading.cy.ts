@@ -32,10 +32,7 @@ describe('Dashboard · carga progresiva de módulos', { retries: 0 }, () => {
         cy.contains('h2', 'Cómo va tu negocio').should('not.exist')
         cy.contains('h2', 'Pedidos recientes').should('not.exist')
         assertRequestCount('@dashboardTrend', 0)
-        assertRequestCount('@productStats', 0)
         assertRequestCount('@bestSellingProducts', 0)
-        assertRequestCount('@mostRequestedProducts', 0)
-        assertRequestCount('@productSummary', 0)
         assertRequestCount('@recentOrders', 0)
 
         cy.get('[aria-label="Cargando módulo del dashboard"]').eq(0).scrollIntoView()
@@ -44,10 +41,7 @@ describe('Dashboard · carga progresiva de módulos', { retries: 0 }, () => {
 
         cy.scrollTo('bottom')
         cy.wait([
-            '@productStats',
             '@bestSellingProducts',
-            '@mostRequestedProducts',
-            '@productSummary',
             '@recentOrders',
         ])
         cy.contains('h2', 'Lo más vendido').should('be.visible')
@@ -70,10 +64,7 @@ describe('Dashboard · carga progresiva de módulos', { retries: 0 }, () => {
         cy.wait('@repeat-dashboardTrend')
         cy.scrollTo('bottom')
         cy.wait([
-            '@repeat-productStats',
             '@repeat-bestSellingProducts',
-            '@repeat-mostRequestedProducts',
-            '@repeat-productSummary',
             '@repeat-recentOrders',
         ])
 
@@ -84,10 +75,7 @@ describe('Dashboard · carga progresiva de módulos', { retries: 0 }, () => {
             '@repeat-googleReviewsStats',
             '@repeat-storeVisitsStats',
             '@repeat-dashboardTrend',
-            '@repeat-productStats',
             '@repeat-bestSellingProducts',
-            '@repeat-mostRequestedProducts',
-            '@repeat-productSummary',
             '@repeat-recentOrders',
         ]
         cy.scrollTo('top')
@@ -106,10 +94,7 @@ function registerDashboardRequests(prefix = '') {
     cy.intercept('GET', '**/api/v1/businesses/google-reviews/stats*').as(alias('googleReviewsStats'))
     cy.intercept('GET', '**/api/v1/businesses/store-visits/stats*').as(alias('storeVisitsStats'))
     cy.intercept('GET', '**/api/v1/dashboard/trend*').as(alias('dashboardTrend'))
-    cy.intercept('GET', '**/api/v1/businesses/*/products/stats*').as(alias('productStats'))
     cy.intercept('GET', '**/api/v1/businesses/*/products/analytics/best-selling*').as(alias('bestSellingProducts'))
-    cy.intercept('GET', '**/api/v1/businesses/*/products/analytics/most-requested*').as(alias('mostRequestedProducts'))
-    cy.intercept('GET', '**/api/v1/businesses/*/products/analytics/summary*').as(alias('productSummary'))
     cy.intercept('GET', '**/api/v1/businesses/*/orders*').as(alias('recentOrders'))
 }
 
