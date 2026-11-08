@@ -23,7 +23,7 @@ import type { PublicProduct } from './features/public-menu/publicCatalog.types'
 import type { CartLine } from './features/public-menu/types'
 import type { OrderFulfillmentType, OrderPaymentMethod, TransferCardSnapshot } from '@/src/lib/api/order-types'
 
-function LoadingMenu() {
+export function LoadingMenu() {
     return (
         <main className="min-h-screen bg-[#F5F8FC] p-4 sm:p-8">
             <div className="mx-auto max-w-5xl animate-pulse space-y-5">
