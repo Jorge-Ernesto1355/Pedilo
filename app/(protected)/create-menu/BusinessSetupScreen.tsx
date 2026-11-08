@@ -32,7 +32,7 @@ import { GoogleReviewsModal } from './features/google-reviews/GoogleReviewsModal
 import { BusinessPreviewSkeleton } from './components/CreateMenuStates'
 import Link from 'next/link'
 import { CreateMenuErrorState } from './components/CreateMenuStates'
-import { PaymentCardSettingsPanel } from './features/payment-card/PaymentCardSettingsPanel'
+import { DeferredPaymentCard } from './features/payment-card/DeferredPaymentCard'
 import { DiscountsPanel } from './features/discounts/DiscountsPanel'
 import {
     useCurrentBusiness,
@@ -425,7 +425,7 @@ export default function BusinessSetupScreen({
                                 isBusinessReady={businessConfirmed}
                                 isNewBusiness={isNewBusinessCreated}
                             />
-                            <PaymentCardSettingsPanel business={businessQuery.data ?? undefined} />
+                            <DeferredPaymentCard business={businessQuery.data ?? undefined} />
                             <DiscountsPanel
                                 businessId={businessQuery.data?.id}
                                 menus={categories.menus}
