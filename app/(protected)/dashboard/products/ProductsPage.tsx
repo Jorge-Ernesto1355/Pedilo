@@ -17,7 +17,7 @@ import { useProduct } from './hooks/useProduct'
 import { useProductMutations } from './hooks/useProductMutations'
 import { useProductAnalytics } from './hooks/useProductAnalytics'
 import { useProductCatalog, useProductCategories, useProductStats } from './hooks/useProducts'
-import { ProductForm } from './components/ProductForm'
+import { ProductAdminModalSkeleton } from '../features/dashboard-products/ProductAdminModalSkeleton'
 import { ProductDetails } from './components/ProductDetails'
 import { ProductFilters } from './components/ProductFilters'
 import { ProductPagination, ProductTable } from './components/ProductTable'
@@ -45,6 +45,10 @@ type Filters = {
 const LazyComboManagerModal = dynamic(
     () => import('@/app/(protected)/create-menu/features/product-management/ComboManagerModal').then((module) => module.ComboManagerModal),
     { loading: () => <ComboManagerModalSkeleton /> },
+)
+const LazyProductForm = dynamic(
+    () => import('../features/dashboard-products/ProductAdminModal').then((module) => module.ProductAdminModal),
+    { loading: () => <ProductAdminModalSkeleton /> },
 )
 
 export default function ProductsPage() {
@@ -359,7 +363,7 @@ export default function ProductsPage() {
                     onClose={closeEditor}
                 />
             )}
-            <ProductForm
+            <LazyProductForm
                 key={`${editor ?? 'closed'}-${selectedProduct?.id ?? 'new'}-${detail.data?.updatedAt ?? 'loading'}-${detail.data?.optionGroups?.length ?? 0}-${categories.length}`}
                 open={editor !== null && !comboEditorOpen}
                 product={editor === 'edit' ? (detail.data ?? selectedProduct) : null}
