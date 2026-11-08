@@ -10,12 +10,16 @@ export function useSalesData(period: SalesPeriod) {
     const businessId = user?.businessId
 
     return useQuery({
-        queryKey: ['dashboard', 'sales', user?.id ?? 'anonymous', businessId ?? 'none', period],
+        // businessId can be hydrated a moment after the authenticated user. It
+        // is not part of this endpoint's response identity and including it here
+        // would create a second query for the same user and period.
+        queryKey: ['dashboard', 'sales', user?.id ?? 'anonymous', period],
         queryFn: () => getDashboardSales(period),
         enabled: Boolean(user?.id && businessId),
-        // Each period selection should ask the API for its current value. This also
-        // makes switching back to a previously selected period observable to the UI.
-        staleTime: 0,
+        // Keep the initial dashboard request stable across hydration/remounts. A
+        // different period still creates a different query key and fetches once.
+        staleTime: 5 * 60 * 1000,
+        refetchOnMount: false,
         // The cards expose an explicit retry action. Automatic retries delayed
         // the error state and caused several requests after a single failure.
         retry: 0,

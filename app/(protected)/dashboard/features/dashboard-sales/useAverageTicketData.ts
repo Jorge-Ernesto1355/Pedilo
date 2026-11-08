@@ -22,14 +22,14 @@ export function useAverageTicketData(period: SalesPeriod) {
             'dashboard',
             'average-ticket',
             user?.id ?? 'anonymous',
-            businessId ?? 'none',
             apiPeriod,
         ],
         queryFn: () => getAverageTicket(apiPeriod),
         enabled: Boolean(user?.id && businessId),
-        // Keep this metric in sync with the selected sales period, including when
-        // the user returns to a period that was loaded earlier.
-        staleTime: 0,
+        // A period change changes the query key; this prevents duplicate requests
+        // for the same period during hydration or a component remount.
+        staleTime: 5 * 60 * 1000,
+        refetchOnMount: false,
         retry: 0,
     })
 }

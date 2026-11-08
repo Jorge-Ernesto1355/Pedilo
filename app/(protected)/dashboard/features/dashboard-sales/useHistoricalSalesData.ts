@@ -9,10 +9,12 @@ export function useHistoricalSalesData() {
     const businessId = user?.businessId
 
     return useQuery({
-        queryKey: ['dashboard', 'historical-sales', user?.id ?? 'anonymous', businessId ?? 'none'],
+        queryKey: ['dashboard', 'historical-sales', user?.id ?? 'anonymous'],
         queryFn: getHistoricalSales,
         enabled: Boolean(user?.id && businessId),
-        staleTime: 0,
+        // Avoid a duplicate request when the protected layout hydrates or remounts.
+        staleTime: 5 * 60 * 1000,
+        refetchOnMount: false,
         retry: 0,
     })
 }
