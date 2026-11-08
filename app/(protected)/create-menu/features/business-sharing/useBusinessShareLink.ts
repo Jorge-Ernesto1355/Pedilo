@@ -1,6 +1,19 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useSyncExternalStore } from 'react'
+
+function subscribeToHydration(onStoreChange: () => void) {
+    const timeoutId = window.setTimeout(onStoreChange, 0)
+    return () => window.clearTimeout(timeoutId)
+}
+
+function getClientHydrationSnapshot() {
+    return true
+}
+
+function getServerHydrationSnapshot() {
+    return false
+}
 
 function slugify(value: string) {
     return (
@@ -17,10 +30,15 @@ function slugify(value: string) {
 export function useBusinessShareLink(BusinesSlug: string) {
     const [copied, setCopied] = useState(false)
     const slug = useMemo(() => slugify(BusinesSlug), [BusinesSlug])
-    const shareUrl =
-        typeof window === 'undefined'
-            ? `/${slug}`
-            : new URL(`/${slug}`, window.location.origin).toString()
+    const relativeShareUrl = `/${slug}`
+    const isHydrated = useSyncExternalStore(
+        subscribeToHydration,
+        getClientHydrationSnapshot,
+        getServerHydrationSnapshot,
+    )
+    const shareUrl = isHydrated
+        ? new URL(relativeShareUrl, window.location.origin).toString()
+        : relativeShareUrl
 
     async function copyLink() {
         if (navigator.clipboard?.writeText) {
