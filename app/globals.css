@@ -1,6 +1,11 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 
+@keyframes loading-progress {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(320%); }
+}
+
 @keyframes order-arrival {
     from {
         opacity: 0.72;

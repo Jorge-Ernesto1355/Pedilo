@@ -5,18 +5,31 @@ import { useQueryClient } from '@tanstack/react-query'
 import posthog from 'posthog-js'
 import type { User } from '@/lib/auth/getSession'
 import { useAuthStore } from '@/store/authStore'
+import type { CurrentBusiness } from '@/app/(protected)/create-menu/features/business-profile/useCurrentBusiness'
 
 interface AuthHydrationProps {
     user: User
+    initialBusiness?: CurrentBusiness | null
     children: ReactNode
 }
 
-export function AuthHydration({ user, children }: AuthHydrationProps) {
+export function AuthHydration({ user, initialBusiness = null, children }: AuthHydrationProps) {
     const queryClient = useQueryClient()
     const setUser = useAuthStore((state) => state.setUser)
     const currentUser = useAuthStore((state) => state.user)
     const currentUserId = currentUser?.id ?? null
     const identifiedUserId = useRef<string | null>(null)
+    const initialIdentity = { ...user, businessId: initialBusiness?.id ?? user.businessId ?? null }
+
+    // Seed both stores before descendants render. This prevents every enabled
+    // query from waiting for the post-mount hydration effect.
+    if (
+        currentUserId !== initialIdentity.id ||
+        currentUser?.businessId !== initialIdentity.businessId
+    ) {
+        useAuthStore.setState({ user: initialIdentity })
+        queryClient.setQueryData(['business', 'mine', initialIdentity.id], initialBusiness)
+    }
 
     useEffect(() => {
         if (identifiedUserId.current === user.id) return
@@ -54,5 +67,8 @@ export function AuthHydration({ user, children }: AuthHydrationProps) {
         }
     }, [currentUser, currentUserId, queryClient, setUser, user])
 
-    return currentUserId === user.id ? children : null
+    // Keep the protected shell mounted while Zustand hydrates. Data hooks remain
+    // disabled until the store has the authenticated user, while the navbar and
+    // page fallbacks provide continuous visual feedback.
+    return children
 }

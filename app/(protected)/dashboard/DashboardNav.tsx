@@ -24,6 +24,7 @@ import { useCurrentBusiness } from '@/app/(protected)/create-menu/features/busin
 import posthog from 'posthog-js'
 import { useOrderEventsStore } from '@/store/orderEventsStore'
 import { getOrderSoundPreferenceKey } from './features/orders/services/orderEvents'
+import { DashboardNavSkeleton } from '@/components/AppLoadingSkeleton'
 
 const links = [
     { href: '/dashboard', label: 'Resumen', icon: LayoutDashboard },
@@ -52,6 +53,7 @@ export function DashboardNav() {
     const queryClient = useQueryClient()
     const clearUser = useAuthStore((state) => state.clearUser)
     const businessId = useAuthStore((state) => state.user?.businessId)
+    const authUser = useAuthStore((state) => state.user)
     const unseenCount = useOrderEventsStore((state) => state.unseenOrderIds.length)
     const soundEnabled = useOrderEventsStore((state) => state.soundEnabled)
     const setSoundEnabled = useOrderEventsStore((state) => state.setSoundEnabled)
@@ -143,6 +145,8 @@ export function DashboardNav() {
     const businessName = typeof business?.name === 'string' ? business.name.trim() : ''
     const businessLogoUrl = typeof business?.logoUrl === 'string' ? business.logoUrl.trim() : ''
     const displayedBusinessName = businessName || 'Tu negocio'
+
+    if (!authUser) return <DashboardNavSkeleton />
 
     return (
         <>

@@ -3,6 +3,7 @@ import './globals.css'
 import 'leaflet/dist/leaflet.css'
 import 'leaflet-defaulticon-compatibility/dist/leaflet-defaulticon-compatibility.css'
 import QueryProvider from '@/src/providers/QueryProvider'
+import { NavigationProgress } from '@/components/NavigationProgress'
 
 export const metadata: Metadata = {
     title: 'Pedilo',
@@ -33,7 +34,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
                         <span className="app-background-curve app-background-curve-bottom" />
                     </div>
                     <div className="relative z-10 flex min-h-0 flex-1 flex-col">
-                        <QueryProvider>{children}</QueryProvider>
+                        <QueryProvider><NavigationProgress />{children}</QueryProvider>
                     </div>
                 </div>
             </body>

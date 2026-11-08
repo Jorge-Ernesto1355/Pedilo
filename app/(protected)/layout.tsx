@@ -14,7 +14,6 @@ export default async function ProtectedLayout({ children }: { children: ReactNod
     if (!user) {
         redirect(RedirectedUrls.login)
     }
-
     return (
         <AuthHydration user={user}>
             <OrderEventsRuntime />
