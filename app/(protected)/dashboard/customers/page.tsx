@@ -77,7 +77,12 @@ export default function CustomersPage() {
         return () => window.clearTimeout(timer)
     }, [search])
     const query = useCustomers({ page, limit, search: debouncedSearch })
-    const paymentCardQuery = useQuery({ queryKey: ['payment-card'], queryFn: getPaymentCard, staleTime: 60_000 })
+    const paymentCardQuery = useQuery({
+        queryKey: ['payment-card'],
+        queryFn: getPaymentCard,
+        enabled: false,
+        staleTime: 60_000,
+    })
     const business = useCurrentBusiness()
     const detail = useCustomer(selected?.id ?? null)
     const mutations = useCustomerMutations()
@@ -313,11 +318,13 @@ export default function CustomersPage() {
                                                 type="button"
                                                 role="menuitem"
                                                 data-cy="customer-send-transfer-card"
-                                                disabled={!paymentCardQuery.data?.paymentCard?.isActive || !normalizeMexicanWhatsAppNumber(customer.phone)}
-                                                title={!customer.phone ? 'El cliente no tiene teléfono registrado' : !paymentCardQuery.data?.paymentCard?.isActive ? 'Configura una tarjeta activa para transferencias' : undefined}
-                                                onClick={() => {
-                                                    const card = paymentCardQuery.data?.paymentCard
+                                                disabled={!normalizeMexicanWhatsAppNumber(customer.phone) || paymentCardQuery.isFetching}
+                                                title={!customer.phone ? 'El cliente no tiene teléfono registrado' : undefined}
+                                                onClick={async () => {
                                                     const phone = normalizeMexicanWhatsAppNumber(customer.phone)
+                                                    if (!phone) return
+                                                    const result = await paymentCardQuery.refetch()
+                                                    const card = result.data?.paymentCard
                                                     if (!card?.isActive || !phone) return
                                                     const message = createTransferCardMessage({ customerName: customer.name, businessName: business.data?.name ?? 'Restaurante', bankName: card.bankName, clabe: card.clabe, beneficiaryName: card.beneficiaryName })
                                                     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer')

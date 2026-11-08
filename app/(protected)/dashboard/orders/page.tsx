@@ -228,6 +228,7 @@ export default function OrdersPage() {
     const paymentCardQuery = useQuery({
         queryKey: ['payment-card'],
         queryFn: getPaymentCard,
+        enabled: false,
         staleTime: 60_000,
     })
     const currency = settings.settings.data?.currency ?? 'MXN'

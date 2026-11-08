@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { usePathname } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/store/authStore'
@@ -34,6 +34,11 @@ export function useOrderEvents() {
     const businessId = user?.businessId ?? null
     const userId = user?.id ?? null
     const pathname = usePathname()
+    const pathnameRef = useRef(pathname)
+
+    useEffect(() => {
+        pathnameRef.current = pathname
+    }, [pathname])
 
     useEffect(() => {
         const scopeKey = userId && businessId ? `${userId}:${businessId}` : null
@@ -41,7 +46,6 @@ export function useOrderEvents() {
         store.resetForScope(scopeKey)
         if (!scopeKey || !businessId) return
         const activeBusinessId = businessId
-        const shouldNotify = !pathname.startsWith('/dashboard/orders')
 
         try {
             const saved = window.localStorage.getItem(getOrderSoundPreferenceKey(businessId))
@@ -96,7 +100,7 @@ export function useOrderEvents() {
                 const orderSource = order.source ?? payload.source
                 if (orderSource !== 'PUBLIC' || payload.source === 'RESTAURANT') return
                 const isNew = useOrderEventsStore.getState().recordOrder(order.id, {
-                    notify: shouldNotify,
+                    notify: !pathnameRef.current.startsWith('/dashboard/orders'),
                 })
                 if (!isNew) return
                 if (useOrderEventsStore.getState().soundEnabled) void playOrderSound()
@@ -213,5 +217,5 @@ export function useOrderEvents() {
             stopOrderSound()
             inFlight.clear()
         }
-    }, [businessId, pathname, queryClient, userId])
+    }, [businessId, queryClient, userId])
 }

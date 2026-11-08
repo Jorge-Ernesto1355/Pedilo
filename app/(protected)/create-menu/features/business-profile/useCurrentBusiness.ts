@@ -81,8 +81,10 @@ export function useCurrentBusiness() {
         queryKey: currentBusinessQueryKey(userId ?? 'anonymous'),
         queryFn: fetchCurrentBusiness,
         enabled: Boolean(userId),
-        staleTime: 0,
-        refetchOnMount: 'always',
+        // The business is session-scoped. Keep it cached across dashboard
+        // navigation; mutations update/invalidate this key explicitly.
+        staleTime: Infinity,
+        refetchOnMount: false,
     })
 
     useEffect(() => {
