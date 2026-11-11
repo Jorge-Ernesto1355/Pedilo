@@ -7,8 +7,9 @@ import {
     useQueryClient,
 } from '@tanstack/react-query'
 import { useAuthStore } from '@/store/authStore'
-import { getOrder, getOrders, updateOrderStatus } from '@/src/lib/api/orderApi'
-import type { OrderPeriod, OrderStatus } from '@/src/lib/api/order-types'
+import { ApiError } from '@/app/auth/lib/client/api-error'
+import { getOrder, getOrders, updateOrder, updateOrderStatus } from '@/src/lib/api/orderApi'
+import type { OrderPeriod, OrderStatus, UpdateOrderPayload } from '@/src/lib/api/order-types'
 import {
     friendlyNotificationError,
     notify,
@@ -277,4 +278,50 @@ export function useOrderStatusMutation() {
     )
 
     return { ...mutation, mutateStatus, pendingOrderIds }
+}
+
+export function useOrderUpdateMutation() {
+    const client = useQueryClient()
+    const user = useAuthStore((state) => state.user)
+    return useMutation({
+        mutationFn: ({ orderId, payload }: { orderId: string; payload: UpdateOrderPayload }) =>
+            updateOrder(orderId, payload),
+        onSuccess: (updatedOrder) => {
+            const businessId = user?.businessId
+            const userId = user?.id ?? 'anonymous'
+            if (!businessId) return
+            client.setQueryData(['order', userId, businessId, updatedOrder.id], updatedOrder)
+            client.setQueriesData<{ orders: Order[] }>(
+                { queryKey: ['orders', businessId] },
+                (data) => {
+                    if (!data) return data
+                    return {
+                        ...data,
+                        orders: data.orders.map((order) =>
+                            order.id === updatedOrder.id ? updatedOrder : order,
+                        ),
+                    }
+                },
+            )
+            void client.invalidateQueries({ queryKey: ['orders', businessId] })
+            notify.success({
+                title: 'Orden actualizada',
+                description: `La orden #${updatedOrder.orderNumber} se guardó correctamente.`,
+            })
+        },
+        onError: (error) => {
+            notify.error({
+                title: 'No se pudo editar la orden',
+                description:
+                    error instanceof ApiError && error.code === 'ORDER_VERSION_CONFLICT'
+                        ? 'La orden cambió en otra sesión. Cierra el editor y vuelve a abrirla.'
+                        : error instanceof ApiError && error.code === 'ORDER_NOT_EDITABLE'
+                          ? 'La orden ya no se puede editar porque cambió de estado.'
+                          : friendlyNotificationError(
+                                error,
+                                'Revisa los datos e inténtalo nuevamente.',
+                            ),
+            })
+        },
+    })
 }
