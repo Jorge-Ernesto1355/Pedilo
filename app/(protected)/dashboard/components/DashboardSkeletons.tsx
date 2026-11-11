@@ -402,3 +402,53 @@ export function InsightsSkeleton() {
         </main>
     )
 }
+
+export function DiscountsPageSkeleton() {
+    return (
+        <main
+            className="bg-[#F6F8FC] px-4 py-6 sm:px-8 lg:px-12"
+            aria-busy="true"
+            aria-label="Cargando descuentos"
+        >
+            <div className="mx-auto max-w-6xl space-y-6">
+                <div className="flex flex-wrap items-end justify-between gap-4">
+                    <div className="space-y-3">
+                        <Block className="h-3 w-28" />
+                        <Block className="h-10 w-48" />
+                        <Block className="h-4 w-80 max-w-full" />
+                    </div>
+                    <Block className="h-11 w-40 rounded-xl" />
+                </div>
+                <div className="flex flex-col gap-3 rounded-2xl border border-[#DCE5F3] bg-white p-4 sm:flex-row sm:items-center">
+                    <Block className="h-11 w-full sm:flex-1" />
+                    <Block className="h-11 w-full sm:w-48" />
+                </div>
+                <div className="space-y-3">
+                    {Array.from({ length: 3 }, (_, index) => (
+                        <article
+                            key={index}
+                            className="rounded-2xl border border-[#DCE5F3] bg-white p-4 shadow-[0_8px_22px_rgb(20_48_105_/_0.04)] sm:p-5"
+                        >
+                            <div className="flex items-center gap-4">
+                                <Block className="size-11 shrink-0 rounded-xl bg-[#D4E0FF]" />
+                                <div className="min-w-0 flex-1 space-y-3">
+                                    <div className="flex gap-2">
+                                        <Block className="h-5 w-40" />
+                                        <Block className="h-5 w-20 rounded-full" />
+                                    </div>
+                                    <Block className="h-4 w-64 max-w-full" />
+                                    <Block className="h-3 w-48" />
+                                </div>
+                                <div className="flex gap-2">
+                                    <Block className="size-9 rounded-xl" />
+                                    <Block className="h-9 w-20 rounded-xl" />
+                                    <Block className="size-9 rounded-xl" />
+                                </div>
+                            </div>
+                        </article>
+                    ))}
+                </div>
+            </div>
+        </main>
+    )
+}
