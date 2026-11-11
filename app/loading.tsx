@@ -1,5 +1,5 @@
-import { DashboardPageSkeleton } from '@/components/AppLoadingSkeleton'
+import AppRouteLoading from './AppRouteLoading'
 
 export default function Loading() {
-    return <DashboardPageSkeleton />
+    return <AppRouteLoading />
 }
