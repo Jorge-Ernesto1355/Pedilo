@@ -43,7 +43,6 @@ import {
 import { DashboardErrorState } from '../components/DashboardErrorState'
 import { OrdersSkeleton } from '../components/DashboardSkeletons'
 import { EmptyState } from '../components/EmptyState'
-import { useBusinessSettings } from '../../create-menu/features/business-settings/useBusinessSettings'
 import { useOrderEventsStore } from '@/store/orderEventsStore'
 import { groupOrderOptions } from '../features/orders/orderDisplay'
 import { CustomerDiscountPanel } from '../features/orders/CustomerDiscountPanel'
@@ -52,10 +51,17 @@ import {
     formatBusinessTime,
     formatMoney,
 } from '../features/dashboard-data/formatters'
-import { getPaymentCard, type PaymentCard } from '../../create-menu/features/payment-card/paymentCardApi'
-import { createTransferCardMessage, normalizeMexicanWhatsAppNumber } from '../../../menu/[slug]/features/public-menu/whatsapp'
+import {
+    getPaymentCard,
+    type PaymentCard,
+} from '../../create-menu/features/payment-card/paymentCardApi'
+import {
+    createTransferCardMessage,
+    normalizeMexicanWhatsAppNumber,
+} from '../../../menu/[slug]/features/public-menu/whatsapp'
 import { useCurrentBusiness } from '../../create-menu/features/business-profile/useCurrentBusiness'
 import { NewRestaurantOrderDrawerSkeleton } from '../features/orders/NewRestaurantOrderDrawerSkeleton'
+import { EditOrderModal } from '../features/orders/EditOrderModal'
 
 const NewRestaurantOrderDrawer = dynamic(
     () =>
@@ -193,6 +199,7 @@ export default function OrdersPage() {
     const [search, setSearch] = useState('')
     const [debouncedSearch, setDebouncedSearch] = useState('')
     const [selectedId, setSelectedId] = useState<string | null>(null)
+    const [editingOrder, setEditingOrder] = useState<Order | null>(null)
     const [newOrderOpen, setNewOrderOpen] = useState(false)
     const [mutationErrorOrderId, setMutationErrorOrderId] = useState<string | null>(null)
     const [limit] = useState(10)
@@ -224,7 +231,6 @@ export default function OrdersPage() {
     }, [debouncedSearch, refetchOrders])
     const detail = useOrder(selectedId)
     const mutation = useOrderStatusMutation()
-    const settings = useBusinessSettings(true)
     const business = useCurrentBusiness()
     const paymentCardQuery = useQuery({
         queryKey: ['payment-card'],
@@ -232,8 +238,8 @@ export default function OrdersPage() {
         enabled: false,
         staleTime: 60_000,
     })
-    const currency = settings.settings.data?.currency ?? 'MXN'
-    const timezone = settings.settings.data?.timezone ?? 'America/Mazatlan'
+    const currency = 'MXN'
+    const timezone = 'America/Mazatlan'
     const totalPages = query.data ? Math.max(1, Math.ceil(query.data.total / limit)) : 1
     const visiblePages = Array.from({ length: totalPages }, (_, index) => index + 1).filter(
         (value) =>
@@ -554,14 +560,24 @@ export default function OrdersPage() {
                         }
                         onClose={() => setSelectedId(null)}
                         onStatusChange={changeStatus}
+                        onEdit={setEditingOrder}
                         paymentCard={paymentCardQuery.data?.paymentCard ?? null}
                         businessName={business.data?.name ?? 'Restaurante'}
                     />
                 )}
-                <NewRestaurantOrderDrawer
-                    open={newOrderOpen}
-                    onClose={() => setNewOrderOpen(false)}
-                />
+                {newOrderOpen && (
+                    <NewRestaurantOrderDrawer open onClose={() => setNewOrderOpen(false)} />
+                )}
+                {editingOrder && (
+                    <EditOrderModal
+                        order={editingOrder}
+                        onClose={() => setEditingOrder(null)}
+                        onSaved={(updated) => {
+                            setEditingOrder(null)
+                            setSelectedId(updated.id)
+                        }}
+                    />
+                )}
                 <footer className="flex flex-col gap-3 border-t border-[#DCE5F3] pt-5 text-sm text-[#65738A] sm:flex-row sm:items-center sm:justify-between">
                     <span className="inline-flex items-center gap-2 text-base font-semibold text-[#53647D]">
                         <ClipboardList className="size-5" />
@@ -654,7 +670,8 @@ function OrderCard({
     const isUncertain = order.creationState === 'uncertain'
     const number = order.orderNumber > 0 ? String(order.orderNumber).padStart(3, '0') : '…'
     const transferPhone = normalizeMexicanWhatsAppNumber(order.customerPhone)
-    const canSendTransferCard = order.paymentMethod === 'TRANSFER' && paymentCard?.isActive && transferPhone
+    const canSendTransferCard =
+        order.paymentMethod === 'TRANSFER' && paymentCard?.isActive && transferPhone
     const transferUrl = canSendTransferCard
         ? `https://wa.me/${transferPhone}?text=${encodeURIComponent(createTransferCardMessage({ customerName: order.customerName ?? 'cliente', businessName, bankName: paymentCard.bankName, clabe: paymentCard.clabe, beneficiaryName: paymentCard.beneficiaryName, orderNumber: order.orderNumber, total: order.total }))}`
         : null
@@ -720,8 +737,8 @@ function OrderCard({
                     )}
                     {order.discountAmount && order.discountAmount > 0 ? (
                         <span className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-[#B8E2C8] bg-[#F3FAF5] px-2.5 py-1 text-[11px] font-bold text-[#23794A]">
-                            <BadgePercent className="size-3.5" aria-hidden="true" /> Cupón canjeado · −
-                            {formatMoney(order.discountAmount, currency)}
+                            <BadgePercent className="size-3.5" aria-hidden="true" /> Cupón canjeado
+                            · −{formatMoney(order.discountAmount, currency)}
                         </span>
                     ) : null}
                 </button>
@@ -777,15 +794,35 @@ function OrderCard({
                     </strong>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
-                    {order.paymentMethod === 'TRANSFER' && paymentCard?.isActive && (
-                        transferUrl ? (
-                            <a data-cy="order-send-transfer-card" href={transferUrl} target="_blank" rel="noreferrer" onClick={(event) => event.stopPropagation()} className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-[#B8DDC6] bg-[#F3FBF5] px-3 text-xs font-bold text-[#17643A]"><CreditCard className="size-3.5" /> Enviar tarjeta</a>
+                    {order.paymentMethod === 'TRANSFER' &&
+                        paymentCard?.isActive &&
+                        (transferUrl ? (
+                            <a
+                                data-cy="order-send-transfer-card"
+                                href={transferUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                onClick={(event) => event.stopPropagation()}
+                                className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-[#B8DDC6] bg-[#F3FBF5] px-3 text-xs font-bold text-[#17643A]"
+                            >
+                                <CreditCard className="size-3.5" /> Enviar tarjeta
+                            </a>
                         ) : (
-                            <button data-cy="order-send-transfer-card-disabled" type="button" disabled title="El cliente no tiene teléfono registrado" className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-[#D7E1EF] px-3 text-xs font-bold text-[#8996A9]"><CreditCard className="size-3.5" /> Enviar tarjeta</button>
-                        )
-                    )}
+                            <button
+                                data-cy="order-send-transfer-card-disabled"
+                                type="button"
+                                disabled
+                                title="El cliente no tiene teléfono registrado"
+                                className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-[#D7E1EF] px-3 text-xs font-bold text-[#8996A9]"
+                            >
+                                <CreditCard className="size-3.5" /> Enviar tarjeta
+                            </button>
+                        ))}
                     {isCreating ? (
-                        <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#65738A]" role="status">
+                        <span
+                            className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#65738A]"
+                            role="status"
+                        >
                             <LoaderCircle className="size-3.5 animate-spin" /> Guardando orden…
                         </span>
                     ) : isUncertain ? (
@@ -843,6 +880,7 @@ function OrderDetailModal({
     errorMessage,
     onClose,
     onStatusChange,
+    onEdit,
     paymentCard,
     businessName,
 }: {
@@ -855,13 +893,15 @@ function OrderDetailModal({
     errorMessage?: string
     onClose: () => void
     onStatusChange: (orderId: string, status: OrderStatus) => void
+    onEdit: (order: Order) => void
     paymentCard: PaymentCard | null
     businessName: string
 }) {
     const transferPhone = normalizeMexicanWhatsAppNumber(order?.customerPhone)
-    const transferUrl = order && paymentCard?.isActive && order.paymentMethod === 'TRANSFER' && transferPhone
-        ? `https://wa.me/${transferPhone}?text=${encodeURIComponent(createTransferCardMessage({ customerName: order.customerName ?? 'cliente', businessName, bankName: paymentCard.bankName, clabe: paymentCard.clabe, beneficiaryName: paymentCard.beneficiaryName, orderNumber: order.orderNumber, total: order.total }))}`
-        : null
+    const transferUrl =
+        order && paymentCard?.isActive && order.paymentMethod === 'TRANSFER' && transferPhone
+            ? `https://wa.me/${transferPhone}?text=${encodeURIComponent(createTransferCardMessage({ customerName: order.customerName ?? 'cliente', businessName, bankName: paymentCard.bankName, clabe: paymentCard.clabe, beneficiaryName: paymentCard.beneficiaryName, orderNumber: order.orderNumber, total: order.total }))}`
+            : null
     return (
         <div className="fixed inset-0 z-50 grid place-items-center bg-[#10224A]/35 p-4 backdrop-blur-[2px]">
             <section
@@ -1069,22 +1109,34 @@ function OrderDetailModal({
                                                 <span className="shrink-0 text-right">
                                                     {prices.hasProductDiscount && (
                                                         <span className="block text-xs text-[#8996A9] line-through">
-                                                            {formatMoney(prices.originalUnitPrice, currency)}{' '}
+                                                            {formatMoney(
+                                                                prices.originalUnitPrice,
+                                                                currency,
+                                                            )}{' '}
                                                             c/u
                                                         </span>
                                                     )}
-                                                    <span className={`block font-semibold ${prices.hasProductDiscount ? 'text-[#16803D]' : 'text-[#243556]'}`}>
-                                                        {formatMoney(prices.finalUnitPrice, currency)} c/u
+                                                    <span
+                                                        className={`block font-semibold ${prices.hasProductDiscount ? 'text-[#16803D]' : 'text-[#243556]'}`}
+                                                    >
+                                                        {formatMoney(
+                                                            prices.finalUnitPrice,
+                                                            currency,
+                                                        )}{' '}
+                                                        c/u
                                                     </span>
-                                                    {prices.hasProductDiscount && item.discountLabel && (
-                                                        <span className="block text-[11px] font-bold text-[#16803D]">
-                                                            {item.discountLabel}
-                                                        </span>
-                                                    )}
+                                                    {prices.hasProductDiscount &&
+                                                        item.discountLabel && (
+                                                            <span className="block text-[11px] font-bold text-[#16803D]">
+                                                                {item.discountLabel}
+                                                            </span>
+                                                        )}
                                                     {item.quantity > 1 && (
                                                         <span className="mt-0.5 block text-xs font-semibold text-[#53647D]">
                                                             {formatMoney(
-                                                                item.subtotal ?? prices.finalUnitPrice * item.quantity,
+                                                                item.subtotal ??
+                                                                    prices.finalUnitPrice *
+                                                                        item.quantity,
                                                                 currency,
                                                             )}
                                                         </span>
@@ -1103,9 +1155,38 @@ function OrderDetailModal({
                         />
                         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#E8EEF6] pt-5">
                             <div className="flex flex-wrap gap-2">
-                                {order.paymentMethod === 'TRANSFER' && paymentCard?.isActive && (
-                                    transferUrl ? <a data-cy="order-detail-send-transfer-card" href={transferUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[#B8DDC6] bg-[#F3FBF5] px-4 text-sm font-bold text-[#17643A]"><CreditCard className="size-4" /> Enviar tarjeta</a> : <button data-cy="order-detail-send-transfer-card-disabled" type="button" disabled title="El cliente no tiene teléfono registrado" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[#D7E1EF] px-4 text-sm font-bold text-[#8996A9]"><CreditCard className="size-4" /> Enviar tarjeta</button>
+                                {(order.status === 'PENDING' || order.status === 'PREPARING') && (
+                                    <button
+                                        type="button"
+                                        onClick={() => onEdit(order)}
+                                        className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[#B9CDFD] bg-[#EEF3FF] px-4 text-sm font-bold text-[#2451C5] transition hover:bg-[#E4ECFF]"
+                                    >
+                                        Editar orden
+                                    </button>
                                 )}
+                                {order.paymentMethod === 'TRANSFER' &&
+                                    paymentCard?.isActive &&
+                                    (transferUrl ? (
+                                        <a
+                                            data-cy="order-detail-send-transfer-card"
+                                            href={transferUrl}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[#B8DDC6] bg-[#F3FBF5] px-4 text-sm font-bold text-[#17643A]"
+                                        >
+                                            <CreditCard className="size-4" /> Enviar tarjeta
+                                        </a>
+                                    ) : (
+                                        <button
+                                            data-cy="order-detail-send-transfer-card-disabled"
+                                            type="button"
+                                            disabled
+                                            title="El cliente no tiene teléfono registrado"
+                                            className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[#D7E1EF] px-4 text-sm font-bold text-[#8996A9]"
+                                        >
+                                            <CreditCard className="size-4" /> Enviar tarjeta
+                                        </button>
+                                    ))}
                                 {nextStatus(order.status) && (
                                     <button
                                         type="button"

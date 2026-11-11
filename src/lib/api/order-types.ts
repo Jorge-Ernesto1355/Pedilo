@@ -3,7 +3,13 @@ export type OrderStatus = (typeof ORDER_STATUSES)[number]
 export type OrderSource = 'PUBLIC' | 'RESTAURANT'
 export type OrderFulfillmentType = 'DINE_IN' | 'PICKUP'
 export type OrderPaymentMethod = 'CASH' | 'TRANSFER'
-export type TransferCardSnapshot = { clabe: string; beneficiaryName: string; bankCode: string; bankName: string; restaurantName: string }
+export type TransferCardSnapshot = {
+    clabe: string
+    beneficiaryName: string
+    bankCode: string
+    bankName: string
+    restaurantName: string
+}
 export type CustomerDiscountType = 'PERCENTAGE' | 'FIXED_AMOUNT'
 export type CustomerDiscountStatus = 'AVAILABLE' | 'RESERVED' | 'USED' | 'EXPIRED' | 'CANCELLED'
 export type CustomerDiscount = {
@@ -66,6 +72,7 @@ export type Order = {
     creationState?: 'pending' | 'uncertain'
     createdAt?: string
     updatedAt?: string
+    version?: number
 }
 export type OrderStatusUpdate = Pick<Order, 'id' | 'orderNumber' | 'status' | 'updatedAt'> & {
     statusRevision: number
@@ -75,7 +82,13 @@ export type CreateOrderPayload = {
     customer: { name: string; phone: string }
     fulfillmentType: OrderFulfillmentType
     paymentMethod?: OrderPaymentMethod
-    items: Array<{ productId: string; quantity: number; optionIds: string[]; comboChoiceIds?: string[]; expectedUnitPrice?: number }>
+    items: Array<{
+        productId: string
+        quantity: number
+        optionIds: string[]
+        comboChoiceIds?: string[]
+        expectedUnitPrice?: number
+    }>
     notes?: string
     ignoreCustomerDiscount?: boolean
     expectedSubtotal?: number
@@ -85,6 +98,7 @@ export type RestaurantOrderItemPayload = {
     productId: string
     quantity: number
     optionIds?: string[]
+    comboChoiceIds?: string[]
 }
 export type CreateRestaurantOrderPayload = {
     customerName?: string
@@ -92,6 +106,19 @@ export type CreateRestaurantOrderPayload = {
     fulfillmentType?: OrderFulfillmentType
     notes?: string
     items: RestaurantOrderItemPayload[]
+}
+export type UpdateOrderPayload = {
+    expectedVersion: number
+    customerId?: string | null
+    fulfillmentType?: OrderFulfillmentType
+    paymentMethod?: OrderPaymentMethod
+    items: Array<{
+        id?: string
+        productId: string
+        quantity: number
+        optionIds?: string[]
+        comboChoiceIds?: string[]
+    }>
 }
 export type Customer = {
     id: string

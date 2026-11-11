@@ -14,7 +14,12 @@ function getUnitPrice(product: PublicMenuProduct, selections: CartSelection[]) {
 function getLineKey(product: PublicMenuProduct, selections: CartSelection[]) {
     return [
         product.id,
-        ...selections.map((selection) => `${selection.id}:${selection.quantity}`).sort(),
+        ...selections
+            .map(
+                (selection) =>
+                    `${selection.kind ?? 'product-option'}:${selection.groupId ?? ''}:${selection.id}:${selection.quantity}`,
+            )
+            .sort(),
     ].join(':')
 }
 
@@ -79,22 +84,52 @@ export function useOrderCart() {
     }
 
     function removeDiscounts() {
-        setLines((current) => current.map((line) => {
-            const product = { ...line.product, discount: null, priceOriginal: undefined, priceFinal: undefined, price_original: undefined, price_final: undefined }
-            return { ...line, product, unitPrice: getUnitPrice(product, line.selections) }
-        }))
+        setLines((current) =>
+            current.map((line) => {
+                const product = {
+                    ...line.product,
+                    discount: null,
+                    priceOriginal: undefined,
+                    priceFinal: undefined,
+                    price_original: undefined,
+                    price_final: undefined,
+                }
+                return { ...line, product, unitPrice: getUnitPrice(product, line.selections) }
+            }),
+        )
     }
 
     function syncDiscounts(discounts: PublicDiscountPrice[]) {
-        const discountByProduct = new Map(discounts.map((discount) => [discount.productId, discount]))
-        setLines((current) => current.map((line) => {
-            const currentDiscount = discountByProduct.get(line.product.id)
-            const product = currentDiscount
-                ? { ...line.product, ...currentDiscount }
-                : { ...line.product, discount: null, priceOriginal: undefined, priceFinal: undefined, price_original: undefined, price_final: undefined }
-            return { ...line, product, unitPrice: getUnitPrice(product, line.selections) }
-        }))
+        const discountByProduct = new Map(
+            discounts.map((discount) => [discount.productId, discount]),
+        )
+        setLines((current) =>
+            current.map((line) => {
+                const currentDiscount = discountByProduct.get(line.product.id)
+                const product = currentDiscount
+                    ? { ...line.product, ...currentDiscount }
+                    : {
+                          ...line.product,
+                          discount: null,
+                          priceOriginal: undefined,
+                          priceFinal: undefined,
+                          price_original: undefined,
+                          price_final: undefined,
+                      }
+                return { ...line, product, unitPrice: getUnitPrice(product, line.selections) }
+            }),
+        )
     }
 
-    return { lines, totalItems, total, add, edit, changeQuantity, clear, removeDiscounts, syncDiscounts }
+    return {
+        lines,
+        totalItems,
+        total,
+        add,
+        edit,
+        changeQuantity,
+        clear,
+        removeDiscounts,
+        syncDiscounts,
+    }
 }

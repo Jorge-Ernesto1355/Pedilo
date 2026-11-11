@@ -16,6 +16,7 @@ import { SalesPointsTable } from '../features/dashboard-sales/SalesPointsTable'
 import { OrdersKpiCard } from '../features/dashboard-orders/OrdersKpiCard'
 import { DashboardCardError } from '../components/DashboardCardError'
 import { SalesAccountingNotice } from '../features/dashboard-sales/SalesAccountingNotice'
+import { SalesSkeleton } from '../components/DashboardSkeletons'
 
 export default function SalesPage() {
     const { range, setRange } = useDateRangeFilter('today')
@@ -24,6 +25,9 @@ export default function SalesPage() {
     const historicalSales = useHistoricalSalesData()
     const averageTicket = useAverageTicketData(range)
     const currency = 'MXN'
+
+    if (sales.isLoading || trend.isLoading || historicalSales.isLoading || averageTicket.isLoading)
+        return <SalesSkeleton />
 
     return (
         <main

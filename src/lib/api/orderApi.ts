@@ -13,6 +13,7 @@ import type {
     OrderStatus,
     OrderStatusUpdate,
     OrdersResponse,
+    UpdateOrderPayload,
 } from './order-types'
 
 const credentials = { withCredentials: true }
@@ -84,6 +85,11 @@ export function updateOrderStatus(orderId: string, status: OrderStatus) {
             { status },
             credentials,
         ),
+    ).then((body) => body.order)
+}
+export function updateOrder(orderId: string, payload: UpdateOrderPayload) {
+    return request(() =>
+        apiClient.patch<{ order: Order }>(`/businesses/orders/${orderId}`, payload, credentials),
     ).then((body) => body.order)
 }
 export function getCustomers(
