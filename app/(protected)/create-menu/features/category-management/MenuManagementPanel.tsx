@@ -21,8 +21,10 @@ import {
 import { isComboProduct, type Product } from '../product-management/product.types'
 import type { ProductFormValues } from '../product-management/product.schema'
 import {
+    CategoryProductsSkeleton,
     CreateMenuEmptyState,
     CreateMenuErrorState,
+    MenuDetailSkeleton,
     MenuManagementSkeleton,
 } from '../../components/CreateMenuStates'
 import {
@@ -38,7 +40,10 @@ const LazyAddProductModal = dynamic(
     { loading: () => <AddProductModalSkeleton /> },
 )
 const LazyComboManagerModal = dynamic(
-    () => import('../product-management/ComboManagerModal').then((module) => module.ComboManagerModal),
+    () =>
+        import('../product-management/ComboManagerModal').then(
+            (module) => module.ComboManagerModal,
+        ),
     { loading: () => <ComboManagerModalSkeleton /> },
 )
 
@@ -117,6 +122,8 @@ function CategoryProducts({
     const [reorderingProductId, setReorderingProductId] = useState<string | null>(null)
     const reducedMotion = useReducedMotion()
     const products = productsQuery.data ?? []
+
+    if (productsQuery.isLoading) return <CategoryProductsSkeleton />
 
     function saveProduct(values: ProductFormValues, setError: UseFormSetError<ProductFormValues>) {
         if (productManagement.createProduct.isPending || productManagement.updateProduct.isPending)
@@ -222,9 +229,7 @@ function CategoryProducts({
                         <GripVertical className="size-3.5" />
                     </span>
                     <p className="text-xs font-semibold text-[#8996A9]">
-                        {productsQuery.isLoading
-                            ? 'Cargando productos…'
-                            : `${products.length} ${products.length === 1 ? 'producto' : 'productos'}`}
+                        {`${products.length} ${products.length === 1 ? 'producto' : 'productos'}`}
                     </p>
                 </div>
                 <button
@@ -719,10 +724,8 @@ export function MenuManagementPanel({ management }: { management: MenuManagement
                         ))}
                     </div>
                     <div className="min-w-0 border-t border-[#E8EEF6] pt-5 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0">
-                        {menuQuery.isLoading && (
-                            <p className="text-sm text-[#8996A9]">Cargando menú…</p>
-                        )}
-                        {selectedMenu && (
+                        {menuQuery.isLoading && <MenuDetailSkeleton />}
+                        {!menuQuery.isLoading && selectedMenu && (
                             <>
                                 <div className="flex items-start justify-between gap-3">
                                     <div>
