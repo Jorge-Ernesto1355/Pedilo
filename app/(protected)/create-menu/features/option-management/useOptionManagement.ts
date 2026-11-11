@@ -43,6 +43,7 @@ export function useOptionGroups(productId: string | null) {
             : ['option-groups', 'product', 'none'],
         queryFn: () => getOptionGroups(productId as string),
         enabled: Boolean(productId),
+        refetchOnMount: 'always',
     })
 }
 
@@ -61,6 +62,7 @@ export function useOptions(optionGroupId: string | null) {
             : ['options', 'group', 'none'],
         queryFn: () => getOptions(optionGroupId as string),
         enabled: Boolean(optionGroupId),
+        refetchOnMount: 'always',
     })
 }
 
