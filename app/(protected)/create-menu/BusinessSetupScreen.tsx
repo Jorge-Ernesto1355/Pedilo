@@ -30,7 +30,7 @@ import { locationCoordinatesSchema } from './features/business-location/location
 import { BusinessSettingsModal } from './features/business-settings/BusinessSettingsModal'
 import { BusinessActionsPanel } from './features/business-settings/BusinessActionsPanel'
 import { GoogleReviewsModalSkeleton } from './features/google-reviews/GoogleReviewsModalSkeleton'
-import { BusinessPreviewSkeleton } from './components/CreateMenuStates'
+import { BusinessPreviewSkeleton, CreateMenuPageSkeleton } from './components/CreateMenuStates'
 import Link from 'next/link'
 import { CreateMenuErrorState } from './components/CreateMenuStates'
 import { DeferredPaymentCard } from './features/payment-card/DeferredPaymentCard'
@@ -41,7 +41,10 @@ import {
 } from './features/business-profile/useCurrentBusiness'
 
 const LazyGoogleReviewsModal = dynamic(
-    () => import('./features/google-reviews/GoogleReviewsModal').then((module) => module.GoogleReviewsModal),
+    () =>
+        import('./features/google-reviews/GoogleReviewsModal').then(
+            (module) => module.GoogleReviewsModal,
+        ),
     { loading: () => <GoogleReviewsModalSkeleton /> },
 )
 
@@ -292,6 +295,10 @@ export default function BusinessSetupScreen({
         )
     }
 
+    if (businessQuery.isLoading || categories.menusQuery.isLoading) {
+        return <CreateMenuPageSkeleton />
+    }
+
     return (
         <FormProvider {...form}>
             <main className="min-h-[calc(100dvh-72px)] bg-[#F5F8FC] text-[#12234A]">
@@ -385,14 +392,16 @@ export default function BusinessSetupScreen({
                                     </h2>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                <button
-                                    type="button"
-                                    onClick={categories.open}
-                                    className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-[#C9D7EA] bg-white px-3.5 py-2.5 text-sm font-bold text-[#243556] shadow-[0_5px_14px_rgb(20_48_105_/_0.04)] transition hover:-translate-y-0.5 hover:border-[#9EB3D8] hover:text-[#1E40AF] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#1E40AF]/15"
-                                >
-                                    <span className="text-lg leading-none text-[#2451C5]">+</span>
-                                    <span>Crear menú</span>
-                                </button>
+                                    <button
+                                        type="button"
+                                        onClick={categories.open}
+                                        className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-[#C9D7EA] bg-white px-3.5 py-2.5 text-sm font-bold text-[#243556] shadow-[0_5px_14px_rgb(20_48_105_/_0.04)] transition hover:-translate-y-0.5 hover:border-[#9EB3D8] hover:text-[#1E40AF] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#1E40AF]/15"
+                                    >
+                                        <span className="text-lg leading-none text-[#2451C5]">
+                                            +
+                                        </span>
+                                        <span>Crear menú</span>
+                                    </button>
                                 </div>
                             </div>
                             {!businessConfirmed ? (
