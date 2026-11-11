@@ -13,6 +13,7 @@ import { GoogleReviewsStatsCard } from './GoogleReviewsStatsCard'
 import { MenuVisitsCard } from './MenuVisitsCard'
 import { DeferredDashboardModule, DeferredDashboardCardFallback } from './DeferredDashboardModule'
 import type { SalesPeriod } from '../dashboard-data/dashboardData.types'
+import { OverviewSkeleton } from '../../components/DashboardSkeletons'
 
 const LazyTrendModule = lazy(() => import('./OverviewTrendModule'))
 const LazyBestSellersModule = lazy(() => import('./OverviewBestSellersModule'))
@@ -33,6 +34,8 @@ export function DashboardOverviewProgressive({ todayIso }: { todayIso: string })
     // editable business settings until the settings UI is opened.
     const currency = 'MXN'
 
+    if (sales.isLoading || averageTicket.isLoading) return <OverviewSkeleton />
+
     return (
         <main className="mx-auto max-w-[1440px] space-y-7 px-5 py-8 sm:px-8 lg:px-10 lg:py-10">
             <header className="flex flex-col justify-between gap-5 border-b border-[#DCE5F3] pb-6 sm:flex-row sm:items-end">
@@ -41,13 +44,20 @@ export function DashboardOverviewProgressive({ todayIso }: { todayIso: string })
                         <CalendarDays className="size-4 text-[#2451C5]" aria-hidden="true" />
                         <time dateTime={todayIso}>{formatToday(todayIso)}</time>
                     </div>
-                    <h1 className="mt-2 font-display text-4xl tracking-[-.06em] text-[#12234A] sm:text-5xl">Ganancias</h1>
-                    <p className="mt-2 text-sm text-[#65738A]">Revisa tus ventas y la actividad de tu negocio.</p>
+                    <h1 className="mt-2 font-display text-4xl tracking-[-.06em] text-[#12234A] sm:text-5xl">
+                        Ganancias
+                    </h1>
+                    <p className="mt-2 text-sm text-[#65738A]">
+                        Revisa tus ventas y la actividad de tu negocio.
+                    </p>
                 </div>
                 <DateRangeFilter value={range} onChange={setRange} label="Periodo del dashboard" />
             </header>
 
-            <section className="grid gap-4 lg:grid-cols-[1.35fr_0.65fr]" aria-label="Resumen del negocio">
+            <section
+                className="grid gap-4 lg:grid-cols-[1.35fr_0.65fr]"
+                aria-label="Resumen del negocio"
+            >
                 <SalesKpiCard
                     data={sales.data}
                     currency={currency}
@@ -69,12 +79,17 @@ export function DashboardOverviewProgressive({ todayIso }: { todayIso: string })
                 />
             </section>
 
-            <section className="grid min-w-0 gap-4 lg:grid-cols-2" aria-label="Actividad del menú y reseñas">
+            <section
+                className="grid min-w-0 gap-4 lg:grid-cols-2"
+                aria-label="Actividad del menú y reseñas"
+            >
                 <GoogleReviewsStatsCard period={range} enabled={secondaryPriorityEnabled} />
                 <MenuVisitsCard period={range} enabled={secondaryPriorityEnabled} />
             </section>
 
-            <DeferredDashboardModule fallback={<DeferredDashboardCardFallback className="min-h-[390px]" />}>
+            <DeferredDashboardModule
+                fallback={<DeferredDashboardCardFallback className="min-h-[390px]" />}
+            >
                 <LazyTrendModule period={range as SalesPeriod} currency={currency} />
             </DeferredDashboardModule>
 
@@ -82,7 +97,9 @@ export function DashboardOverviewProgressive({ todayIso }: { todayIso: string })
                 <LazyBestSellersModule />
             </DeferredDashboardModule>
 
-            <DeferredDashboardModule fallback={<DeferredDashboardCardFallback className="min-h-[300px]" />}>
+            <DeferredDashboardModule
+                fallback={<DeferredDashboardCardFallback className="min-h-[300px]" />}
+            >
                 <LazyRecentOrdersModule />
             </DeferredDashboardModule>
         </main>
