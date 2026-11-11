@@ -268,25 +268,27 @@ export function GroupModal({
             })
             // The modal is reused for different groups and needs a clean local draft.
             // eslint-disable-next-line react-hooks/set-state-in-effect
-            setDraftOptions(
-                group?.options?.map(
-                    ({ name, price, minSelections, maxSelections, isAvailable }) => ({
-                        name,
-                        price: Number(price),
-                        minSelections: minSelections ?? 0,
-                        maxSelections: maxSelections ?? 1,
-                        isAvailable,
-                    }),
-                ) ?? [],
-            )
+            if (!group || group.options?.length) {
+                setDraftOptions(
+                    group?.options?.map(
+                        ({ name, price, minSelections, maxSelections, isAvailable }) => ({
+                            name,
+                            price: Number(price),
+                            minSelections: minSelections ?? 0,
+                            maxSelections: maxSelections ?? 1,
+                            isAvailable,
+                        }),
+                    ) ?? [],
+                )
+            }
         }
     }, [open, group, reset])
     useEffect(() => {
-        if (!open || !group || !existingOptionsQuery.data?.length) return
+        if (!open || !group || !existingOptionsQuery.isSuccess) return
         // The group response may not include options; hydrate the editor from its options query.
         // eslint-disable-next-line react-hooks/set-state-in-effect
         setDraftOptions(
-            existingOptionsQuery.data.map(
+            (existingOptionsQuery.data ?? []).map(
                 ({ name, price, minSelections, maxSelections, isAvailable }) => ({
                     name,
                     price: Number(price),
@@ -308,7 +310,10 @@ export function GroupModal({
             setError('optionPrice', { message: 'Usa un precio válido.' })
             return
         }
-        if (!/^\d+$/.test(values.optionMinSelections) || !/^\d+$/.test(values.optionMaxSelections)) {
+        if (
+            !/^\d+$/.test(values.optionMinSelections) ||
+            !/^\d+$/.test(values.optionMaxSelections)
+        ) {
             setError('optionMaxSelections', { message: 'Usa números enteros.' })
             return
         }
