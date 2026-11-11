@@ -13,6 +13,45 @@ export type MenuProduct = {
     name: string
     categoryId: string | null
     price?: number | string
+    type?: 'PRODUCT' | 'COMBO'
+    includedProducts?: Array<{
+        id: string
+        productId: string
+        quantity?: number
+        sortOrder: number
+        product: {
+            id: string
+            name: string
+            description: string | null
+            price: number
+            imageUrl: string | null
+            categoryId: string
+            isAvailable: boolean
+        }
+    }>
+    comboOptionGroups?: Array<{
+        id: string
+        comboProductId: string
+        name: string
+        minSelections: number
+        maxSelections: number
+        sortOrder: number
+        products: Array<{
+            id: string
+            productId: string
+            quantity?: number
+            sortOrder: number
+            product: {
+                id: string
+                name: string
+                description: string | null
+                price: number
+                imageUrl: string | null
+                categoryId: string
+                isAvailable: boolean
+            }
+        }>
+    }>
 }
 
 export type Menu = {
