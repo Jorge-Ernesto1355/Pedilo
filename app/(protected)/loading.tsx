@@ -1,6 +1,5 @@
-import { DashboardNavSkeleton } from '@/components/AppLoadingSkeleton'
-import { OverviewSkeleton } from './dashboard/components/DashboardSkeletons'
+import { ProtectedRouteLoading } from './ProtectedRouteLoading'
 
 export default function Loading() {
-    return <><DashboardNavSkeleton /><OverviewSkeleton /></>
+    return <ProtectedRouteLoading />
 }
