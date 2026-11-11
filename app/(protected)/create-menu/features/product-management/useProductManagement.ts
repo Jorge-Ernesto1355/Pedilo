@@ -48,6 +48,7 @@ export function useProduct(productId: string | null) {
         queryFn: () => getProduct(productId as string),
         enabled: Boolean(productId),
         staleTime: 5 * 60 * 1000,
+        refetchOnMount: 'always',
     })
 }
 
