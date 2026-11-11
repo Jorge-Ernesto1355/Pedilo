@@ -33,6 +33,8 @@ import { useCreateRestaurantOrder } from './useCreateRestaurantOrder'
 import type { Order } from '@/src/lib/api/order-types'
 import { getMenus } from '@/app/(protected)/create-menu/features/category-management/menuApi'
 import { getProductsPaged } from '@/app/(protected)/create-menu/features/product-management/productApi'
+import type { MenuProduct } from '@/app/(protected)/create-menu/features/category-management/menu.types'
+import type { Product } from '@/app/(protected)/create-menu/features/product-management/product.types'
 import { apiClient } from '@/src/lib/api/client'
 
 const CUSTOMER_NAME_MAX_LENGTH = 80
@@ -53,17 +55,27 @@ type RestaurantDiscount = {
     menu_ids?: string[]
 }
 
-function discountForProduct(product: { id: string; categoryId: string; price: number }, menuId: string, discounts: RestaurantDiscount[]) {
+function discountForProduct(
+    product: { id: string; categoryId: string; price: number },
+    menuId: string,
+    discounts: RestaurantDiscount[],
+) {
     const now = Date.now()
     const candidates = discounts.filter((discount) => {
         if (discount.status !== 'ACTIVE') return false
         if (discount.startsAt && new Date(discount.startsAt).getTime() > now) return false
         if (new Date(discount.endsAt).getTime() <= now) return false
-        if (discount.scope === 'PRODUCTS') return discount.product_ids?.includes(product.id) ?? false
-        if (discount.scope === 'CATEGORIES') return discount.category_ids?.includes(product.categoryId) ?? false
+        if (discount.scope === 'PRODUCTS')
+            return discount.product_ids?.includes(product.id) ?? false
+        if (discount.scope === 'CATEGORIES')
+            return discount.category_ids?.includes(product.categoryId) ?? false
         return discount.menu_ids?.includes(menuId) ?? false
     })
-    return candidates.sort((a, b) => new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime())[0] ?? null
+    return (
+        candidates.sort(
+            (a, b) => new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime(),
+        )[0] ?? null
+    )
 }
 
 function priceWithRestaurantDiscount(price: number, discount: RestaurantDiscount | null) {
@@ -146,11 +158,27 @@ function useRestaurantCatalog(enabled: boolean) {
                                   categoryId: product.categoryId,
                                   name: product.name,
                                   price: product.price,
+                                  type: product.type,
+                                  includedProducts: undefined,
+                                  comboOptionGroups: undefined,
                               }))
                     ).map((menuProduct) => {
                         const product = productsById.get(menuProduct.id)
+                        const comboProduct = product as
+                            | (Product &
+                                  Pick<MenuProduct, 'includedProducts' | 'comboOptionGroups'>)
+                            | undefined
                         const basePrice = Number(product?.price ?? menuProduct.price ?? 0)
-                        const discount = discountForProduct({ id: menuProduct.id, categoryId: product?.categoryId ?? menuProduct.categoryId ?? category.id, price: basePrice }, menu.id, discounts)
+                        const discount = discountForProduct(
+                            {
+                                id: menuProduct.id,
+                                categoryId:
+                                    product?.categoryId ?? menuProduct.categoryId ?? category.id,
+                                price: basePrice,
+                            },
+                            menu.id,
+                            discounts,
+                        )
                         const finalPrice = priceWithRestaurantDiscount(basePrice, discount)
                         return {
                             id: menuProduct.id,
@@ -164,10 +192,27 @@ function useRestaurantCatalog(enabled: boolean) {
                             priceFinal: finalPrice,
                             price_original: basePrice,
                             price_final: finalPrice,
-                            discount: discount ? { id: discount.id, name: discount.name, type: discount.type, value: discount.value, label: discount.type === 'PERCENT' ? `-${discount.value}%` : `-$${discount.value.toFixed(2)}`, endsAt: discount.endsAt } : null,
+                            discount: discount
+                                ? {
+                                      id: discount.id,
+                                      name: discount.name,
+                                      type: discount.type,
+                                      value: discount.value,
+                                      label:
+                                          discount.type === 'PERCENT'
+                                              ? `-${discount.value}%`
+                                              : `-$${discount.value.toFixed(2)}`,
+                                      endsAt: discount.endsAt,
+                                  }
+                                : null,
                             imageUrl: product?.imageUrl ?? null,
                             sortOrder: product?.sortOrder ?? 0,
                             isAvailable: product?.isAvailable ?? product?.active !== false,
+                            type: product?.type ?? menuProduct.type,
+                            includedProducts:
+                                comboProduct?.includedProducts ?? menuProduct.includedProducts,
+                            comboOptionGroups:
+                                comboProduct?.comboOptionGroups ?? menuProduct.comboOptionGroups,
                             optionGroups: (product?.optionGroups ??
                                 []) as PublicProduct['optionGroups'],
                         }
@@ -286,7 +331,8 @@ export function NewRestaurantOrderDrawer({
                                 price_final: refreshedProduct.price_final,
                             },
                             line.selections,
-                        ) * line.quantity
+                        ) *
+                            line.quantity
                     )
                 }, 0)
                 if (Math.abs(currentSubtotal - cart.total) > 0.001) {
@@ -346,8 +392,19 @@ export function NewRestaurantOrderDrawer({
                 productId: line.product.id,
                 quantity: line.quantity,
                 optionIds: line.selections.flatMap((selection) =>
-                    Array.from({ length: selection.quantity }, () => selection.id),
+                    selection.kind !== 'combo-choice'
+                        ? Array.from({ length: selection.quantity }, () => selection.id)
+                        : [],
                 ),
+                ...(line.selections.some((selection) => selection.kind === 'combo-choice')
+                    ? {
+                          comboChoiceIds: line.selections
+                              .filter((selection) => selection.kind === 'combo-choice')
+                              .flatMap((selection) =>
+                                  Array.from({ length: selection.quantity }, () => selection.id),
+                              ),
+                      }
+                    : {}),
             })),
         }
         mutation.mutate(
@@ -684,13 +741,25 @@ function CartSummary({
                                     </p>
                                 )}
                                 <p className="mt-1 text-xs font-semibold text-[#65738A]">
-                                    {line.product.discount && originalUnitPrice(line) > line.unitPrice && (
-                                        <span className="mr-1 text-[#8996A9] line-through">
-                                            ${originalUnitPrice(line).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
-                                        </span>
-                                    )}
-                                    <span className={line.product.discount ? 'text-[#16803D]' : undefined}>
-                                        ${line.unitPrice.toLocaleString('es-MX', { minimumFractionDigits: 2 })} c/u
+                                    {line.product.discount &&
+                                        originalUnitPrice(line) > line.unitPrice && (
+                                            <span className="mr-1 text-[#8996A9] line-through">
+                                                $
+                                                {originalUnitPrice(line).toLocaleString('es-MX', {
+                                                    minimumFractionDigits: 2,
+                                                })}
+                                            </span>
+                                        )}
+                                    <span
+                                        className={
+                                            line.product.discount ? 'text-[#16803D]' : undefined
+                                        }
+                                    >
+                                        $
+                                        {line.unitPrice.toLocaleString('es-MX', {
+                                            minimumFractionDigits: 2,
+                                        })}{' '}
+                                        c/u
                                     </span>
                                     {line.product.discount && (
                                         <span className="ml-1 text-[11px] font-bold text-[#16803D]">
@@ -894,7 +963,8 @@ function CustomerStep({
                             ({priceChange.difference > 0 ? 'subió' : 'bajó'} $
                             {Math.abs(priceChange.difference).toLocaleString('es-MX', {
                                 minimumFractionDigits: 2,
-                            })}). El descuento ya no está disponible con el precio anterior.
+                            })}
+                            ). El descuento ya no está disponible con el precio anterior.
                         </p>
                         <div className="mt-3 flex gap-2">
                             <button
