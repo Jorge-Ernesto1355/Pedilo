@@ -3,13 +3,15 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Plus, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
 import { Modal } from '@/app/components/ui/Modal'
 import type { MenuCreationInput } from './menu.types'
 import {
     CATEGORY_DESCRIPTION_MAX_LENGTH,
+    CATEGORY_NAME_MAX_LENGTH,
     MENU_DESCRIPTION_MAX_LENGTH,
+    MENU_NAME_MAX_LENGTH,
 } from '../../description-limits'
 
 export const menuFormSchema = z.object({
@@ -17,12 +19,15 @@ export const menuFormSchema = z.object({
         .string()
         .trim()
         .min(1, 'Escribe un nombre para el menú.')
-        .max(80, 'Usa 80 caracteres o menos.'),
+        .max(MENU_NAME_MAX_LENGTH, `Usa ${MENU_NAME_MAX_LENGTH} caracteres o menos.`),
     description: z
         .string()
         .trim()
         .max(MENU_DESCRIPTION_MAX_LENGTH, `Usa ${MENU_DESCRIPTION_MAX_LENGTH} caracteres o menos.`),
-    category: z.string().trim().max(40, 'Usa 40 caracteres o menos.'),
+    category: z
+        .string()
+        .trim()
+        .max(CATEGORY_NAME_MAX_LENGTH, `Usa ${CATEGORY_NAME_MAX_LENGTH} caracteres o menos.`),
     categoryDescription: z
         .string()
         .trim()
@@ -52,6 +57,7 @@ export function AddCategoryModal({
     const [draftCategories, setDraftCategories] = useState<MenuCreationInput['categories']>([])
     const addingCategory = useRef(false)
     const {
+        control,
         register,
         handleSubmit,
         getValues,
@@ -63,6 +69,10 @@ export function AddCategoryModal({
         resolver: zodResolver(menuFormSchema),
         defaultValues: { name: '', description: '', category: '', categoryDescription: '' },
     })
+    const watchedMenuName = useWatch({ control, name: 'name' })
+    const watchedCategoryName = useWatch({ control, name: 'category' })
+    const watchedMenuDescription = useWatch({ control, name: 'description' })
+    const watchedCategoryDescription = useWatch({ control, name: 'categoryDescription' })
 
     useEffect(() => {
         if (!open) return
@@ -147,10 +157,14 @@ export function AddCategoryModal({
                     <input
                         id="menu-name"
                         autoFocus
+                        maxLength={MENU_NAME_MAX_LENGTH}
                         placeholder="Ej. Menú principal"
                         className="w-full rounded-xl border border-[#D7E1EF] px-3.5 py-3 text-sm outline-none transition placeholder:text-[#A0ACBD] focus:border-[#2451C5] focus:ring-4 focus:ring-[#2451C5]/10"
                         {...register('name')}
                     />
+                    <p className="mt-1 text-right text-xs text-[#8996A9]">
+                        {watchedMenuName.length}/{MENU_NAME_MAX_LENGTH}
+                    </p>
                     {errors.name && (
                         <p role="alert" className="mt-1.5 text-xs text-[#B42318]">
                             {errors.name.message}
@@ -173,6 +187,9 @@ export function AddCategoryModal({
                         className="w-full resize-none rounded-xl border border-[#D7E1EF] px-3.5 py-3 text-sm outline-none transition placeholder:text-[#A0ACBD] focus:border-[#2451C5] focus:ring-4 focus:ring-[#2451C5]/10"
                         {...register('description')}
                     />
+                    <p className="mt-1 text-right text-xs text-[#8996A9]">
+                        {watchedMenuDescription.length}/{MENU_DESCRIPTION_MAX_LENGTH}
+                    </p>
                     {errors.description && (
                         <p role="alert" className="mt-1.5 text-xs text-[#B42318]">
                             {errors.description.message}
@@ -191,10 +208,14 @@ export function AddCategoryModal({
                             </label>
                             <input
                                 id="category-name"
+                                maxLength={CATEGORY_NAME_MAX_LENGTH}
                                 placeholder="Nombre de categoría"
                                 className="w-full rounded-xl border border-[#D7E1EF] px-3.5 py-3 text-sm outline-none transition placeholder:text-[#A0ACBD] focus:border-[#2451C5] focus:ring-4 focus:ring-[#2451C5]/10"
                                 {...register('category')}
                             />
+                            <p className="mt-1 text-right text-xs text-[#8996A9]">
+                                {watchedCategoryName.length}/{CATEGORY_NAME_MAX_LENGTH}
+                            </p>
                             {errors.category && (
                                 <p role="alert" className="mt-1.5 text-xs text-[#B42318]">
                                     {errors.category.message}
@@ -211,6 +232,10 @@ export function AddCategoryModal({
                                 className="mt-2 w-full resize-none rounded-xl border border-[#D7E1EF] px-3.5 py-2.5 text-sm outline-none transition placeholder:text-[#A0ACBD] focus:border-[#2451C5] focus:ring-4 focus:ring-[#2451C5]/10"
                                 {...register('categoryDescription')}
                             />
+                            <p className="mt-1 text-right text-xs text-[#8996A9]">
+                                {watchedCategoryDescription.length}/
+                                {CATEGORY_DESCRIPTION_MAX_LENGTH}
+                            </p>
                             {errors.categoryDescription && (
                                 <p role="alert" className="mt-1.5 text-xs text-[#B42318]">
                                     {errors.categoryDescription.message}

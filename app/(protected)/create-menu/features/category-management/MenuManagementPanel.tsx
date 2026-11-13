@@ -5,8 +5,8 @@
 import dynamic from 'next/dynamic'
 import { useState } from 'react'
 import type { UseFormSetError } from 'react-hook-form'
-import { motion, useReducedMotion } from 'framer-motion'
-import { GripVertical, LoaderCircle, Pencil, Plus, RefreshCw, Trash2, Utensils } from 'lucide-react'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
+import { ChevronDown, ChevronUp, GripVertical, LoaderCircle, Pencil, Plus, RefreshCw, Trash2, Utensils } from 'lucide-react'
 import { friendlyNotificationError, notify } from '@/src/lib/notifications/notify'
 import { Modal } from '@/app/components/ui/Modal'
 import { ApiError } from '@/app/auth/lib/client/api-error'
@@ -29,7 +29,9 @@ import {
 } from '../../components/CreateMenuStates'
 import {
     CATEGORY_DESCRIPTION_MAX_LENGTH,
+    CATEGORY_NAME_MAX_LENGTH,
     MENU_DESCRIPTION_MAX_LENGTH,
+    MENU_NAME_MAX_LENGTH,
 } from '../../description-limits'
 
 type MenuManagement = ReturnType<typeof useCategoryManagement>
@@ -500,6 +502,7 @@ export function MenuManagementPanel({ management }: { management: MenuManagement
     const [targetCategoryId, setTargetCategoryId] = useState('')
     const [draggedCategoryId, setDraggedCategoryId] = useState<string | null>(null)
     const [reorderingCategoryId, setReorderingCategoryId] = useState<string | null>(null)
+    const [collapsedCategoryIds, setCollapsedCategoryIds] = useState<Set<string>>(() => new Set())
     const reducedMotion = useReducedMotion()
     const productManagement = useProductManagement()
 
@@ -521,6 +524,13 @@ export function MenuManagementPanel({ management }: { management: MenuManagement
             })
             return
         }
+        if (menuName.trim().length > MENU_NAME_MAX_LENGTH) {
+            notify.warning({
+                title: 'Nombre demasiado largo',
+                description: `Usa ${MENU_NAME_MAX_LENGTH} caracteres o menos.`,
+            })
+            return
+        }
         management.updateMenu.mutate(
             {
                 menuId: selectedMenu.id,
@@ -536,6 +546,13 @@ export function MenuManagementPanel({ management }: { management: MenuManagement
             notify.warning({
                 title: 'Falta el nombre de la categoría',
                 description: 'Escribe un nombre para continuar.',
+            })
+            return
+        }
+        if (categoryName.trim().length > CATEGORY_NAME_MAX_LENGTH) {
+            notify.warning({
+                title: 'Nombre demasiado largo',
+                description: `Usa ${CATEGORY_NAME_MAX_LENGTH} caracteres o menos.`,
             })
             return
         }
@@ -557,6 +574,13 @@ export function MenuManagementPanel({ management }: { management: MenuManagement
     function saveEditedCategory() {
         if (management.updateCategory.isPending) return
         if (!editingCategory || !editingCategory.name.trim()) return
+        if (editingCategory.name.trim().length > CATEGORY_NAME_MAX_LENGTH) {
+            notify.warning({
+                title: 'Nombre demasiado largo',
+                description: `Usa ${CATEGORY_NAME_MAX_LENGTH} caracteres o menos.`,
+            })
+            return
+        }
         management.updateCategory.mutate(
             {
                 categoryId: editingCategory.id,
@@ -635,6 +659,15 @@ export function MenuManagementPanel({ management }: { management: MenuManagement
         setReorderingCategoryId(draggedCategoryId)
         setDraggedCategoryId(null)
         reorderCategories(next.map((category) => category.id))
+    }
+
+    function toggleCategoryProducts(categoryId: string) {
+        setCollapsedCategoryIds((current) => {
+            const next = new Set(current)
+            if (next.has(categoryId)) next.delete(categoryId)
+            else next.add(categoryId)
+            return next
+        })
     }
 
     function moveAndDelete() {
@@ -725,6 +758,35 @@ export function MenuManagementPanel({ management }: { management: MenuManagement
                     </div>
                     <div className="min-w-0 border-t border-[#E8EEF6] pt-5 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0">
                         {menuQuery.isLoading && <MenuDetailSkeleton />}
+                        {!menuQuery.isLoading && menuQuery.isError && (
+                            <CreateMenuErrorState
+                                title="No pudimos abrir este menú"
+                                description={errorMessage(
+                                    menuQuery.error,
+                                    'No logramos cargar sus categorías y productos.',
+                                )}
+                                onRetry={() => void menuQuery.refetch()}
+                            />
+                        )}
+                        {!menuQuery.isLoading && !menuQuery.isError && !selectedMenu && (
+                            <div className="grid min-h-[360px] place-items-center rounded-2xl border border-dashed border-[#C7D5E9] bg-[#FBFCFE] p-6 text-center sm:p-10">
+                                <div className="max-w-xs">
+                                    <div className="mx-auto grid size-12 place-items-center rounded-2xl bg-[#EAF0FF] text-[#2451C5]">
+                                        <Utensils className="size-5" />
+                                    </div>
+                                    <h3 className="mt-4 font-display text-xl text-[#243556]">
+                                        Elige un menú para empezar
+                                    </h3>
+                                    <p className="mt-2 text-sm leading-6 text-[#65738A]">
+                                        Selecciona un menú de la lista para administrar sus
+                                        categorías, productos y opciones.
+                                    </p>
+                                    <p className="mt-4 text-xs font-semibold text-[#8996A9]">
+                                        Tus cambios aparecerán aquí sin salir de esta página.
+                                    </p>
+                                </div>
+                            </div>
+                        )}
                         {!menuQuery.isLoading && selectedMenu && (
                             <>
                                 <div className="flex items-start justify-between gap-3">
@@ -795,12 +857,16 @@ export function MenuManagementPanel({ management }: { management: MenuManagement
                                     <div className="mt-3 space-y-2 rounded-xl border border-[#DCE5F3] bg-[#FBFCFE] p-3">
                                         <input
                                             value={categoryName}
+                                            maxLength={CATEGORY_NAME_MAX_LENGTH}
                                             onChange={(event) =>
                                                 setCategoryName(event.target.value)
                                             }
                                             placeholder="Nombre de categoría"
                                             className="w-full rounded-lg border border-[#D7E1EF] px-3 py-2 text-sm outline-none focus:border-[#2451C5]"
                                         />
+                                        <p className="text-right text-xs text-[#8996A9]">
+                                            {categoryName.length}/{CATEGORY_NAME_MAX_LENGTH}
+                                        </p>
                                         <textarea
                                             value={categoryDescription}
                                             onChange={(event) =>
@@ -811,6 +877,10 @@ export function MenuManagementPanel({ management }: { management: MenuManagement
                                             maxLength={CATEGORY_DESCRIPTION_MAX_LENGTH}
                                             className="w-full resize-none rounded-lg border border-[#D7E1EF] px-3 py-2 text-sm outline-none focus:border-[#2451C5]"
                                         />
+                                        <p className="text-right text-xs text-[#8996A9]">
+                                            {categoryDescription.length}/
+                                            {CATEGORY_DESCRIPTION_MAX_LENGTH}
+                                        </p>
                                         <button
                                             type="button"
                                             onClick={saveCategory}
@@ -902,6 +972,24 @@ export function MenuManagementPanel({ management }: { management: MenuManagement
                                                         <div className="flex shrink-0 gap-1">
                                                             <button
                                                                 type="button"
+                                                                aria-label={`${collapsedCategoryIds.has(category.id) ? 'Mostrar' : 'Minimizar'} productos de ${category.name}`}
+                                                                aria-expanded={
+                                                                    !collapsedCategoryIds.has(category.id)
+                                                                }
+                                                                aria-controls={`category-products-${category.id}`}
+                                                                onClick={() =>
+                                                                    toggleCategoryProducts(category.id)
+                                                                }
+                                                                className="grid size-7 place-items-center rounded text-[#65738A] hover:bg-[#EEF3FF] hover:text-[#1E40AF]"
+                                                            >
+                                                                {collapsedCategoryIds.has(category.id) ? (
+                                                                    <ChevronDown className="size-3.5" />
+                                                                ) : (
+                                                                    <ChevronUp className="size-3.5" />
+                                                                )}
+                                                            </button>
+                                                            <button
+                                                                type="button"
                                                                 aria-label={`Editar ${category.name}`}
                                                                 onClick={() =>
                                                                     setEditingCategory({
@@ -960,12 +1048,36 @@ export function MenuManagementPanel({ management }: { management: MenuManagement
                                                             </button>
                                                         </div>
                                                     </div>
-                                                    <CategoryProducts
-                                                        category={category}
-                                                        categories={selectedMenu.categories ?? []}
-                                                        menus={menus}
-                                                        productManagement={productManagement}
-                                                    />
+                                                    <AnimatePresence initial={false}>
+                                                        {!collapsedCategoryIds.has(category.id) && (
+                                                            <motion.div
+                                                                id={`category-products-${category.id}`}
+                                                                initial={
+                                                                    reducedMotion
+                                                                        ? false
+                                                                        : { height: 0, opacity: 0 }
+                                                                }
+                                                                animate={{ height: 'auto', opacity: 1 }}
+                                                                exit={
+                                                                    reducedMotion
+                                                                        ? undefined
+                                                                        : { height: 0, opacity: 0 }
+                                                                }
+                                                                transition={{
+                                                                    duration: reducedMotion ? 0 : 0.2,
+                                                                    ease: [0.22, 1, 0.36, 1],
+                                                                }}
+                                                                className="overflow-hidden"
+                                                            >
+                                                                <CategoryProducts
+                                                                    category={category}
+                                                                    categories={selectedMenu.categories ?? []}
+                                                                    menus={menus}
+                                                                    productManagement={productManagement}
+                                                                />
+                                                            </motion.div>
+                                                        )}
+                                                    </AnimatePresence>
                                                 </motion.div>
                                             ))}
                                     </div>
@@ -1004,10 +1116,14 @@ export function MenuManagementPanel({ management }: { management: MenuManagement
                 <div className="space-y-4">
                     <input
                         value={menuName}
+                        maxLength={MENU_NAME_MAX_LENGTH}
                         onChange={(event) => setMenuName(event.target.value)}
                         placeholder="Nombre del menú"
                         className="w-full rounded-xl border border-[#D7E1EF] px-3.5 py-3 text-sm"
                     />
+                    <p className="text-right text-xs text-[#8996A9]">
+                        {menuName.length}/{MENU_NAME_MAX_LENGTH}
+                    </p>
                     <textarea
                         value={menuDescription}
                         onChange={(event) => setMenuDescription(event.target.value)}
@@ -1016,6 +1132,9 @@ export function MenuManagementPanel({ management }: { management: MenuManagement
                         maxLength={MENU_DESCRIPTION_MAX_LENGTH}
                         className="w-full resize-none rounded-xl border border-[#D7E1EF] px-3.5 py-3 text-sm"
                     />
+                    <p className="text-right text-xs text-[#8996A9]">
+                        {menuDescription.length}/{MENU_DESCRIPTION_MAX_LENGTH}
+                    </p>
                 </div>
             </Modal>
             <Modal
@@ -1050,6 +1169,7 @@ export function MenuManagementPanel({ management }: { management: MenuManagement
                         <>
                             <input
                                 value={editingCategory.name}
+                                maxLength={CATEGORY_NAME_MAX_LENGTH}
                                 onChange={(event) =>
                                     setEditingCategory({
                                         ...editingCategory,
@@ -1059,6 +1179,9 @@ export function MenuManagementPanel({ management }: { management: MenuManagement
                                 placeholder="Nombre de categoría"
                                 className="w-full rounded-xl border border-[#D7E1EF] px-3.5 py-3 text-sm"
                             />
+                            <p className="text-right text-xs text-[#8996A9]">
+                                {editingCategory.name.length}/{CATEGORY_NAME_MAX_LENGTH}
+                            </p>
                             <textarea
                                 value={editingCategory.description ?? ''}
                                 onChange={(event) =>
@@ -1072,6 +1195,10 @@ export function MenuManagementPanel({ management }: { management: MenuManagement
                                 maxLength={CATEGORY_DESCRIPTION_MAX_LENGTH}
                                 className="w-full resize-none rounded-xl border border-[#D7E1EF] px-3.5 py-3 text-sm"
                             />
+                            <p className="text-right text-xs text-[#8996A9]">
+                                {(editingCategory.description ?? '').length}/
+                                {CATEGORY_DESCRIPTION_MAX_LENGTH}
+                            </p>
                         </>
                     )}
                 </div>

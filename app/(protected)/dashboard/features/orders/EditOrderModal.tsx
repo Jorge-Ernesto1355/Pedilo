@@ -62,7 +62,9 @@ export function EditOrderModal({
         queryKey: ['menus', 'order-edit'],
         queryFn: getMenus,
         enabled: productPickerOpen,
+        retry: false,
         staleTime: 60_000,
+        refetchOnWindowFocus: false,
     })
     const pendingCombo = useQuery({
         queryKey: ['order-edit-pending-combo', pendingComboProduct?.id],
@@ -94,7 +96,9 @@ export function EditOrderModal({
                 search: debouncedCustomerSearch,
             }),
         enabled: Boolean(businessId && debouncedCustomerSearch.length >= 2),
+        retry: false,
         staleTime: 30_000,
+        refetchOnWindowFocus: false,
     })
     useEffect(() => {
         const timer = window.setTimeout(
@@ -446,20 +450,22 @@ export function EditOrderModal({
                                         </button>
                                     </div>
                                 )}
-                                {customerSearch.trim().length >= 2 && customers.isFetching && (
-                                    <div
-                                        role="status"
-                                        aria-label="Buscando clientes"
-                                        className="mt-2 space-y-2 rounded-xl border border-[#DCE5F3] bg-white p-3"
-                                    >
-                                        {[1, 2, 3].map((item) => (
-                                            <div
-                                                key={item}
-                                                className="h-10 animate-pulse rounded-lg bg-[#F1F5FA]"
-                                            />
-                                        ))}
-                                    </div>
-                                )}
+                                {customerSearch.trim().length >= 2 &&
+                                    (customers.isFetching ||
+                                        customerSearch.trim() !== debouncedCustomerSearch) && (
+                                        <div
+                                            role="status"
+                                            aria-label="Buscando clientes"
+                                            className="mt-2 space-y-2 rounded-xl border border-[#DCE5F3] bg-white p-3"
+                                        >
+                                            {[1, 2, 3].map((item) => (
+                                                <div
+                                                    key={item}
+                                                    className="h-10 animate-pulse rounded-lg bg-[#F1F5FA]"
+                                                />
+                                            ))}
+                                        </div>
+                                    )}
                                 {customerSearch.trim().length >= 2 && customers.isError && (
                                     <div
                                         role="alert"
@@ -468,6 +474,7 @@ export function EditOrderModal({
                                         No pudimos cargar los clientes.{' '}
                                         <button
                                             type="button"
+                                            data-cy="edit-order-customer-retry"
                                             onClick={() => void customers.refetch()}
                                             className="font-bold underline"
                                         >
@@ -704,6 +711,7 @@ export function EditOrderModal({
                                             No pudimos cargar los productos.{' '}
                                             <button
                                                 type="button"
+                                                data-cy="edit-order-catalog-retry"
                                                 onClick={() => void menus.refetch()}
                                                 className="font-bold underline"
                                             >

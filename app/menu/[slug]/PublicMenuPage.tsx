@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import dynamic from 'next/dynamic'
 import posthog from 'posthog-js'
-import { AlertCircle, Utensils } from 'lucide-react'
+import { AlertCircle, ChevronDown, ChevronUp, Utensils } from 'lucide-react'
 import { ApiError } from '@/app/auth/lib/client/api-error'
 import { getUserFriendlyError } from '@/src/lib/errors/user-friendly-error'
 import { CategoryTabs } from './features/public-menu/CategoryTabs'
@@ -375,6 +375,7 @@ export default function PublicMenuPage({ slug }: { slug: string }) {
     const cart = useOrderCart()
     const [menuId, setMenuId] = useState('')
     const [activeCategory, setActiveCategory] = useState('')
+    const [collapsedCategoryIds, setCollapsedCategoryIds] = useState<Set<string>>(() => new Set())
     const [product, setProduct] = useState<PublicProduct | null>(null)
     const [editingLineKey, setEditingLineKey] = useState<string | null>(null)
     const [editingSelections, setEditingSelections] = useState<CartLine['selections']>([])
@@ -405,6 +406,23 @@ export default function PublicMenuPage({ slug }: { slug: string }) {
                 .sort((a, b) => a.sortOrder - b.sortOrder) ?? [],
         [menu],
     )
+    const selectCategory = (categoryId: string) => {
+        setActiveCategory(categoryId)
+        setCollapsedCategoryIds((current) => {
+            if (!current.has(categoryId)) return current
+            const next = new Set(current)
+            next.delete(categoryId)
+            return next
+        })
+    }
+    const toggleCategory = (categoryId: string) => {
+        setCollapsedCategoryIds((current) => {
+            const next = new Set(current)
+            if (next.has(categoryId)) next.delete(categoryId)
+            else next.add(categoryId)
+            return next
+        })
+    }
 
     if (query.isLoading) return <LoadingMenu />
     if (query.isError || !query.data) {
@@ -724,7 +742,7 @@ export default function PublicMenuPage({ slug }: { slug: string }) {
                                 <CategoryTabs
                                     categories={categories}
                                     activeCategory={activeCategory}
-                                    onChange={setActiveCategory}
+                                    onChange={selectCategory}
                                 />
                                 <div className="mt-5 space-y-5">
                                     {categories.map((category) => (
@@ -733,22 +751,37 @@ export default function PublicMenuPage({ slug }: { slug: string }) {
                                             id={`category-${category.id}`}
                                             className="scroll-mt-24 rounded-[24px] border border-[#DCE5F3] bg-white p-5 sm:p-7"
                                         >
-                                            <div className="mb-5">
-                                                <p className="text-xs font-bold uppercase tracking-[.15em] text-[#8996A9]">
-                                                    {category.products.length}{' '}
-                                                    {category.products.length === 1
-                                                        ? 'opción'
-                                                        : 'opciones'}
-                                                </p>
-                                                <h2 className="mt-1 font-display text-xl text-[#12234A]">
-                                                    {category.name}
-                                                </h2>
-                                                {category.description && (
-                                                    <p className="mt-1 text-sm text-[#65738A]">
-                                                        {category.description}
-                                                    </p>
-                                                )}
+                                            <div className={collapsedCategoryIds.has(category.id) ? '' : 'mb-5'}>
+                                                <div className="flex items-start justify-between gap-4">
+                                                    <div>
+                                                        <p className="text-xs font-bold uppercase tracking-[.15em] text-[#8996A9]">
+                                                            {category.products.length}{' '}
+                                                            {category.products.length === 1
+                                                                ? 'opción'
+                                                                : 'opciones'}
+                                                        </p>
+                                                        <h2 className="mt-1 font-display text-xl text-[#12234A]">
+                                                            {category.name}
+                                                        </h2>
+                                                        {category.description && (
+                                                            <p className="mt-1 text-sm text-[#65738A]">
+                                                                {category.description}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        aria-expanded={!collapsedCategoryIds.has(category.id)}
+                                                        aria-controls={`category-products-${category.id}`}
+                                                        onClick={() => toggleCategory(category.id)}
+                                                        className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-[#DCE5F3] bg-white px-3 py-2 text-xs font-bold text-[#2451C5] transition hover:border-[#9EB3D8] hover:bg-[#F4F7FF]"
+                                                    >
+                                                        {collapsedCategoryIds.has(category.id) ? <ChevronDown className="size-4" /> : <ChevronUp className="size-4" />}
+                                                        {collapsedCategoryIds.has(category.id) ? 'Mostrar' : 'Minimizar'}
+                                                    </button>
+                                                </div>
                                             </div>
+                                            {!collapsedCategoryIds.has(category.id) && <div id={`category-products-${category.id}`}>
                                             {category.products.length > 0 ? (
                                                 category.products.map((item) => (
                                                     <ProductCard
@@ -768,6 +801,7 @@ export default function PublicMenuPage({ slug }: { slug: string }) {
                                                     categoryName={category.name}
                                                 />
                                             )}
+                                            </div>}
                                         </section>
                                     ))}
                                 </div>

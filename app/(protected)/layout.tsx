@@ -6,6 +6,7 @@ import { DashboardNav } from '@/app/(protected)/dashboard/DashboardNav'
 import { RedirectedUrls } from '@/src/lib/RedirectUrls'
 import React from 'react'
 import { OrderEventsRuntime } from './dashboard/features/orders/OrderEventsRuntime'
+import { GlobalNewOrderButton } from './GlobalNewOrderButton'
 
 export default async function ProtectedLayout({ children }: { children: ReactNode }) {
     const { user } = await getSession()
@@ -17,6 +18,7 @@ export default async function ProtectedLayout({ children }: { children: ReactNod
     return (
         <AuthHydration user={user}>
             <OrderEventsRuntime />
+            <GlobalNewOrderButton />
             <div className="dashboard-shell min-h-screen">
                 <DashboardNav />
                 <div id="main-content" tabIndex={-1}>

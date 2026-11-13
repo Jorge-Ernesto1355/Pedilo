@@ -13,6 +13,7 @@ type BusinessResponse = {
         id?: string
         name?: string
         slug?: string
+        qrCodeToken?: string
         description?: string
         logoUrl?: string | null
         coverUrl?: string | null

@@ -35,6 +35,7 @@ import Link from 'next/link'
 import { CreateMenuErrorState } from './components/CreateMenuStates'
 import { DeferredPaymentCard } from './features/payment-card/DeferredPaymentCard'
 import { DiscountsPanel } from './features/discounts/DiscountsPanel'
+import { GlobalOptionGroupsPanel } from './features/option-management/GlobalOptionGroupsPanel'
 import {
     useCurrentBusiness,
     type CurrentBusiness,
@@ -143,7 +144,7 @@ export default function BusinessSetupScreen({
     const hydratedBusinessId = useRef<string | null>(null)
     const { getValues, reset } = form
     const { saveLocation } = location
-    const sharing = useBusinessShareLink(profile.slug)
+    const sharing = useBusinessShareLink(profile.slug, businessQuery.data?.qrCodeToken)
     const [logoPreview, setLogoPreview] = useState<string | null>(null)
     const [logoBlurPreview, setLogoBlurPreview] = useState<string | null>(null)
     const [coverPreview, setCoverPreview] = useState<string | null>(null)
@@ -427,12 +428,13 @@ export default function BusinessSetupScreen({
                                         className="flex-1 sm:flex-none"
                                     />
                                     <QrCodeButton
-                                        shareUrl={sharing.shareUrl}
+                                        shareUrl={sharing.qrShareUrl}
                                         className="flex-1 sm:flex-none"
                                     />
                                 </div>
                             </div>
                             <MenuManagementPanel management={categories} />
+                            <GlobalOptionGroupsPanel businessId={businessQuery.data?.id} />
                             <BusinessActionsPanel
                                 onOpenSettings={() => setBusinessSettingsOpen(true)}
                                 onOpenGoogleReviews={() => setGoogleReviewsOpen(true)}

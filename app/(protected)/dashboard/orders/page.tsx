@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import dynamic from 'next/dynamic'
 import {
     ArrowRight,
     BadgePercent,
@@ -60,16 +59,8 @@ import {
     normalizeMexicanWhatsAppNumber,
 } from '../../../menu/[slug]/features/public-menu/whatsapp'
 import { useCurrentBusiness } from '../../create-menu/features/business-profile/useCurrentBusiness'
-import { NewRestaurantOrderDrawerSkeleton } from '../features/orders/NewRestaurantOrderDrawerSkeleton'
+import { LazyNewRestaurantOrderDrawer } from '../features/orders/LazyNewRestaurantOrderDrawer'
 import { EditOrderModal } from '../features/orders/EditOrderModal'
-
-const NewRestaurantOrderDrawer = dynamic(
-    () =>
-        import('../features/orders/NewRestaurantOrderDrawer').then(
-            (module) => module.NewRestaurantOrderDrawer,
-        ),
-    { ssr: false, loading: () => <NewRestaurantOrderDrawerSkeleton /> },
-)
 
 type StatusMeta = {
     label: string
@@ -566,7 +557,7 @@ export default function OrdersPage() {
                     />
                 )}
                 {newOrderOpen && (
-                    <NewRestaurantOrderDrawer open onClose={() => setNewOrderOpen(false)} />
+                    <LazyNewRestaurantOrderDrawer open onClose={() => setNewOrderOpen(false)} />
                 )}
                 {editingOrder && (
                     <EditOrderModal

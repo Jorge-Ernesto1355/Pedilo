@@ -27,7 +27,7 @@ function slugify(value: string) {
     )
 }
 
-export function useBusinessShareLink(BusinesSlug: string) {
+export function useBusinessShareLink(BusinesSlug: string, qrCodeToken?: string) {
     const [copied, setCopied] = useState(false)
     const slug = useMemo(() => slugify(BusinesSlug), [BusinesSlug])
     const relativeShareUrl = `/${slug}`
@@ -39,6 +39,13 @@ export function useBusinessShareLink(BusinesSlug: string) {
     const shareUrl = isHydrated
         ? new URL(relativeShareUrl, window.location.origin).toString()
         : relativeShareUrl
+    const qrShareUrl =
+        isHydrated && qrCodeToken
+            ? new URL(
+                  `/api/qr/${encodeURIComponent(qrCodeToken)}`,
+                  window.location.origin,
+              ).toString()
+            : shareUrl
 
     async function copyLink() {
         if (navigator.clipboard?.writeText) {
@@ -58,5 +65,5 @@ export function useBusinessShareLink(BusinesSlug: string) {
         window.setTimeout(() => setCopied(false), 2200)
     }
 
-    return { shareUrl, slug, copied, copyLink }
+    return { shareUrl, qrShareUrl, slug, copied, copyLink }
 }

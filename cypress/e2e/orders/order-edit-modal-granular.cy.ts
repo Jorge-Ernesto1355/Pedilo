@@ -164,10 +164,10 @@ function installApi(
         request.alias =
             customerAttempts === 1
                 ? 'customersSearch'
-                : customerAttempts === 5
+                : customerAttempts === 2
                   ? 'customersRetry'
                   : undefined
-        if (options.customerFailure && customerAttempts <= 4) {
+        if (options.customerFailure && customerAttempts === 1) {
             request.reply({ statusCode: 500, body: { error: { code: 'INTERNAL_ERROR' } } })
             return
         }
@@ -186,8 +186,8 @@ function installApi(
 
     cy.intercept('GET', '**/businesses/mine/menus', (request) => {
         menuAttempts += 1
-        request.alias = menuAttempts === 1 ? 'menus' : menuAttempts === 5 ? 'menusRetry' : undefined
-        if (options.menuFailure && menuAttempts <= 4) {
+        request.alias = menuAttempts === 1 ? 'menus' : menuAttempts === 2 ? 'menusRetry' : undefined
+        if (options.menuFailure && menuAttempts === 1) {
             request.reply({ statusCode: 500, body: { error: { code: 'INTERNAL_ERROR' } } })
             return
         }
@@ -265,13 +265,12 @@ describe('Edición de órdenes · cobertura granular Cypress', () => {
         cy.contains('No encontramos productos con esa búsqueda.').should('be.visible')
     })
 
-    it.only('muestra error de catálogo y permite reintentar', () => {
+    it('muestra error de catálogo y permite reintentar', () => {
         openEdit('PENDING', { menuFailure: true })
         cy.get('[data-cy="edit-order-product-picker-toggle"]').click()
         cy.wait('@menus')
         cy.contains('No pudimos cargar los productos').should('be.visible')
-        cy.get('[role="alert"]').contains('Intentar de nuevo').click({ force: true })
-        cy.wait('@menusRetry')
+        cy.get('[data-cy="edit-order-catalog-retry"]').click()
         cy.contains('No hay productos disponibles para agregar.').should('be.visible')
     })
 
@@ -293,17 +292,15 @@ describe('Edición de órdenes · cobertura granular Cypress', () => {
         cy.contains('Cliente 0').should('be.visible')
 
         cy.get('input[aria-label="Buscar cliente para la orden"]').clear().type('zzzz')
-        cy.wait('@customersRetry')
         cy.contains('No hay ningún cliente que coincida con la búsqueda.').should('be.visible')
     })
 
-    it.only('muestra error de clientes y permite reintentar', () => {
+    it('muestra error de clientes y permite reintentar', () => {
         openEdit('PENDING', { customerFailure: true })
         cy.get('input[aria-label="Buscar cliente para la orden"]').type('fallo')
         cy.wait('@customersSearch')
         cy.contains('No pudimos cargar los clientes').should('be.visible')
-        cy.get('[role="alert"]').contains('Intentar de nuevo').click({ force: true })
-        cy.wait('@customersRetry')
+        cy.get('[data-cy="edit-order-customer-retry"]').click()
         cy.contains('No hay ningún cliente que coincida con la búsqueda.').should('be.visible')
     })
 
@@ -401,7 +398,7 @@ describe('Edición de órdenes · cobertura granular Cypress', () => {
         cy.contains('Queso · +$15.00').should('be.visible')
     })
 
-    it.only('selecciona modalidad, pago y cliente, y envía el payload completo', () => {
+    it('selecciona modalidad, pago y cliente, y envía el payload completo', () => {
         openEdit()
         cy.wait('@optionGroups')
         cy.contains('Editar variantes y extras').click()

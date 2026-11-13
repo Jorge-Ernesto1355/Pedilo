@@ -10,6 +10,7 @@ export type CurrentBusiness = {
     id: string
     name?: string
     slug?: string
+    qrCodeToken?: string
     description?: string
     ubication?: string
     ubicationMaps?: unknown

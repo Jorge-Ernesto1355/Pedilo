@@ -70,6 +70,7 @@ export function QrCodeButton({ shareUrl, className = '' }: QrCodeButtonProps) {
         <>
             <button
                 type="button"
+                data-testid="business-qr-open"
                 onClick={openQrCode}
                 className={`inline-flex min-w-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl border border-[#C9D7EA] bg-white px-2.5 py-2.5 text-xs font-bold text-[#243556] transition hover:-translate-y-0.5 hover:border-[#9EB3D8] hover:text-[#1E40AF] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#1E40AF]/15 sm:gap-2 sm:px-3.5 sm:text-sm ${className}`}
             >
@@ -86,6 +87,7 @@ export function QrCodeButton({ shareUrl, className = '' }: QrCodeButtonProps) {
                     <div className="flex w-full gap-2">
                         <button
                             type="button"
+                            data-testid="business-qr-download-png"
                             disabled={!pngDataUrl}
                             onClick={downloadPng}
                             className="inline-flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#1E40AF] px-2 py-2.5 text-xs font-bold text-white transition hover:bg-[#183991] disabled:opacity-50 sm:gap-2 sm:px-3 sm:text-sm"
@@ -95,6 +97,7 @@ export function QrCodeButton({ shareUrl, className = '' }: QrCodeButtonProps) {
                         </button>
                         <button
                             type="button"
+                            data-testid="business-qr-download-svg"
                             disabled={!svgMarkup}
                             onClick={downloadSvg}
                             className="inline-flex min-w-0 items-center justify-center gap-1.5 rounded-xl border border-[#C9D7EA] px-2 py-2.5 text-xs font-bold text-[#243556] transition hover:bg-[#F3F6FB] disabled:opacity-50 sm:gap-2 sm:px-3 sm:text-sm"
@@ -112,6 +115,7 @@ export function QrCodeButton({ shareUrl, className = '' }: QrCodeButtonProps) {
                         </p>
                     ) : pngDataUrl ? (
                         <img
+                            data-testid="business-qr-image"
                             width={256}
                             height={256}
                             src={pngDataUrl}

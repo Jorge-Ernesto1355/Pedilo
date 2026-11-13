@@ -13,7 +13,7 @@ interface AuthHydrationProps {
     children: ReactNode
 }
 
-export function AuthHydration({ user, initialBusiness = null, children }: AuthHydrationProps) {
+export function AuthHydration({ user, initialBusiness, children }: AuthHydrationProps) {
     const queryClient = useQueryClient()
     const setUser = useAuthStore((state) => state.setUser)
     const currentUser = useAuthStore((state) => state.user)
@@ -28,7 +28,12 @@ export function AuthHydration({ user, initialBusiness = null, children }: AuthHy
         currentUser?.businessId !== initialIdentity.businessId
     ) {
         useAuthStore.setState({ user: initialIdentity })
-        queryClient.setQueryData(['business', 'mine', initialIdentity.id], initialBusiness)
+        // `undefined` means the server did not resolve the business. Do not cache it as
+        // `null`: the client query has infinite stale time and would consequently never
+        // fetch the actual business (hiding business-scoped panels such as global groups).
+        if (initialBusiness !== undefined) {
+            queryClient.setQueryData(['business', 'mine', initialIdentity.id], initialBusiness)
+        }
     }
 
     useEffect(() => {
