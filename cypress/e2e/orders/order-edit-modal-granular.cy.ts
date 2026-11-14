@@ -116,6 +116,7 @@ function installApi(
         customers?: Array<{ id: string; name: string; phone: string }>
         customerFailure?: boolean
         menus?: unknown[]
+        globalOptionGroups?: unknown[]
         menuFailure?: boolean
         menuDelay?: number
         updateStatus?: number
@@ -154,6 +155,10 @@ function installApi(
         statusCode: 200,
         body: { optionGroups },
     }).as('optionGroups')
+    cy.intercept('GET', '**/businesses/products/*/global-option-groups', {
+        statusCode: 200,
+        body: { groups: options.globalOptionGroups ?? [] },
+    }).as('globalOptionGroups')
     cy.intercept('GET', `**/businesses/products/${comboId}/combo-option-groups`, {
         statusCode: 200,
         body: { combo: comboDetails },
@@ -238,6 +243,35 @@ describe('Edición de órdenes · cobertura granular Cypress', () => {
         cy.get('[aria-labelledby="order-detail-title"]').contains('Editar orden').click()
         cy.get('[data-cy="edit-order-modal"]').should('be.visible')
         cy.contains('Notas').should('not.exist')
+    })
+
+    it('muestra los grupos globales asignados al producto al editar sus variantes', () => {
+        openEdit('PENDING', {
+            globalOptionGroups: [
+                {
+                    id: 'global-group-edit-cypress',
+                    name: 'Extras globales',
+                    isRequired: false,
+                    minSelections: 0,
+                    maxSelections: 1,
+                    isActive: true,
+                    options: [
+                        {
+                            id: 'global-option-edit-cypress',
+                            name: 'Queso global',
+                            price: 18,
+                            minSelections: 0,
+                            maxSelections: 1,
+                            isAvailable: true,
+                        },
+                    ],
+                },
+            ],
+        })
+        cy.wait('@globalOptionGroups')
+        cy.contains('button', 'Editar variantes y extras').click()
+        cy.contains('legend', 'Extras globales').should('be.visible')
+        cy.contains('Queso global').should('be.visible')
     })
 
     it('muestra skeleton, error, reintento y estado vacío del selector de productos', () => {

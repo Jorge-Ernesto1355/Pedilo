@@ -25,6 +25,7 @@ import { formatMoney } from '../dashboard-data/formatters'
 import { ApiError } from '@/app/auth/lib/client/api-error'
 import { useOrderUpdateMutation } from './useOrders'
 import { getOptionGroups } from '@/app/(protected)/create-menu/features/option-management/optionApi'
+import { getGlobalOptionGroupsForProduct } from '@/app/(protected)/create-menu/features/option-management/globalOptionApi'
 import type { OptionGroup } from '@/app/(protected)/create-menu/features/option-management/option.types'
 import { getCombo } from '@/app/(protected)/create-menu/features/product-management/comboApi'
 import type { ComboOptionGroup } from '@/app/(protected)/create-menu/features/product-management/comboApi'
@@ -133,7 +134,13 @@ export function EditOrderModal({
     const optionQueries = useQueries({
         queries: draftItems.map((item) => ({
             queryKey: ['order-edit-options', item.productId],
-            queryFn: () => getOptionGroups(item.productId),
+            queryFn: async () => {
+                const [localGroups, globalGroups] = await Promise.all([
+                    getOptionGroups(item.productId),
+                    getGlobalOptionGroupsForProduct(item.productId),
+                ])
+                return [...localGroups, ...globalGroups]
+            },
             staleTime: 60_000,
         })),
     })
