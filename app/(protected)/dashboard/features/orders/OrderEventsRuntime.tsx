@@ -2,11 +2,18 @@
 
 import { useEffect } from 'react'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { ArrowRight, BellRing, X } from 'lucide-react'
 import { useOrderEventsStore } from '@/store/orderEventsStore'
 import { useOrderEvents } from './useOrderEvents'
 
 export function OrderEventsRuntime() {
+    const pathname = usePathname()
+    if (pathname === '/create-menu') return null
+    return <ActiveOrderEventsRuntime />
+}
+
+function ActiveOrderEventsRuntime() {
     useOrderEvents()
     const ids = useOrderEventsStore((state) => state.toastOrderIds)
     const revision = useOrderEventsStore((state) => state.toastRevision)

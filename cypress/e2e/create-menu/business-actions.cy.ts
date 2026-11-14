@@ -65,7 +65,6 @@ describe('Crear menú · acciones de negocio', () => {
         })
         installBusinessMocks()
         cy.visit('/create-menu')
-        cy.wait('@businessSettings')
     })
 
     it('muestra las tres acciones y conserva la configuración general sin WhatsApp', () => {
@@ -74,7 +73,9 @@ describe('Crear menú · acciones de negocio', () => {
             cy.contains('h3', 'Google Reviews').should('be.visible')
             cy.contains('h3', 'WhatsApp').should('be.visible')
         })
+        cy.get('@businessSettings.all').should('have.length', 0)
         cy.contains('button', 'Configurar').click()
+        cy.wait('@businessSettings')
         cy.get('[role="dialog"]').should('be.visible')
         cy.get('#settings-currency').should('be.visible')
         cy.get('#settings-phone').should('be.visible')
@@ -99,6 +100,8 @@ describe('Crear menú · acciones de negocio', () => {
         const welcomeMessage =
             '¡Hola! 👋 Antes de recibir pedidos, necesitas registrar tu número de WhatsApp para que podamos enviártelos.'
 
+        cy.contains('button', 'Configurar WhatsApp').click()
+        cy.wait('@businessSettings')
         cy.get('aside[aria-label="Asistente de configuración"] [role="status"]', {
             timeout: 5_000,
         })
@@ -125,6 +128,8 @@ describe('Crear menú · acciones de negocio', () => {
 
     it('valida antes del PATCH y persiste los 10 dígitos que espera el backend', () => {
         cy.get('#whatsapp-card').should('be.visible')
+        cy.contains('button', 'Configurar WhatsApp').click()
+        cy.wait('@businessSettings')
         cy.get('#business-whatsapp', { timeout: 15_000 }).should('be.visible')
         // Freeze the onboarding/success timers only after settings have rendered.
         cy.clock().as('businessActionsClock')
@@ -184,6 +189,7 @@ describe('Crear menú · acciones de negocio', () => {
             },
         }).as('persistedBusinessSettings')
         cy.reload()
+        cy.contains('button', 'Configurar WhatsApp').click()
         cy.wait('@persistedBusinessSettings')
             .its('response.body.whatsapp')
             .should('eq', '6981119319')

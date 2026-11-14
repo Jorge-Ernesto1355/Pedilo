@@ -85,7 +85,11 @@ export function useCurrentBusiness() {
         // The business is session-scoped. Keep it cached across dashboard
         // navigation; mutations update/invalidate this key explicitly.
         staleTime: Infinity,
+        gcTime: 60 * 60 * 1000,
+        retry: false,
         refetchOnMount: false,
+        refetchOnWindowFocus: false,
+        refetchOnReconnect: false,
     })
 
     useEffect(() => {

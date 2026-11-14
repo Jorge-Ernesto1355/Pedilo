@@ -37,7 +37,11 @@ export function useCategoryManagement() {
         queryKey: menuQueryKeys.list(businessId ?? 'none'),
         queryFn: getMenus,
         enabled: Boolean(businessId),
-        staleTime: 5 * 60 * 1000,
+        staleTime: 15 * 60 * 1000,
+        gcTime: 30 * 60 * 1000,
+        refetchOnMount: false,
+        refetchOnWindowFocus: false,
+        refetchOnReconnect: false,
     })
     const menuQuery = useQuery({
         queryKey: selectedMenuId
@@ -45,7 +49,11 @@ export function useCategoryManagement() {
             : ['menus', 'detail', 'none'],
         queryFn: () => getMenu(selectedMenuId as string),
         enabled: Boolean(selectedMenuId),
-        staleTime: 5 * 60 * 1000,
+        staleTime: 15 * 60 * 1000,
+        gcTime: 30 * 60 * 1000,
+        refetchOnMount: false,
+        refetchOnWindowFocus: false,
+        refetchOnReconnect: false,
     })
 
     function invalidateMenus() {

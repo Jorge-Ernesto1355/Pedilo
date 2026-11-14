@@ -28,7 +28,10 @@ export function BusinessActionsPanel({
     isBusinessReady,
     isNewBusiness,
 }: BusinessActionsPanelProps) {
-    const { settings, create, update } = useBusinessSettings(hasBusiness && isBusinessReady)
+    const [settingsEnabled, setSettingsEnabled] = useState(false)
+    const { settings, create, update } = useBusinessSettings(
+        hasBusiness && isBusinessReady && settingsEnabled,
+    )
     const [savedNumber, setSavedNumber] = useState<string | null>(null)
     const [didSaveWhatsapp, setDidSaveWhatsapp] = useState(false)
     const whatsappInputRef = useRef<HTMLInputElement>(null)
@@ -174,6 +177,15 @@ export function BusinessActionsPanel({
                             Para recibir pedidos, primero crea tu negocio y después registra tu
                             número de WhatsApp.
                         </p>
+                    ) : !settingsEnabled ? (
+                        <button
+                            type="button"
+                            onClick={() => setSettingsEnabled(true)}
+                            className={`${outlineButtonClass} mt-4`}
+                        >
+                            Configurar WhatsApp
+                            <ArrowRight aria-hidden="true" className="size-5" />
+                        </button>
                     ) : settings.isLoading ? (
                         <p className="mt-4 text-sm text-[#8A93A8]">Cargando número…</p>
                     ) : settings.isError ? (

@@ -18,7 +18,7 @@ import {
     VolumeX,
 } from 'lucide-react'
 import { notify } from '@/src/lib/notifications/notify'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { useAuthStore } from '@/store/authStore'
 import { useCurrentBusiness } from '@/app/(protected)/create-menu/features/business-profile/useCurrentBusiness'
 import posthog from 'posthog-js'
@@ -49,7 +49,6 @@ function getInitials(name: string) {
 
 export function DashboardNav() {
     const pathname = usePathname()
-    const router = useRouter()
     const queryClient = useQueryClient()
     const clearUser = useAuthStore((state) => state.clearUser)
     const businessId = useAuthStore((state) => state.user?.businessId)
@@ -154,6 +153,7 @@ export function DashboardNav() {
                 <div className="mx-auto flex h-[85px] max-w-[1440px] items-center justify-between px-4 sm:px-8 lg:px-10">
                     <Link
                         href="/dashboard"
+                        prefetch={false}
                         className="flex items-center gap-2.5 text-4xl font-black tracking-[-.06em] text-[#12234A]"
                     >
                         <Image
@@ -181,8 +181,8 @@ export function DashboardNav() {
                                 <Link
                                     key={link.href}
                                     href={link.href}
+                                    prefetch={false}
                                     aria-label={isOrders && unseenCount > 0 ? `Pedidos, ${unseenCount} nuevas órdenes` : undefined}
-                                    onMouseEnter={() => router.prefetch(link.href)}
                                     className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition ${active ? 'bg-[#EAF0FF] text-[#1E40AF]' : 'text-[#65738A] hover:bg-[#F5F8FC] hover:text-[#1E40AF]'}`}
                                 >
                                     <Icon className="size-4" />
@@ -222,6 +222,7 @@ export function DashboardNav() {
                         </span>
                         <Link
                             href="/create-menu"
+                            prefetch={false}
                             className="hidden items-center gap-1.5 rounded-lg border border-[#C9D7EA] px-3 py-2 text-xs font-semibold text-[#243556] transition hover:border-[#9EB3D8] hover:bg-[#F5F8FC] hover:text-[#1E40AF] sm:inline-flex"
                         >
                             <Menu className="size-3.5" />
@@ -270,6 +271,7 @@ export function DashboardNav() {
                                     >
                                         <Link
                                             href="/create-menu"
+                                            prefetch={false}
                                             role="menuitem"
                                             onClick={() => setAccountMenuOpen(false)}
                                             className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm font-semibold text-[#243556] transition hover:bg-[#F5F8FC] hover:text-[#1E40AF] sm:hidden"
@@ -299,6 +301,7 @@ export function DashboardNav() {
                                         </button>
                                         <Link
                                             href="/dashboard/account"
+                                            prefetch={false}
                                             role="menuitem"
                                             onClick={() => setAccountMenuOpen(false)}
                                             className="flex w-full items-center rounded-lg px-3 py-2.5 text-left text-sm font-semibold text-[#243556] transition hover:bg-[#F5F8FC] hover:text-[#1E40AF]"
@@ -338,8 +341,8 @@ export function DashboardNav() {
                             <Link
                                 key={link.href}
                                 href={link.href}
+                                prefetch={false}
                                 aria-label={isOrders && unseenCount > 0 ? `Pedidos, ${unseenCount} nuevas órdenes` : undefined}
-                                onMouseEnter={() => router.prefetch(link.href)}
                                 aria-current={active ? 'page' : undefined}
                                 className={`flex min-w-0 flex-col items-center justify-center rounded-lg text-[9px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1E40AF] focus-visible:ring-offset-2 ${isOrders ? '-translate-y-1 gap-0.5' : 'gap-0.5'} ${active ? 'text-[#1E40AF]' : 'text-[#8996A9] hover:text-[#1E40AF]'}`}
                             >
