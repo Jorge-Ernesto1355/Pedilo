@@ -442,14 +442,18 @@ export default function BusinessSetupScreen({
                                 isBusinessReady={businessConfirmed}
                                 isNewBusiness={isNewBusinessCreated}
                             />
-                            <DeferredPaymentCard business={businessQuery.data ?? undefined} />
-                            <DiscountsPanel
-                                businessId={businessQuery.data?.id}
-                                menus={categories.menus}
-                                menusLoading={categories.menusQuery.isLoading}
-                                menusError={categories.menusQuery.isError}
-                                onRetryMenus={() => void categories.menusQuery.refetch()}
-                            />
+                            {businessQuery.data && (
+                                <>
+                                    <DeferredPaymentCard business={businessQuery.data} />
+                                    <DiscountsPanel
+                                        businessId={businessQuery.data.id}
+                                        menus={categories.menus}
+                                        menusLoading={categories.menusQuery.isLoading}
+                                        menusError={categories.menusQuery.isError}
+                                        onRetryMenus={() => void categories.menusQuery.refetch()}
+                                    />
+                                </>
+                            )}
                         </div>
                     </div>
                 </div>
