@@ -1,7 +1,7 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
-import { LoadingMenu } from './menu/[slug]/PublicMenuPage'
+import { LoadingMenu } from './menu/[slug]/features/public-menu/LoadingMenu'
 import { ProtectedRouteLoading } from './(protected)/ProtectedRouteLoading'
 
 function AuthRouteLoading() {

@@ -94,9 +94,6 @@
 
 :root {
     color-scheme: light;
-    --font-inter-tight: "Avenir Next", "Segoe UI", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-    --font-sora: "Avenir Next", "Segoe UI", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-    --font-ibm-plex-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
     --font-inter: "Avenir Next", "Segoe UI", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
     --font-source-serif: Georgia, "Times New Roman", serif;
     --font-space-grotesk: "Avenir Next", "Segoe UI", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
@@ -232,6 +229,26 @@ h6 {
     z-index: 1;
 }
 
+/* Alto de la navegación inferior móvil (DashboardNav: h-[64px] + safe-area). Todo lo que
+   se fije abajo (overlays, botones flotantes) o deba poder scrollearse hasta el final
+   debe sumar esta variable. Vale 0 fuera del área protegida (p. ej. el menú público, que
+   comparte componentes pero no tiene barra) y desde md, donde la barra se oculta. */
+:root {
+    --mobile-nav-h: 0px;
+}
+
+@media (width < 48rem) {
+    .has-mobile-nav {
+        --mobile-nav-h: calc(64px + env(safe-area-inset-bottom, 0px));
+    }
+
+    /* La barra va por encima del contenido: se reserva su alto (+ el del botón flotante
+       de "Nueva orden") para poder hacer scroll hasta ver lo último. */
+    .dashboard-shell > #main-content {
+        padding-bottom: calc(var(--mobile-nav-h) + 4rem);
+    }
+}
+
 code,
 kbd,
 pre {
@@ -300,10 +317,118 @@ a {
     .pedilo-cart-count-pop {
         animation: pediloCartCountPop 0.34s cubic-bezier(0.22, 1, 0.36, 1);
     }
+
+    /* Elemento recién creado en una lista: entra desde arriba y deja un halo que se desvanece. */
+    @keyframes pediloItemEnter {
+        0% {
+            opacity: 0;
+            transform: translateY(-8px) scale(0.97);
+            box-shadow: 0 0 0 0 rgb(36 81 197 / 0.3);
+        }
+        55% {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            box-shadow: 0 0 0 4px rgb(36 81 197 / 0.16);
+        }
+        100% {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            box-shadow: 0 0 0 0 rgb(36 81 197 / 0);
+        }
+    }
+
+    .pedilo-item-enter {
+        animation: pediloItemEnter 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    /* Número de un selector de cantidad: aparece pequeño y se asienta con un leve rebote. */
+    @keyframes pediloQtyPop {
+        0% {
+            opacity: 0.25;
+            transform: scale(0.45);
+        }
+        60% {
+            opacity: 1;
+            transform: scale(1.22);
+        }
+        100% {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+
+    .pedilo-qty-pop {
+        display: inline-block;
+        animation: pediloQtyPop 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    /* Botón de +/-: al presionarse se aplasta suave y vuelve con un pequeño rebote. */
+    .pedilo-squish {
+        transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .pedilo-squish:not(:disabled):active {
+        transform: scale(0.82);
+        transition-duration: 0.08s;
+    }
 }
 
 ::selection {
     background: color-mix(in oklch, var(--primary) 20%, transparent);
+}
+
+/* Checkbox de Pedilo (componente ui/Checkbox): caja redondeada que se rellena de azul y dibuja
+   la palomita creciendo desde el centro. Sigue siendo el <input> nativo, sin elementos extra. */
+.pedilo-checkbox {
+    appearance: none;
+    -webkit-appearance: none;
+    flex-shrink: 0;
+    width: 1.25rem;
+    height: 1.25rem;
+    margin: 0;
+    cursor: pointer;
+    border: 1.5px solid #c3d0e6;
+    border-radius: 0.4375rem;
+    background-color: #fff;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='white' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 8.6l3 3 6-7.2'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 0;
+    transition:
+        background-size 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+        background-color 0.16s ease,
+        border-color 0.16s ease,
+        box-shadow 0.16s ease,
+        transform 0.12s ease;
+}
+
+.pedilo-checkbox:hover {
+    border-color: #7392e6;
+}
+
+.pedilo-checkbox:checked {
+    border-color: var(--pedilo-blue);
+    background-color: var(--pedilo-blue);
+    background-size: 80%;
+}
+
+.pedilo-checkbox:checked:hover {
+    border-color: var(--pedilo-blue-deep);
+    background-color: var(--pedilo-blue-deep);
+}
+
+.pedilo-checkbox:active {
+    transform: scale(0.88);
+}
+
+.pedilo-checkbox:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 4px rgb(36 81 197 / 0.2);
+}
+
+.pedilo-checkbox:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
 }
 
 @media (prefers-reduced-motion: reduce) {

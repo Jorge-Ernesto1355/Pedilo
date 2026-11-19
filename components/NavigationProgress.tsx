@@ -7,7 +7,15 @@ export function NavigationProgress() {
     const pathname = usePathname()
     const [visible, setVisible] = useState(false)
     const [startedPathname, setStartedPathname] = useState<string | null>(null)
+    const [lastPathname, setLastPathname] = useState(pathname)
     const timerRef = useRef<number | null>(null)
+
+    // La navegación terminó: apagar la barra para que no reaparezca al volver a una ruta previa.
+    if (lastPathname !== pathname) {
+        setLastPathname(pathname)
+        setVisible(false)
+        setStartedPathname(null)
+    }
 
     useEffect(() => {
         const start = () => {
