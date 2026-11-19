@@ -1,14 +1,6 @@
 'use client'
 
-import {
-    CartesianGrid,
-    Line,
-    LineChart,
-    ResponsiveContainer,
-    Tooltip,
-    XAxis,
-    YAxis,
-} from 'recharts'
+import { lazy, Suspense } from 'react'
 import {
     LoaderCircle,
     Minus,
@@ -19,21 +11,26 @@ import {
     UsersRound,
 } from 'lucide-react'
 import { useStoreVisitsStats } from './useStoreVisitsStats'
-import type {
-    StoreVisitSeriesGranularity,
-    StoreVisitSeriesPoint,
-    StoreVisitsPeriod,
-    StoreVisitsStats,
-} from './storeVisitsStats'
+import { formatCount } from './menuVisitsFormat'
+import type { StoreVisitsPeriod, StoreVisitsStats } from './storeVisitsStats'
 
-type ChartInterval = {
-    label: string
-    previousLabel: string | null
-    currentVisits: number
-    previousVisits: number
+// recharts (~110 KB gzip) no forma parte del JS inicial del resumen: la gráfica se
+// descarga aparte y mientras tanto se reserva su mismo alto para no mover el layout.
+const LazyMenuVisitsChart = lazy(() => import('./MenuVisitsChart'))
+
+function ChartPlaceholder() {
+    return (
+        <div className="h-full w-full animate-pulse rounded-lg bg-[#F3F6FA]" aria-hidden="true" />
+    )
 }
 
-export function MenuVisitsCard({ period = 'today', enabled = true }: { period?: StoreVisitsPeriod; enabled?: boolean }) {
+export function MenuVisitsCard({
+    period = 'today',
+    enabled = true,
+}: {
+    period?: StoreVisitsPeriod
+    enabled?: boolean
+}) {
     const visitsQuery = useStoreVisitsStats(period, enabled)
     const stats = visitsQuery.data?.data
 
@@ -143,7 +140,6 @@ function StatsContent({ stats }: { stats: StoreVisitsStats }) {
           : isUp
             ? 'text-[#23814C]'
             : 'text-[#65738A]'
-    const intervals = buildChartIntervals(stats.series.current, stats.series.previous)
     const noVisits =
         stats.total_visits === 0 && stats.series.current.every((interval) => interval.visits === 0)
     const chartUnit = stats.series.granularity === 'hour' ? 'hora' : 'día'
@@ -228,55 +224,13 @@ function StatsContent({ stats }: { stats: StoreVisitsStats }) {
                         role="img"
                         aria-label={`Gráfica de visitas por ${chartUnit} comparadas con el periodo anterior`}
                     >
-                        <ResponsiveContainer width="100%" height="100%">
-                            <LineChart
-                                data={intervals}
-                                margin={{ top: 8, right: 8, bottom: 0, left: -20 }}
-                            >
-                                <CartesianGrid vertical={false} stroke="#E9EEF5" />
-                                <XAxis
-                                    dataKey="label"
-                                    tickFormatter={(label: string) =>
-                                        formatSeriesLabel(label, stats.series.granularity, true)
-                                    }
-                                    tick={{ fill: '#8792A3', fontSize: 10 }}
-                                    tickLine={false}
-                                    axisLine={false}
-                                    minTickGap={16}
-                                />
-                                <YAxis
-                                    allowDecimals={false}
-                                    tick={{ fill: '#8792A3', fontSize: 10 }}
-                                    tickLine={false}
-                                    axisLine={false}
-                                    width={32}
-                                />
-                                <Tooltip
-                                    content={
-                                        <VisitsTooltip granularity={stats.series.granularity} />
-                                    }
-                                />
-                                <Line
-                                    type="monotone"
-                                    dataKey="currentVisits"
-                                    name="Este periodo"
-                                    stroke="#34714B"
-                                    strokeWidth={2.5}
-                                    dot={{ r: 2.5, fill: '#34714B', strokeWidth: 0 }}
-                                    activeDot={{ r: 4 }}
-                                />
-                                <Line
-                                    type="monotone"
-                                    dataKey="previousVisits"
-                                    name="Periodo anterior"
-                                    stroke="#AAB5C6"
-                                    strokeWidth={2}
-                                    strokeDasharray="4 4"
-                                    dot={{ r: 2, fill: '#AAB5C6', strokeWidth: 0 }}
-                                    activeDot={{ r: 3.5 }}
-                                />
-                            </LineChart>
-                        </ResponsiveContainer>
+                        <Suspense fallback={<ChartPlaceholder />}>
+                            <LazyMenuVisitsChart
+                                current={stats.series.current}
+                                previous={stats.series.previous}
+                                granularity={stats.series.granularity}
+                            />
+                        </Suspense>
                     </div>
                 )}
             </div>
@@ -285,75 +239,6 @@ function StatsContent({ stats }: { stats: StoreVisitsStats }) {
             </p>
         </div>
     )
-}
-
-function VisitsTooltip({
-    active,
-    payload,
-    granularity,
-}: {
-    active?: boolean
-    payload?: Array<{ payload?: ChartInterval }>
-    granularity: StoreVisitSeriesGranularity
-}) {
-    if (!active || !payload?.length) return null
-    const interval = payload[0]?.payload
-    if (!interval) return null
-
-    return (
-        <div className="rounded-lg border border-[#DCE5F3] bg-white px-3 py-2 shadow-lg">
-            <p className="text-[11px] font-semibold text-[#243556]">
-                {formatSeriesLabel(interval.label, granularity, false)}
-            </p>
-            <p className="mt-1 text-[11px] text-[#34714B]">
-                Este periodo: {formatCount(interval.currentVisits)}
-            </p>
-            <p className="mt-0.5 text-[11px] text-[#65738A]">
-                Periodo anterior
-                {interval.previousLabel
-                    ? ` · ${formatSeriesLabel(interval.previousLabel, granularity, false)}`
-                    : ''}
-                : {formatCount(interval.previousVisits)}
-            </p>
-        </div>
-    )
-}
-
-function buildChartIntervals(
-    current: StoreVisitSeriesPoint[],
-    previous: StoreVisitSeriesPoint[],
-): ChartInterval[] {
-    const length = Math.max(current.length, previous.length)
-    return Array.from({ length }, (_, index) => ({
-        label: current[index]?.label ?? previous[index]?.label ?? '',
-        previousLabel: previous[index]?.label ?? null,
-        currentVisits: current[index]?.visits ?? 0,
-        previousVisits: previous[index]?.visits ?? 0,
-    }))
-}
-
-function formatSeriesLabel(
-    label: string,
-    granularity: StoreVisitSeriesGranularity,
-    compact: boolean,
-) {
-    if (granularity === 'hour') return label
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(label)) return label
-
-    const [year, month, day] = label.split('-').map(Number)
-    // These are calendar labels in the business timezone. UTC prevents shifting the date
-    // when the dashboard is opened in a different timezone.
-    const value = new Date(Date.UTC(year, month - 1, day, 12))
-    return new Intl.DateTimeFormat('es-MX', {
-        day: 'numeric',
-        ...(compact ? {} : { weekday: 'long', month: 'long', year: 'numeric' }),
-        ...(compact ? { month: 'short' } : {}),
-        timeZone: 'UTC',
-    }).format(value)
-}
-
-function formatCount(value: number) {
-    return new Intl.NumberFormat('es-MX', { maximumFractionDigits: 0 }).format(value)
 }
 
 function formatPercentage(value: number) {
