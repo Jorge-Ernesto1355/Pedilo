@@ -15,7 +15,7 @@ function redirectToLogin(request: NextRequest) {
     return NextResponse.redirect(new URL(RedirectedUrls.login, request.url))
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
     const hasSessionCookie = request.cookies
         .getAll()
         .some(({ name }) =>

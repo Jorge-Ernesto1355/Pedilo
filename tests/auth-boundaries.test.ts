@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { NextRequest } from 'next/server'
 
-import { middleware } from '@/middleware'
+import { proxy } from '@/proxy'
 
 function nextRequest(path: string, cookies: Record<string, string> = {}) {
     const request = new NextRequest(`http://localhost${path}`)
@@ -13,7 +13,7 @@ describe('protected auth boundary', () => {
     it.each(['/dashboard', '/create-menu', '/settings', '/orders'])(
         'redirects %s requests without a supported session cookie',
         (path) => {
-            const response = middleware(nextRequest(path))
+            const response = proxy(nextRequest(path))
 
             expect(response.status).toBe(307)
             expect(response.headers.get('location')).toBe('http://localhost/auth/login')
@@ -30,7 +30,7 @@ describe('protected auth boundary', () => {
         'better-auth-development.session_token',
         '__Secure-better-auth-development.session_token',
     ])('allows protected route requests with %s', (cookieName) => {
-        const response = middleware(nextRequest('/dashboard/orders', { [cookieName]: 'session' }))
+        const response = proxy(nextRequest('/dashboard/orders', { [cookieName]: 'session' }))
 
         expect(response.status).toBe(200)
         expect(response.headers.get('location')).toBeNull()
