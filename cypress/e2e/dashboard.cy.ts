@@ -1,3 +1,7 @@
+import { visitViaClientNavigation } from '../support/clientNavigation'
+// Las cifras de "Hoy" llegan del servidor en una carga completa; para inspeccionar la
+// respuesta del backend se entra a la página por navegación interna.
+
 type SeedManifest = {
     expected: {
         today: { total: number; orders: number }
@@ -21,7 +25,7 @@ describe('Dashboard · escenario E2E persistente', () => {
             delete request.headers['if-modified-since']
             request.headers['cache-control'] = 'no-cache'
         }).as('getDashboardSales')
-        cy.visit('/dashboard')
+        visitViaClientNavigation('/dashboard')
         cy.readFile<SeedManifest>('test-results/dashboard-seed-manifest.json').then((manifest) => {
             cy.wait('@getDashboardSales').then(({ response }) => {
                 expect(response?.statusCode).to.be.oneOf([200, 304])
@@ -55,7 +59,7 @@ describe('Dashboard · escenario E2E persistente', () => {
                     request.headers['cache-control'] = 'no-cache'
                 }).as(`getDashboardSales-${value}`)
         })
-        cy.visit('/dashboard/sales')
+        visitViaClientNavigation('/dashboard/sales')
         cy.wait('@getDashboardSales-today').its('response.statusCode').should('be.oneOf', [200, 304])
         cy.get('[aria-label="Métricas de ventas"]').should('be.visible')
         cy.get('[aria-label^="Gráfica de ventas"]').should('be.visible')

@@ -1,3 +1,7 @@
+import { visitViaClientNavigation } from '../../support/clientNavigation'
+// Las cifras de "Hoy" llegan del servidor en una carga completa; para inspeccionar la
+// respuesta del backend se entra a la página por navegación interna.
+
 type Period = 'today' | '7d' | '30d' | 'thisMonth'
 
 type SeedManifest = {
@@ -103,7 +107,7 @@ describe('Dashboard · datos históricos sembrados', () => {
 
     it('recalcula ventas, ticket y tendencia por periodo', () => {
         installDashboardSpies()
-        cy.visit('/dashboard/sales')
+        visitViaClientNavigation('/dashboard/sales')
         loadManifest().then((manifest) => {
             assertSalesPeriod('today', manifest)
             ;(['7d', '30d', 'thisMonth'] as Period[]).forEach((period) => {
@@ -116,7 +120,7 @@ describe('Dashboard · datos históricos sembrados', () => {
     it('excluye cancelados de ventas y conserva los estados en pedidos', () => {
         cy.intercept('GET', '**/api/v1/dashboard/sales*').as('dashboardSales')
         cy.intercept('GET', '**/businesses/*/orders*').as('orders')
-        cy.visit('/dashboard')
+        visitViaClientNavigation('/dashboard')
         loadManifest().then((manifest) => {
             cy.wait('@dashboardSales').then(({ response }) => {
                 const expected = manifest.expected.today

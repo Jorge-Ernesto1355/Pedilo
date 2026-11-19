@@ -1,4 +1,5 @@
 import type { Interception } from 'cypress/types/net-stubbing'
+import { visitViaClientNavigation } from '../../support/clientNavigation'
 
 type SalesPeriod = 'today' | '7d' | '30d' | 'thisMonth'
 
@@ -286,7 +287,7 @@ describe('Ventas · analítica comparativa', () => {
 
     it('muestra ventas, porcentaje, ticket promedio, promedio global y tendencia', () => {
         setupSalesPage()
-        cy.visit('/dashboard/sales')
+        visitViaClientNavigation('/dashboard/sales')
         cy.wait('@dashboardSales').its('request.query.period').should('eq', 'today')
         cy.wait('@dashboardTrend').its('request.query.period').should('eq', 'today')
         cy.wait('@averageTicket').its('request.query.period').should('eq', 'today')
@@ -311,7 +312,7 @@ describe('Ventas · analítica comparativa', () => {
 
     it('envía el periodo seleccionado a ventas y ticket promedio en los cuatro filtros', () => {
         setupSalesPage()
-        cy.visit('/dashboard/sales')
+        visitViaClientNavigation('/dashboard/sales')
         cy.wait('@dashboardSales')
         cy.wait('@dashboardTrend')
         cy.wait('@averageTicket')
@@ -346,7 +347,7 @@ describe('Ventas · analítica comparativa', () => {
         setupSalesPage({
             averageBody: averageTicketResponse({ previousOrders: 0, percentage: 300 }),
         })
-        cy.visit('/dashboard/sales')
+        visitViaClientNavigation('/dashboard/sales')
         cy.wait('@averageTicket')
 
         cy.get('[aria-label="Métricas de ventas"]').within(() => {
@@ -359,7 +360,7 @@ describe('Ventas · analítica comparativa', () => {
 
     it('conserva los intervalos sin ventas en la mini gráfica', () => {
         setupSalesPage()
-        cy.visit('/dashboard/sales')
+        visitViaClientNavigation('/dashboard/sales')
         cy.wait('@dashboardSales')
 
         cy.get('[aria-label="Comparación visual de ventas"]').should('be.visible')
@@ -368,7 +369,7 @@ describe('Ventas · analítica comparativa', () => {
 
     it('muestra el estado de error de ventas sin ocultar la página', () => {
         setupSalesPage({ salesStatus: 500 })
-        cy.visit('/dashboard/sales')
+        visitViaClientNavigation('/dashboard/sales')
         cy.wait('@dashboardSales')
         cy.contains('Ventas no disponibles', { timeout: 30_000 }).should('be.visible')
         cy.get('[aria-label^="Gráfica de ventas por"]', { timeout: 30_000 }).should('be.visible')
@@ -377,7 +378,7 @@ describe('Ventas · analítica comparativa', () => {
 
     it('muestra el estado de error del ticket promedio', () => {
         setupSalesPage({ averageStatus: 500 })
-        cy.visit('/dashboard/sales')
+        visitViaClientNavigation('/dashboard/sales')
         cy.wait('@averageTicket')
         cy.contains('Ticket promedio no disponible', { timeout: 30_000 }).should('be.visible')
         cy.contains('Tendencia').should('be.visible')
@@ -386,7 +387,7 @@ describe('Ventas · analítica comparativa', () => {
     it('mantiene la composición usable en móvil', () => {
         setupSalesPage()
         cy.viewport(390, 844)
-        cy.visit('/dashboard/sales')
+        visitViaClientNavigation('/dashboard/sales')
         cy.wait('@dashboardSales')
         cy.wait('@averageTicket')
 
@@ -399,7 +400,7 @@ describe('Ventas · analítica comparativa', () => {
 
     it('renderiza cada fila de ventas con su importe y número de órdenes', () => {
         setupSalesPage()
-        cy.visit('/dashboard/sales')
+        visitViaClientNavigation('/dashboard/sales')
         cy.wait('@dashboardSales')
 
         cy.get('table caption').should('contain', 'Ventas y órdenes por periodo')
@@ -417,7 +418,7 @@ describe('Ventas · analítica comparativa', () => {
 
     it('explica cómo se calculan ventas, tendencia y ticket promedio', () => {
         setupSalesPage()
-        cy.visit('/dashboard/sales')
+        visitViaClientNavigation('/dashboard/sales')
         cy.wait('@dashboardSales')
         cy.wait('@averageTicket')
 
@@ -468,7 +469,7 @@ describe('Ventas · analítica comparativa', () => {
         }
 
         setupSalesPage({ salesBody: sales, averageBody: averageTicket })
-        cy.visit('/dashboard/sales')
+        visitViaClientNavigation('/dashboard/sales')
         cy.wait('@dashboardSales')
         cy.wait('@averageTicket')
 
@@ -499,7 +500,7 @@ describe('Ventas · analítica comparativa', () => {
         }
 
         setupSalesPage({ salesBody: sales, averageBody: averageTicket })
-        cy.visit('/dashboard/sales')
+        visitViaClientNavigation('/dashboard/sales')
         cy.wait('@dashboardSales')
         cy.wait('@averageTicket')
 
@@ -525,7 +526,7 @@ describe('Ventas · analítica comparativa', () => {
         averageTicket.data.comparison.percentage_change = null
 
         setupSalesPage({ salesBody: sales, averageBody: averageTicket })
-        cy.visit('/dashboard/sales')
+        visitViaClientNavigation('/dashboard/sales')
         cy.wait('@dashboardSales')
         cy.wait('@averageTicket')
 
@@ -561,7 +562,7 @@ describe('Ventas · analítica comparativa', () => {
         averageTicket.data.comparison.difference = '0.00'
 
         setupSalesPage({ salesBody: sales, averageBody: averageTicket })
-        cy.visit('/dashboard/sales')
+        visitViaClientNavigation('/dashboard/sales')
         cy.wait('@dashboardSales')
         cy.wait('@averageTicket')
 
@@ -580,7 +581,7 @@ describe('Ventas · analítica comparativa', () => {
             salesStatus: () => (allowSalesRetry ? 200 : 500),
             averageStatus: () => (allowAverageRetry ? 200 : 500),
         })
-        cy.visit('/dashboard/sales')
+        visitViaClientNavigation('/dashboard/sales')
         cy.contains('Ventas no disponibles', { timeout: 30_000 }).should('be.visible')
         cy.contains('Ticket promedio no disponible', { timeout: 30_000 }).should('be.visible')
 
@@ -614,7 +615,7 @@ describe('Ventas · analítica comparativa', () => {
 
     it('muestra el error de tendencia sin ocultar ventas ni ticket promedio', () => {
         setupSalesPage({ trendStatus: 500 })
-        cy.visit('/dashboard/sales')
+        visitViaClientNavigation('/dashboard/sales')
         cy.contains('Tendencia no disponible', { timeout: 30_000 }).should('be.visible')
         cy.contains('Ganancias del periodo').should('be.visible')
         cy.contains('Ticket promedio del periodo').should('be.visible')
@@ -623,7 +624,7 @@ describe('Ventas · analítica comparativa', () => {
     it('muestra y puede reintentar las ventas históricas sin afectar ventas', () => {
         let allowHistoricalRetry = false
         setupSalesPage({ historicalStatus: () => (allowHistoricalRetry ? 200 : 500) })
-        cy.visit('/dashboard/sales')
+        visitViaClientNavigation('/dashboard/sales')
         cy.contains('Ventas históricas no disponibles', { timeout: 30_000 }).should('be.visible')
         cy.contains('Ganancias del periodo').should('be.visible')
 
@@ -644,7 +645,7 @@ describe('Ventas · analítica comparativa', () => {
     it('reintenta únicamente la consulta de tendencia', () => {
         let allowTrendRetry = false
         setupSalesPage({ trendStatus: () => (allowTrendRetry ? 200 : 500) })
-        cy.visit('/dashboard/sales')
+        visitViaClientNavigation('/dashboard/sales')
         cy.contains('Tendencia no disponible', { timeout: 30_000 }).should('be.visible')
         cy.get('@dashboardTrend.all').should((interceptions) => {
             const recorded = interceptions as unknown as Array<Interception>

@@ -13,23 +13,22 @@ describe('Dashboard · carga progresiva de módulos', { retries: 0 }, () => {
 
         cy.visit('/dashboard')
 
-        cy.wait([
-            '@dashboardSales',
-            '@historicalSales',
-            '@averageTicket',
-            '@googleReviewsStats',
-            '@storeVisitsStats',
-        ])
+        cy.wait(['@googleReviewsStats', '@storeVisitsStats'])
 
         cy.contains('p', 'Ganancias del periodo').should('be.visible')
         cy.contains('Ticket promedio del periodo').should('be.visible')
+        // Ventas, ticket promedio e históricas de "Hoy" llegan en el HTML del servidor:
+        // el navegador no debe repetir esas peticiones.
+        cy.contains('pedidos acumulados').should('be.visible')
+        assertRequestCount('@dashboardSales', 0)
+        assertRequestCount('@historicalSales', 0)
+        assertRequestCount('@averageTicket', 0)
         cy.get('#google-reviews-stats-title').should('be.visible')
         cy.get('#menu-visits-title').should('be.visible')
 
         // Los módulos diferidos aún conservan su fallback y no ejecutaron consultas.
         cy.contains('h2', 'Cómo te fue').should('not.exist')
         cy.contains('h2', 'Lo más vendido').should('not.exist')
-        cy.contains('h2', 'Cómo va tu negocio').should('not.exist')
         cy.contains('h2', 'Pedidos recientes').should('not.exist')
         assertRequestCount('@dashboardTrend', 0)
         assertRequestCount('@bestSellingProducts', 0)
@@ -45,7 +44,6 @@ describe('Dashboard · carga progresiva de módulos', { retries: 0 }, () => {
             '@recentOrders',
         ])
         cy.contains('h2', 'Lo más vendido').should('be.visible')
-        cy.contains('h2', 'Cómo va tu negocio').should('be.visible')
         cy.contains('h2', 'Pedidos recientes').should('be.visible')
     })
 
@@ -53,13 +51,7 @@ describe('Dashboard · carga progresiva de módulos', { retries: 0 }, () => {
         registerDashboardRequests('repeat')
 
         cy.visit('/dashboard')
-        cy.wait([
-            '@repeat-dashboardSales',
-            '@repeat-historicalSales',
-            '@repeat-averageTicket',
-            '@repeat-googleReviewsStats',
-            '@repeat-storeVisitsStats',
-        ])
+        cy.wait(['@repeat-googleReviewsStats', '@repeat-storeVisitsStats'])
         cy.get('[aria-label="Cargando módulo del dashboard"]').eq(0).scrollIntoView()
         cy.wait('@repeat-dashboardTrend')
         cy.scrollTo('bottom')
@@ -68,10 +60,11 @@ describe('Dashboard · carga progresiva de módulos', { retries: 0 }, () => {
             '@repeat-recentOrders',
         ])
 
+        // Los datos prioritarios vienen del servidor; el navegador no los pide.
+        ;['@repeat-dashboardSales', '@repeat-historicalSales', '@repeat-averageTicket'].forEach(
+            (alias) => assertRequestCount(alias, 0),
+        )
         const aliases = [
-            '@repeat-dashboardSales',
-            '@repeat-historicalSales',
-            '@repeat-averageTicket',
             '@repeat-googleReviewsStats',
             '@repeat-storeVisitsStats',
             '@repeat-dashboardTrend',

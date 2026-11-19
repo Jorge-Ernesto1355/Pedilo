@@ -51,18 +51,9 @@ function installComboCatalog() {
     }
     let createAttempts = 0
 
-    cy.intercept('GET', '**/businesses/mine', {
-        statusCode: 200,
-        body: {
-            business: {
-                id: businessId,
-                name: 'Restaurante Cypress',
-                slug: 'restaurante-combos-cypress',
-                description: 'Catálogo para pruebas.',
-                ubication: 'Mazatlán, Sinaloa',
-            },
-        },
-    })
+    // El negocio no se mockea: el layout protegido lo precarga en el servidor y el cliente
+    // usa el id real de la cuenta de prueba. Las rutas del catálogo se interceptan para
+    // cualquier id de negocio.
     cy.intercept('GET', '**/businesses/mine/menus', {
         statusCode: 200,
         body: [menu],
@@ -75,14 +66,14 @@ function installComboCatalog() {
         request.alias = 'getAllProducts'
         request.reply({ statusCode: 200, body: state.products })
     })
-    cy.intercept('GET', `**/businesses/${businessId}/products*`, (request) => {
+    cy.intercept('GET', /\/businesses\/(?!mine\/)[^/]+\/products(?:\?|$)/, (request) => {
         request.alias = 'getProductsPage'
         request.reply({
             statusCode: 200,
             body: { products: state.products, page: 1, limit: 100, total: state.products.length },
         })
     })
-    cy.intercept('GET', `**/businesses/${businessId}/products/stats`, {
+    cy.intercept('GET', '**/businesses/*/products/stats', {
         statusCode: 200,
         body: {
             totalProducts: products.length,
@@ -92,15 +83,15 @@ function installComboCatalog() {
             categoriesWithProducts: 1,
         },
     })
-    cy.intercept('GET', `**/businesses/${businessId}/products/analytics/best-selling*`, {
+    cy.intercept('GET', '**/businesses/*/products/analytics/best-selling*', {
         statusCode: 200,
         body: [],
     })
-    cy.intercept('GET', `**/businesses/${businessId}/products/analytics/most-requested*`, {
+    cy.intercept('GET', '**/businesses/*/products/analytics/most-requested*', {
         statusCode: 200,
         body: [],
     })
-    cy.intercept('GET', `**/businesses/${businessId}/products/analytics/summary*`, {
+    cy.intercept('GET', '**/businesses/*/products/analytics/summary*', {
         statusCode: 200,
         body: {
             totalProducts: products.length,

@@ -1,3 +1,7 @@
+import { visitViaClientNavigation } from '../../support/clientNavigation'
+// Las cifras de "Hoy" llegan del servidor en una carga completa; para inspeccionar la
+// respuesta del backend se entra a la página por navegación interna.
+
 type ProductSeed = { name: string; price: number }
 type OrderSeed = { product: ProductSeed; quantity: number; customer: string; phone: string }
 
@@ -278,7 +282,7 @@ describe('High volume · restaurante con actividad real y métricas', () => {
             })
 
             cy.intercept('GET', '**/dashboard/sales*').as('getHighVolumeSales')
-            cy.visit('/dashboard/sales')
+            visitViaClientNavigation('/dashboard/sales')
             cy.wait('@getHighVolumeSales').then(({ response }) => {
                 expect(response?.statusCode).to.eq(200)
                 expect(response?.body.ordersCount).to.eq(readyOrders.length)

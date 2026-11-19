@@ -109,7 +109,8 @@ function installCreateMenuApi(
         },
     )
     cy.intercept(
-        { method: 'GET', pathname: `/api/v1/businesses/${businessId}/products` },
+        // El negocio lo hidrata el servidor (id real), por eso el id va con comodín.
+        { method: 'GET', pathname: '/api/v1/businesses/*/products' },
         (request) => {
         request.alias = 'globalProducts'
         const page = Number(new URL(request.url).searchParams.get('page') ?? 1)
@@ -215,7 +216,8 @@ describe('Grupos globales · casos de uso granulares', () => {
         cy.contains('button', 'Extras global').click()
         cy.wait('@globalGroupDetail')
         cy.wait('@globalProducts')
-        cy.contains('Queso extra').should('be.visible')
+        // El nombre de la opción vive en un input: contains() no mira valores de campos.
+        cy.get('input[value="Queso extra"]').should('be.visible')
         cy.contains('Hamburguesa clásica').should('be.visible')
     })
 
@@ -274,7 +276,10 @@ describe('Grupos globales · casos de uso granulares', () => {
 
         cy.reload()
         cy.wait('@listGlobalGroups')
-        state.groups[0].options = Array.from({ length: 10 }, (_, index) => ({ id: `option-${index}`, name: `Extra ${index + 1}`, price: 0, minSelections: 0, maxSelections: 1, isAvailable: true }))
+        // En cy.then: fuera de él se ejecutaría al encolar el test, antes de abrir la pantalla.
+        cy.then(() => {
+            state.groups[0].options = Array.from({ length: 10 }, (_, index) => ({ id: `option-${index}`, name: `Extra ${index + 1}`, price: 0, minSelections: 0, maxSelections: 1, isAvailable: true }))
+        })
         cy.contains('button', 'Extras global').click()
         cy.wait('@globalGroupDetail')
         cy.contains('10/10').should('be.visible')
@@ -303,7 +308,8 @@ describe('Grupos globales · casos de uso granulares', () => {
         cy.contains('button', 'Extras global').click()
         cy.wait('@globalGroupDetail')
         cy.contains('label', 'Hamburguesa clásica').find('input[type="checkbox"]').check()
-        cy.contains('button', 'Guardar cambios').click()
+        // Acotado al panel: en la página hay otros "Guardar cambios" (formulario del negocio).
+        cy.get('section[aria-labelledby="global-options-title"]').contains('button', 'Guardar cambios').click()
         cy.wait('@assignGlobalProducts').its('request.body.productIds').should('deep.equal', [productId])
 
         cy.reload()

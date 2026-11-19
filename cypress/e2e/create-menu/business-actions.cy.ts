@@ -1,3 +1,5 @@
+// Datos usados por los mocks de ajustes y Google Reviews. El negocio en sí ya no se
+// mockea: el servidor lo precarga (layout protegido) y la cuenta seed tiene uno real.
 const business = {
     id: 'business-actions-e2e',
     name: 'Restaurante de prueba',
@@ -22,10 +24,6 @@ function installBusinessMocks() {
         address: null,
         timezone: 'America/Mazatlan',
     }
-    cy.intercept('GET', '**/api/v1/businesses/mine', {
-        statusCode: 200,
-        body: { business },
-    })
     cy.intercept('GET', '**/api/v1/businesses/mine/menus', {
         statusCode: 200,
         body: { menus: [] },
@@ -65,6 +63,10 @@ describe('Crear menú · acciones de negocio', () => {
         })
         installBusinessMocks()
         cy.visit('/create-menu')
+        // La página llega renderizada desde el servidor: hay que esperar a que React
+        // hidrate antes de hacer clic (un clic previo a la hidratación se pierde). El
+        // formulario se rellena con el negocio en un efecto, después de hidratar.
+        cy.get('#businessName').should('not.have.value', '')
     })
 
     it('muestra las tres acciones y conserva la configuración general sin WhatsApp', () => {
@@ -73,10 +75,12 @@ describe('Crear menú · acciones de negocio', () => {
             cy.contains('h3', 'Google Reviews').should('be.visible')
             cy.contains('h3', 'WhatsApp').should('be.visible')
         })
-        cy.get('@businessSettings.all').should('have.length', 0)
-        cy.contains('button', 'Configurar').click()
+        // "Nueva orden" se oculta hasta que el negocio tiene WhatsApp, así que los
+        // ajustes se leen una vez al cargar; el modal reutiliza esa caché.
         cy.wait('@businessSettings')
+        cy.contains('button', 'Configurar').click()
         cy.get('[role="dialog"]').should('be.visible')
+        cy.get('@businessSettings.all').should('have.length', 1)
         cy.get('#settings-currency').should('be.visible')
         cy.get('#settings-phone').should('be.visible')
         cy.get('#settings-timezone').should('be.visible')

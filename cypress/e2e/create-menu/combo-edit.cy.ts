@@ -2,6 +2,8 @@ const businessId = 'business-combo-edit-e2e'
 const menuId = 'menu-combo-edit-e2e'
 const categoryId = 'category-combo-edit-e2e'
 const comboId = 'combo-edit-e2e'
+// /businesses/<id>/products[/...] para cualquier id salvo `mine`.
+const businessProductsUrl = /\/businesses\/(?!mine\/)[^/]+\/products(?:[/?]|$)/
 
 const catalogProducts = [
     ['required-burger', 'Hamburguesa', 90],
@@ -126,18 +128,15 @@ function installCatalog(options: { detailsDelay?: number; detailsError?: boolean
         }
     }
 
-    cy.intercept('GET', '**/businesses/mine', {
-        statusCode: 200,
-        body: {
-            business: { id: businessId, name: 'Restaurante de prueba', slug: 'combos-edicion' },
-        },
-    })
+    // El negocio no se mockea: el layout protegido lo precarga en el servidor y el cliente
+    // usa el id real de la cuenta de prueba. Por eso el catálogo paginado se intercepta
+    // para cualquier id de negocio (excepto /mine, que tiene su propio mock).
     cy.intercept('GET', '**/businesses/mine/menus', { statusCode: 200, body: [menu] })
     cy.intercept('GET', '**/businesses/mine/products', {
         statusCode: 200,
         body: [...catalogProducts, comboProduct],
     })
-    cy.intercept('GET', `**/businesses/${businessId}/products*`, (request) => {
+    cy.intercept('GET', businessProductsUrl, (request) => {
         const path = new URL(request.url).pathname
         if (path.endsWith('/stats')) {
             request.reply({
