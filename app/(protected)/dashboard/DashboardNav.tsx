@@ -3,6 +3,7 @@
 import { createPortal } from 'react-dom'
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
+import type { ComponentProps } from 'react'
 import Image from 'next/image'
 import { useQueryClient } from '@tanstack/react-query'
 import {
@@ -25,6 +26,31 @@ import posthog from 'posthog-js'
 import { useOrderEventsStore } from '@/store/orderEventsStore'
 import { getOrderSoundPreferenceKey } from './features/orders/services/orderEvents'
 import { DashboardNavSkeleton } from '@/components/AppLoadingSkeleton'
+
+// Prefetch por intención: sin precargar al entrar en el viewport; al pasar el
+// cursor, enfocar o tocar, la ruta vuelve al prefetch por defecto (hasta su loading.tsx).
+function IntentLink({ onMouseEnter, onFocus, onTouchStart, ...props }: Omit<ComponentProps<typeof Link>, 'prefetch'>) {
+    const [intent, setIntent] = useState(false)
+
+    return (
+        <Link
+            {...props}
+            prefetch={intent ? null : false}
+            onMouseEnter={(event) => {
+                setIntent(true)
+                onMouseEnter?.(event)
+            }}
+            onFocus={(event) => {
+                setIntent(true)
+                onFocus?.(event)
+            }}
+            onTouchStart={(event) => {
+                setIntent(true)
+                onTouchStart?.(event)
+            }}
+        />
+    )
+}
 
 const links = [
     { href: '/dashboard', label: 'Resumen', icon: LayoutDashboard },
@@ -139,8 +165,8 @@ export function DashboardNav() {
         }
     }
 
-    const business =
-        businessQuery.isSuccess && !businessQuery.isFetching ? businessQuery.data : null
+    // Keep showing the cached business while a refresh is in flight.
+    const business = businessQuery.data ?? null
     const businessName = typeof business?.name === 'string' ? business.name.trim() : ''
     const businessLogoUrl = typeof business?.logoUrl === 'string' ? business.logoUrl.trim() : ''
     const displayedBusinessName = businessName || 'Tu negocio'
@@ -178,10 +204,9 @@ export function DashboardNav() {
                                     : pathname.startsWith(link.href)
                             const isOrders = link.href === '/dashboard/orders'
                             return (
-                                <Link
+                                <IntentLink
                                     key={link.href}
                                     href={link.href}
-                                    prefetch={false}
                                     aria-label={isOrders && unseenCount > 0 ? `Pedidos, ${unseenCount} nuevas órdenes` : undefined}
                                     className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition ${active ? 'bg-[#EAF0FF] text-[#1E40AF]' : 'text-[#65738A] hover:bg-[#F5F8FC] hover:text-[#1E40AF]'}`}
                                 >
@@ -193,7 +218,7 @@ export function DashboardNav() {
                                             <span className="sr-only"> nuevas órdenes</span>
                                         </span>
                                     )}
-                                </Link>
+                                </IntentLink>
                             )
                         })}
                     </nav>
@@ -338,10 +363,9 @@ export function DashboardNav() {
                         const isOrders = link.href === '/dashboard/orders'
 
                         return (
-                            <Link
+                            <IntentLink
                                 key={link.href}
                                 href={link.href}
-                                prefetch={false}
                                 aria-label={isOrders && unseenCount > 0 ? `Pedidos, ${unseenCount} nuevas órdenes` : undefined}
                                 aria-current={active ? 'page' : undefined}
                                 className={`flex min-w-0 flex-col items-center justify-center rounded-lg text-[9px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1E40AF] focus-visible:ring-offset-2 ${isOrders ? '-translate-y-1 gap-0.5' : 'gap-0.5'} ${active ? 'text-[#1E40AF]' : 'text-[#8996A9] hover:text-[#1E40AF]'}`}
@@ -362,7 +386,7 @@ export function DashboardNav() {
                                 <span className={`truncate px-0.5 ${isOrders ? 'font-bold' : ''}`}>
                                     {link.label}
                                 </span>
-                            </Link>
+                            </IntentLink>
                         )
                     })}
                 </div>
