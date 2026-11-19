@@ -200,8 +200,10 @@ export function useOrderEvents() {
         }
 
         const handleVisibility = () => {
-            if (document.visibilityState === 'visible')
-                void queryClient.invalidateQueries({ queryKey: ['orders', activeBusinessId] })
+            if (document.visibilityState !== 'visible') return
+            // While the stream is connected, events keep the cache current.
+            if (useOrderEventsStore.getState().connectionStatus === 'connected') return
+            void queryClient.invalidateQueries({ queryKey: ['orders', activeBusinessId] })
         }
         document.addEventListener('visibilitychange', handleVisibility)
         void connect()

@@ -1,5 +1,6 @@
 'use client'
 
+import { QtyNumber } from '@/app/components/ui/QtyNumber'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useQueries, useQuery } from '@tanstack/react-query'
 import {
@@ -162,7 +163,7 @@ export function EditOrderModal({
     )
     const draftTotal = Math.max(0, draftSubtotal - (order.discountAmount ?? 0))
     const changed =
-        selectedCustomer?.id !== order.customerId ||
+        (selectedCustomer?.id ?? null) !== (order.customerId ?? null) ||
         fulfillmentType !== order.fulfillmentType ||
         paymentMethod !== (order.paymentMethod ?? 'CASH') ||
         draftItems.length !== order.items.length ||
@@ -340,6 +341,8 @@ export function EditOrderModal({
     function save() {
         setError('')
         const incompleteCombo = draftItems.find((item, index) => {
+            // Una línea de combo sin tocar no envía comboChoiceIds: se conserva como está.
+            if (item.comboChoiceIds === undefined) return false
             const groups = comboQueries[index]?.data?.optionGroups ?? []
             return groups.some(
                 (group) =>
@@ -390,449 +393,467 @@ export function EditOrderModal({
     }
 
     return (
-        <div className="fixed inset-0 z-[60] grid place-items-center bg-[#10224A]/40 p-4 backdrop-blur-[2px]">
+        <div className="fixed inset-0 z-[60] grid place-items-center bg-[#10224A]/40 p-4 pb-[calc(var(--mobile-nav-h)+1rem)] backdrop-blur-[2px]">
             <section
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="edit-order-title"
                 data-cy="edit-order-modal"
-                className="max-h-[94svh] w-full max-w-3xl overflow-y-auto rounded-3xl border border-[#DCE5F3] bg-white p-5 shadow-[0_25px_80px_rgb(16_34_74_/_0.2)] sm:p-7"
+                className="flex max-h-[min(94svh,calc(100svh-var(--mobile-nav-h)-2rem))] w-full max-w-3xl flex-col overflow-hidden rounded-3xl border border-[#DCE5F3] bg-white shadow-[0_25px_80px_rgb(16_34_74_/_0.2)]"
             >
-                <div className="flex items-start justify-between gap-4">
-                    <div>
-                        <p className="text-xs font-bold uppercase tracking-[.15em] text-[#2451C5]">
-                            Editar orden
-                        </p>
-                        <h2
-                            id="edit-order-title"
-                            className="mt-1 font-display text-2xl text-[#12234A]"
+                <div className="min-h-0 flex-1 overflow-y-auto p-5 sm:p-7">
+                    <div className="flex items-start justify-between gap-4">
+                        <div>
+                            <p className="text-xs font-bold uppercase tracking-[.15em] text-[#2451C5]">
+                                Editar orden
+                            </p>
+                            <h2
+                                id="edit-order-title"
+                                className="mt-1 font-display text-2xl text-[#12234A]"
+                            >
+                                Pedido #{String(order.orderNumber).padStart(3, '0')}
+                            </h2>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="grid size-10 place-items-center rounded-xl text-[#65738A] hover:bg-[#F2F5FA]"
+                            aria-label="Cerrar edición"
                         >
-                            Pedido #{String(order.orderNumber).padStart(3, '0')}
-                        </h2>
+                            <X className="size-5" />
+                        </button>
                     </div>
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="grid size-10 place-items-center rounded-xl text-[#65738A] hover:bg-[#F2F5FA]"
-                        aria-label="Cerrar edición"
-                    >
-                        <X className="size-5" />
-                    </button>
-                </div>
-                {error && (
-                    <div
-                        role="alert"
-                        className="mt-5 flex gap-2 rounded-xl border border-[#F3C2BD] bg-[#FFF5F3] p-3 text-sm text-[#B42318]"
-                    >
-                        <AlertTriangle className="size-4 shrink-0" />
-                        {error}
-                    </div>
-                )}
-                {!reviewing ? (
-                    <div className="mt-6 space-y-6">
-                        <section className="grid gap-4 sm:grid-cols-2">
-                            <div className="sm:col-span-2">
-                                <label className="text-sm font-semibold text-[#243556]">
-                                    Buscar cliente existente
-                                    <input
-                                        aria-label="Buscar cliente para la orden"
-                                        value={customerSearch}
-                                        onChange={(event) => setCustomerSearch(event.target.value)}
-                                        placeholder="Busca por nombre o teléfono"
-                                        className="mt-1 h-11 w-full rounded-xl border border-[#C9D7EA] px-3 font-normal outline-none focus:border-[#2451C5]"
-                                    />
-                                </label>
-                                {selectedCustomer && (
-                                    <div className="mt-2 flex items-center justify-between rounded-xl border border-[#B9CDFD] bg-[#EEF3FF] px-3 py-2 text-sm text-[#243556]">
-                                        <span>
-                                            <strong>{selectedCustomer.name}</strong> ·{' '}
-                                            {selectedCustomer.phone || 'Sin teléfono'}
-                                        </span>
-                                        <button
-                                            type="button"
-                                            onClick={() => setSelectedCustomer(null)}
-                                            className="text-xs font-bold text-[#B42318]"
-                                        >
-                                            Quitar
-                                        </button>
-                                    </div>
-                                )}
-                                {customerSearch.trim().length >= 2 &&
-                                    (customers.isFetching ||
-                                        customerSearch.trim() !== debouncedCustomerSearch) && (
-                                        <div
-                                            role="status"
-                                            aria-label="Buscando clientes"
-                                            className="mt-2 space-y-2 rounded-xl border border-[#DCE5F3] bg-white p-3"
-                                        >
-                                            {[1, 2, 3].map((item) => (
-                                                <div
-                                                    key={item}
-                                                    className="h-10 animate-pulse rounded-lg bg-[#F1F5FA]"
-                                                />
-                                            ))}
-                                        </div>
-                                    )}
-                                {customerSearch.trim().length >= 2 && customers.isError && (
-                                    <div
-                                        role="alert"
-                                        className="mt-2 rounded-xl border border-[#F3C2BD] bg-[#FFF5F3] p-3 text-sm text-[#B42318]"
-                                    >
-                                        No pudimos cargar los clientes.{' '}
-                                        <button
-                                            type="button"
-                                            data-cy="edit-order-customer-retry"
-                                            onClick={() => void customers.refetch()}
-                                            className="font-bold underline"
-                                        >
-                                            Intentar de nuevo
-                                        </button>
-                                    </div>
-                                )}
-                                {customerSearch.trim().length >= 2 &&
-                                    customers.isSuccess &&
-                                    customers.data.customers.length === 0 && (
-                                        <p className="mt-2 rounded-xl border border-[#DCE5F3] bg-[#F8FAFE] p-3 text-center text-sm text-[#65738A]">
-                                            No hay ningún cliente que coincida con la búsqueda.
-                                        </p>
-                                    )}
-                                {customers.isSuccess &&
-                                    !customers.isFetching &&
-                                    customers.data?.customers &&
-                                    customers.data.customers.length > 0 && (
-                                        <div className="mt-2 max-h-64 overflow-y-auto divide-y divide-[#E8EEF6] rounded-xl border border-[#DCE5F3] bg-white">
-                                            {customers.data.customers
-                                                .slice(0, 8)
-                                                .map((customer) => (
-                                                    <button
-                                                        key={customer.id}
-                                                        type="button"
-                                                        onClick={() => {
-                                                            setSelectedCustomer({
-                                                                id: customer.id,
-                                                                name: customer.name,
-                                                                phone: customer.phone,
-                                                            })
-                                                            setCustomerSearch('')
-                                                        }}
-                                                        className="block w-full px-3 py-2 text-left text-sm hover:bg-[#F8FAFE]"
-                                                    >
-                                                        <strong>{customer.name}</strong>
-                                                        <span className="ml-2 text-[#71819A]">
-                                                            {customer.phone}
-                                                        </span>
-                                                    </button>
-                                                ))}
-                                        </div>
-                                    )}
-                            </div>
-                            <ChoiceField label="Modalidad">
-                                <ChoiceButton
-                                    active={fulfillmentType === 'DINE_IN'}
-                                    onClick={() => setFulfillmentType('DINE_IN')}
-                                    icon={<Utensils className="size-4" />}
-                                    title="Comer aquí"
-                                    description="Consumo en el restaurante"
-                                />
-                                <ChoiceButton
-                                    active={fulfillmentType === 'PICKUP'}
-                                    onClick={() => setFulfillmentType('PICKUP')}
-                                    icon={<ShoppingBag className="size-4" />}
-                                    title="Para llevar"
-                                    description="El cliente recoge el pedido"
-                                />
-                            </ChoiceField>
-                            <ChoiceField label="Método de pago">
-                                <ChoiceButton
-                                    active={paymentMethod === 'CASH'}
-                                    onClick={() => setPaymentMethod('CASH')}
-                                    icon={<Banknote className="size-4" />}
-                                    title="Efectivo"
-                                    description="Pago al entregar"
-                                />
-                                <ChoiceButton
-                                    active={paymentMethod === 'TRANSFER'}
-                                    onClick={() => setPaymentMethod('TRANSFER')}
-                                    icon={<Receipt className="size-4" />}
-                                    title="Transferencia"
-                                    description="Pago por transferencia"
-                                />
-                            </ChoiceField>
-                        </section>
-                        <section>
-                            <div className="mb-3 flex items-center justify-between">
-                                <h3 className="font-display text-lg text-[#12234A]">Productos</h3>
-                                <span className="text-sm text-[#65738A]">
-                                    {formatMoney(draftSubtotal, 'MXN')}
-                                </span>
-                            </div>
-                            <div className="space-y-3">
-                                {draftItems.map((item, index) => (
-                                    <article
-                                        key={item.id ?? `${item.productId}-${index}`}
-                                        data-cy="edit-order-item"
-                                        className="rounded-2xl border border-[#E8EEF6] p-3"
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <div className="min-w-0 flex-1">
-                                                <p className="font-semibold text-[#243556]">
-                                                    {item.name}
-                                                </p>
-                                                {item.optionText && (
-                                                    <p className="text-xs text-[#71819A]">
-                                                        Extras actuales: {item.optionText}
-                                                    </p>
-                                                )}
-                                            </div>
+                    {error && (
+                        <div
+                            role="alert"
+                            className="mt-5 flex gap-2 rounded-xl border border-[#F3C2BD] bg-[#FFF5F3] p-3 text-sm text-[#B42318]"
+                        >
+                            <AlertTriangle className="size-4 shrink-0" />
+                            {error}
+                        </div>
+                    )}
+                    {!reviewing ? (
+                        <div className="mt-6 space-y-6">
+                            <section className="grid gap-4 sm:grid-cols-2">
+                                <div className="sm:col-span-2">
+                                    <label className="text-sm font-semibold text-[#243556]">
+                                        Buscar cliente existente
+                                        <input
+                                            aria-label="Buscar cliente para la orden"
+                                            value={customerSearch}
+                                            onChange={(event) =>
+                                                setCustomerSearch(event.target.value)
+                                            }
+                                            placeholder="Busca por nombre o teléfono"
+                                            className="mt-1 h-11 w-full rounded-xl border border-[#C9D7EA] px-3 font-normal outline-none focus:border-[#2451C5]"
+                                        />
+                                    </label>
+                                    {selectedCustomer && (
+                                        <div className="mt-2 flex items-center justify-between rounded-xl border border-[#B9CDFD] bg-[#EEF3FF] px-3 py-2 text-sm text-[#243556]">
+                                            <span>
+                                                <strong>{selectedCustomer.name}</strong> ·{' '}
+                                                {selectedCustomer.phone || 'Sin teléfono'}
+                                            </span>
                                             <button
                                                 type="button"
-                                                onClick={() =>
-                                                    setDraftItems((current) =>
-                                                        current.filter(
-                                                            (_, itemIndex) => itemIndex !== index,
-                                                        ),
-                                                    )
-                                                }
-                                                className="grid size-9 place-items-center rounded-lg text-[#B42318] hover:bg-[#FFF3F1]"
-                                                aria-label={`Eliminar ${item.name}`}
+                                                onClick={() => setSelectedCustomer(null)}
+                                                className="text-xs font-bold text-[#B42318]"
                                             >
-                                                <Trash2 className="size-4" />
+                                                Quitar
                                             </button>
-                                            <div className="flex items-center gap-2">
-                                                <button
-                                                    type="button"
-                                                    onClick={() =>
-                                                        setDraftItems((current) =>
-                                                            current.map((value, itemIndex) =>
-                                                                itemIndex === index
-                                                                    ? {
-                                                                          ...value,
-                                                                          quantity: Math.max(
-                                                                              1,
-                                                                              value.quantity - 1,
-                                                                          ),
-                                                                      }
-                                                                    : value,
-                                                            ),
-                                                        )
-                                                    }
-                                                    className="grid size-8 place-items-center rounded-lg border border-[#D7E1EF]"
-                                                    aria-label={`Disminuir cantidad de ${item.name}`}
-                                                >
-                                                    <Minus className="size-4" />
-                                                </button>
-                                                <span className="w-6 text-center font-bold">
-                                                    {item.quantity}
-                                                </span>
-                                                <button
-                                                    type="button"
-                                                    onClick={() =>
-                                                        setDraftItems((current) =>
-                                                            current.map((value, itemIndex) =>
-                                                                itemIndex === index
-                                                                    ? {
-                                                                          ...value,
-                                                                          quantity:
-                                                                              value.quantity + 1,
-                                                                      }
-                                                                    : value,
-                                                            ),
-                                                        )
-                                                    }
-                                                    className="grid size-8 place-items-center rounded-lg border border-[#D7E1EF]"
-                                                    aria-label={`Aumentar cantidad de ${item.name}`}
-                                                >
-                                                    <Plus className="size-4" />
-                                                </button>
+                                        </div>
+                                    )}
+                                    {customerSearch.trim().length >= 2 &&
+                                        (customers.isFetching ||
+                                            customerSearch.trim() !== debouncedCustomerSearch) && (
+                                            <div
+                                                role="status"
+                                                aria-label="Buscando clientes"
+                                                className="mt-2 space-y-2 rounded-xl border border-[#DCE5F3] bg-white p-3"
+                                            >
+                                                {[1, 2, 3].map((item) => (
+                                                    <div
+                                                        key={item}
+                                                        className="h-10 animate-pulse rounded-lg bg-[#F1F5FA]"
+                                                    />
+                                                ))}
                                             </div>
-                                            <span className="w-24 text-right font-semibold text-[#243556]">
-                                                {formatMoney(item.unitPrice * item.quantity, 'MXN')}
-                                            </span>
-                                        </div>
-                                        {((optionQueries[index]?.data?.length ?? 0) > 0 ||
-                                            (comboQueries[index]?.data?.optionGroups.length ?? 0) >
-                                                0) && (
-                                            <OptionEditor
-                                                itemIndex={index}
-                                                groups={optionQueries[index]?.data ?? []}
-                                                comboGroups={
-                                                    comboQueries[index]?.data?.optionGroups ?? []
-                                                }
-                                                selectedIds={item.optionIds}
-                                                comboChoiceIds={item.comboChoiceIds}
-                                                onEnable={() => enableOptionEditing(index)}
-                                                onCancel={() => cancelOptionEditing(index)}
-                                                onChange={(optionId, delta) =>
-                                                    toggleOptionQuantity(index, optionId, delta)
-                                                }
-                                                onComboChange={(groupId, choiceId) =>
-                                                    changeComboChoice(index, groupId, choiceId)
-                                                }
-                                            />
                                         )}
-                                    </article>
-                                ))}
-                            </div>
-                        </section>
-                        <section className="rounded-2xl border border-dashed border-[#B9CDFD] bg-[#F8FAFE] p-4">
-                            <div className="flex items-center justify-between gap-3">
-                                <div>
-                                    <h4 className="font-semibold text-[#243556]">
-                                        Agregar producto
-                                    </h4>
-                                    <p className="mt-1 text-xs text-[#71819A]">
-                                        Busca un producto y agrégalo a la orden. Cada selección se
-                                        conserva como una línea independiente.
-                                    </p>
-                                </div>
-                                <button
-                                    type="button"
-                                    data-cy="edit-order-product-picker-toggle"
-                                    onClick={() => setProductPickerOpen((value) => !value)}
-                                    className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-[#2451C5] px-4 text-sm font-bold text-white hover:bg-[#1D43A5]"
-                                >
-                                    <Plus className="size-4" />
-                                    {productPickerOpen ? 'Cerrar' : 'Seleccionar'}
-                                </button>
-                            </div>
-                            {productPickerOpen && (
-                                <div className="mt-4">
-                                    {menus.isLoading ? (
-                                        <div
-                                            role="status"
-                                            aria-label="Cargando productos"
-                                            className="grid gap-2 sm:grid-cols-2"
-                                        >
-                                            {[1, 2, 3, 4].map((item) => (
-                                                <div
-                                                    key={item}
-                                                    className="h-16 animate-pulse rounded-xl bg-[#E8EEF8]"
-                                                />
-                                            ))}
-                                        </div>
-                                    ) : menus.isError ? (
+                                    {customerSearch.trim().length >= 2 && customers.isError && (
                                         <div
                                             role="alert"
-                                            className="rounded-xl border border-[#F3C2BD] bg-[#FFF5F3] p-3 text-sm text-[#B42318]"
+                                            className="mt-2 rounded-xl border border-[#F3C2BD] bg-[#FFF5F3] p-3 text-sm text-[#B42318]"
                                         >
-                                            No pudimos cargar los productos.{' '}
+                                            No pudimos cargar los clientes.{' '}
                                             <button
                                                 type="button"
-                                                data-cy="edit-order-catalog-retry"
-                                                onClick={() => void menus.refetch()}
+                                                data-cy="edit-order-customer-retry"
+                                                onClick={() => void customers.refetch()}
                                                 className="font-bold underline"
                                             >
                                                 Intentar de nuevo
                                             </button>
                                         </div>
-                                    ) : products.length === 0 ? (
-                                        <p className="rounded-xl border border-[#DCE5F3] bg-white p-4 text-center text-sm text-[#65738A]">
-                                            No hay productos disponibles para agregar.
-                                        </p>
-                                    ) : (
-                                        <>
-                                            <label className="relative block">
-                                                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#8996A9]" />
-                                                <input
-                                                    aria-label="Buscar producto para agregar"
-                                                    value={productSearch}
-                                                    onChange={(event) =>
-                                                        setProductSearch(event.target.value)
-                                                    }
-                                                    placeholder="Buscar producto"
-                                                    className="h-10 w-full rounded-xl border border-[#C9D7EA] bg-white pl-9 pr-3 text-sm outline-none focus:border-[#2451C5]"
-                                                />
-                                            </label>
-                                            <div className="mt-3 grid max-h-72 gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
-                                                {products
-                                                    .filter((product) =>
-                                                        product.name
-                                                            .toLowerCase()
-                                                            .includes(
-                                                                productSearch.trim().toLowerCase(),
-                                                            ),
-                                                    )
-                                                    .map((product) => (
+                                    )}
+                                    {customerSearch.trim().length >= 2 &&
+                                        customers.isSuccess &&
+                                        customers.data.customers.length === 0 && (
+                                            <p className="mt-2 rounded-xl border border-[#DCE5F3] bg-[#F8FAFE] p-3 text-center text-sm text-[#65738A]">
+                                                No hay ningún cliente que coincida con la búsqueda.
+                                            </p>
+                                        )}
+                                    {customers.isSuccess &&
+                                        !customers.isFetching &&
+                                        customers.data?.customers &&
+                                        customers.data.customers.length > 0 && (
+                                            <div className="mt-2 max-h-64 overflow-y-auto divide-y divide-[#E8EEF6] rounded-xl border border-[#DCE5F3] bg-white">
+                                                {customers.data.customers
+                                                    .slice(0, 8)
+                                                    .map((customer) => (
                                                         <button
-                                                            key={product.id}
+                                                            key={customer.id}
                                                             type="button"
-                                                            data-cy="edit-order-product"
-                                                            data-product-id={product.id}
-                                                            onClick={() => addProduct(product)}
-                                                            className="flex min-h-16 items-center justify-between gap-3 rounded-xl border border-[#E0E8F4] bg-white px-3 text-left transition hover:border-[#B9CDFD] hover:bg-[#EEF3FF]"
+                                                            onClick={() => {
+                                                                setSelectedCustomer({
+                                                                    id: customer.id,
+                                                                    name: customer.name,
+                                                                    phone: customer.phone,
+                                                                })
+                                                                setCustomerSearch('')
+                                                            }}
+                                                            className="block w-full px-3 py-2 text-left text-sm hover:bg-[#F8FAFE]"
                                                         >
-                                                            <span className="min-w-0">
-                                                                <span className="block truncate text-sm font-semibold text-[#243556]">
-                                                                    {product.name}
-                                                                </span>
-                                                                <span className="mt-1 block text-xs text-[#71819A]">
-                                                                    Agregar a la orden
-                                                                </span>
-                                                            </span>
-                                                            <span className="shrink-0 text-sm font-bold text-[#2451C5]">
-                                                                {formatMoney(
-                                                                    Number(product.price ?? 0),
-                                                                    'MXN',
-                                                                )}
+                                                            <strong>{customer.name}</strong>
+                                                            <span className="ml-2 text-[#71819A]">
+                                                                {customer.phone}
                                                             </span>
                                                         </button>
                                                     ))}
                                             </div>
-                                            {products.filter((product) =>
-                                                product.name
-                                                    .toLowerCase()
-                                                    .includes(productSearch.trim().toLowerCase()),
-                                            ).length === 0 && (
-                                                <p className="mt-3 rounded-xl bg-white p-3 text-center text-sm text-[#65738A]">
-                                                    No encontramos productos con esa búsqueda.
-                                                </p>
-                                            )}
-                                        </>
-                                    )}
+                                        )}
                                 </div>
-                            )}
-                        </section>
-                    </div>
-                ) : (
-                    <section className="mt-6 rounded-2xl border border-[#DCE5F3] bg-[#F8FAFE] p-5">
-                        <h3 className="font-display text-xl text-[#12234A]">
-                            Confirma los cambios
-                        </h3>
-                        <p className="mt-1 text-sm text-[#65738A]">
-                            Revisa el resumen antes de guardar la nueva versión.
-                        </p>
-                        <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                            <div className="rounded-xl bg-white p-4">
-                                <p className="text-xs font-bold uppercase text-[#8996A9]">
-                                    Total actual
-                                </p>
-                                <p className="mt-2 font-display text-2xl text-[#65738A]">
-                                    {formatMoney(beforeTotal, 'MXN')}
-                                </p>
-                            </div>
-                            <div className="rounded-xl border border-[#B9CDFD] bg-[#EEF3FF] p-4">
-                                <p className="text-xs font-bold uppercase text-[#2451C5]">
-                                    Total después
-                                </p>
-                                <p className="mt-2 font-display text-2xl text-[#12234A]">
-                                    {formatMoney(draftTotal, 'MXN')}
-                                </p>
-                            </div>
+                                <ChoiceField label="Modalidad">
+                                    <ChoiceButton
+                                        active={fulfillmentType === 'DINE_IN'}
+                                        onClick={() => setFulfillmentType('DINE_IN')}
+                                        icon={<Utensils className="size-4" />}
+                                        title="Comer aquí"
+                                        description="Consumo en el restaurante"
+                                    />
+                                    <ChoiceButton
+                                        active={fulfillmentType === 'PICKUP'}
+                                        onClick={() => setFulfillmentType('PICKUP')}
+                                        icon={<ShoppingBag className="size-4" />}
+                                        title="Para llevar"
+                                        description="El cliente recoge el pedido"
+                                    />
+                                </ChoiceField>
+                                <ChoiceField label="Método de pago">
+                                    <ChoiceButton
+                                        active={paymentMethod === 'CASH'}
+                                        onClick={() => setPaymentMethod('CASH')}
+                                        icon={<Banknote className="size-4" />}
+                                        title="Efectivo"
+                                        description="Pago al entregar"
+                                    />
+                                    <ChoiceButton
+                                        active={paymentMethod === 'TRANSFER'}
+                                        onClick={() => setPaymentMethod('TRANSFER')}
+                                        icon={<Receipt className="size-4" />}
+                                        title="Transferencia"
+                                        description="Pago por transferencia"
+                                    />
+                                </ChoiceField>
+                            </section>
+                            <section>
+                                <div className="mb-3 flex items-center justify-between">
+                                    <h3 className="font-display text-lg text-[#12234A]">
+                                        Productos
+                                    </h3>
+                                    <span className="text-sm text-[#65738A]">
+                                        {formatMoney(draftSubtotal, 'MXN')}
+                                    </span>
+                                </div>
+                                <div className="space-y-3">
+                                    {draftItems.map((item, index) => (
+                                        <article
+                                            key={item.id ?? `${item.productId}-${index}`}
+                                            data-cy="edit-order-item"
+                                            className="rounded-2xl border border-[#E8EEF6] p-3"
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="font-semibold text-[#243556]">
+                                                        {item.name}
+                                                    </p>
+                                                    {item.optionText && (
+                                                        <p className="text-xs text-[#71819A]">
+                                                            Extras actuales: {item.optionText}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        setDraftItems((current) =>
+                                                            current.filter(
+                                                                (_, itemIndex) =>
+                                                                    itemIndex !== index,
+                                                            ),
+                                                        )
+                                                    }
+                                                    className="grid size-9 place-items-center rounded-lg text-[#B42318] hover:bg-[#FFF3F1]"
+                                                    aria-label={`Eliminar ${item.name}`}
+                                                >
+                                                    <Trash2 className="size-4" />
+                                                </button>
+                                                <div className="flex items-center gap-2">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() =>
+                                                            setDraftItems((current) =>
+                                                                current.map((value, itemIndex) =>
+                                                                    itemIndex === index
+                                                                        ? {
+                                                                              ...value,
+                                                                              quantity: Math.max(
+                                                                                  1,
+                                                                                  value.quantity -
+                                                                                      1,
+                                                                              ),
+                                                                          }
+                                                                        : value,
+                                                                ),
+                                                            )
+                                                        }
+                                                        className="pedilo-squish grid size-8 place-items-center rounded-lg border border-[#D7E1EF]"
+                                                        aria-label={`Disminuir cantidad de ${item.name}`}
+                                                    >
+                                                        <Minus className="size-4" />
+                                                    </button>
+                                                    <QtyNumber
+                                                        className="w-6 text-center font-bold"
+                                                        value={item.quantity}
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() =>
+                                                            setDraftItems((current) =>
+                                                                current.map((value, itemIndex) =>
+                                                                    itemIndex === index
+                                                                        ? {
+                                                                              ...value,
+                                                                              quantity:
+                                                                                  value.quantity +
+                                                                                  1,
+                                                                          }
+                                                                        : value,
+                                                                ),
+                                                            )
+                                                        }
+                                                        className="pedilo-squish grid size-8 place-items-center rounded-lg border border-[#D7E1EF]"
+                                                        aria-label={`Aumentar cantidad de ${item.name}`}
+                                                    >
+                                                        <Plus className="size-4" />
+                                                    </button>
+                                                </div>
+                                                <span className="w-24 text-right font-semibold text-[#243556]">
+                                                    {formatMoney(
+                                                        item.unitPrice * item.quantity,
+                                                        'MXN',
+                                                    )}
+                                                </span>
+                                            </div>
+                                            {((optionQueries[index]?.data?.length ?? 0) > 0 ||
+                                                (comboQueries[index]?.data?.optionGroups.length ??
+                                                    0) > 0) && (
+                                                <OptionEditor
+                                                    itemIndex={index}
+                                                    groups={optionQueries[index]?.data ?? []}
+                                                    comboGroups={
+                                                        comboQueries[index]?.data?.optionGroups ??
+                                                        []
+                                                    }
+                                                    selectedIds={item.optionIds}
+                                                    comboChoiceIds={item.comboChoiceIds}
+                                                    onEnable={() => enableOptionEditing(index)}
+                                                    onCancel={() => cancelOptionEditing(index)}
+                                                    onChange={(optionId, delta) =>
+                                                        toggleOptionQuantity(index, optionId, delta)
+                                                    }
+                                                    onComboChange={(groupId, choiceId) =>
+                                                        changeComboChoice(index, groupId, choiceId)
+                                                    }
+                                                />
+                                            )}
+                                        </article>
+                                    ))}
+                                </div>
+                            </section>
+                            <section className="rounded-2xl border border-dashed border-[#B9CDFD] bg-[#F8FAFE] p-4">
+                                <div className="flex items-center justify-between gap-3">
+                                    <div>
+                                        <h4 className="font-semibold text-[#243556]">
+                                            Agregar producto
+                                        </h4>
+                                        <p className="mt-1 text-xs text-[#71819A]">
+                                            Busca un producto y agrégalo a la orden. Cada selección
+                                            se conserva como una línea independiente.
+                                        </p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        data-cy="edit-order-product-picker-toggle"
+                                        onClick={() => setProductPickerOpen((value) => !value)}
+                                        className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-[#2451C5] px-4 text-sm font-bold text-white hover:bg-[#1D43A5]"
+                                    >
+                                        <Plus className="size-4" />
+                                        {productPickerOpen ? 'Cerrar' : 'Seleccionar'}
+                                    </button>
+                                </div>
+                                {productPickerOpen && (
+                                    <div className="mt-4">
+                                        {menus.isLoading ? (
+                                            <div
+                                                role="status"
+                                                aria-label="Cargando productos"
+                                                className="grid gap-2 sm:grid-cols-2"
+                                            >
+                                                {[1, 2, 3, 4].map((item) => (
+                                                    <div
+                                                        key={item}
+                                                        className="h-16 animate-pulse rounded-xl bg-[#E8EEF8]"
+                                                    />
+                                                ))}
+                                            </div>
+                                        ) : menus.isError ? (
+                                            <div
+                                                role="alert"
+                                                className="rounded-xl border border-[#F3C2BD] bg-[#FFF5F3] p-3 text-sm text-[#B42318]"
+                                            >
+                                                No pudimos cargar los productos.{' '}
+                                                <button
+                                                    type="button"
+                                                    data-cy="edit-order-catalog-retry"
+                                                    onClick={() => void menus.refetch()}
+                                                    className="font-bold underline"
+                                                >
+                                                    Intentar de nuevo
+                                                </button>
+                                            </div>
+                                        ) : products.length === 0 ? (
+                                            <p className="rounded-xl border border-[#DCE5F3] bg-white p-4 text-center text-sm text-[#65738A]">
+                                                No hay productos disponibles para agregar.
+                                            </p>
+                                        ) : (
+                                            <>
+                                                <label className="relative block">
+                                                    <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#8996A9]" />
+                                                    <input
+                                                        aria-label="Buscar producto para agregar"
+                                                        value={productSearch}
+                                                        onChange={(event) =>
+                                                            setProductSearch(event.target.value)
+                                                        }
+                                                        placeholder="Buscar producto"
+                                                        className="h-10 w-full rounded-xl border border-[#C9D7EA] bg-white pl-9 pr-3 text-sm outline-none focus:border-[#2451C5]"
+                                                    />
+                                                </label>
+                                                <div className="mt-3 grid max-h-72 gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
+                                                    {products
+                                                        .filter((product) =>
+                                                            product.name
+                                                                .toLowerCase()
+                                                                .includes(
+                                                                    productSearch
+                                                                        .trim()
+                                                                        .toLowerCase(),
+                                                                ),
+                                                        )
+                                                        .map((product) => (
+                                                            <button
+                                                                key={product.id}
+                                                                type="button"
+                                                                data-cy="edit-order-product"
+                                                                data-product-id={product.id}
+                                                                onClick={() => addProduct(product)}
+                                                                className="flex min-h-16 items-center justify-between gap-3 rounded-xl border border-[#E0E8F4] bg-white px-3 text-left transition hover:border-[#B9CDFD] hover:bg-[#EEF3FF]"
+                                                            >
+                                                                <span className="min-w-0">
+                                                                    <span className="block truncate text-sm font-semibold text-[#243556]">
+                                                                        {product.name}
+                                                                    </span>
+                                                                    <span className="mt-1 block text-xs text-[#71819A]">
+                                                                        Agregar a la orden
+                                                                    </span>
+                                                                </span>
+                                                                <span className="shrink-0 text-sm font-bold text-[#2451C5]">
+                                                                    {formatMoney(
+                                                                        Number(product.price ?? 0),
+                                                                        'MXN',
+                                                                    )}
+                                                                </span>
+                                                            </button>
+                                                        ))}
+                                                </div>
+                                                {products.filter((product) =>
+                                                    product.name
+                                                        .toLowerCase()
+                                                        .includes(
+                                                            productSearch.trim().toLowerCase(),
+                                                        ),
+                                                ).length === 0 && (
+                                                    <p className="mt-3 rounded-xl bg-white p-3 text-center text-sm text-[#65738A]">
+                                                        No encontramos productos con esa búsqueda.
+                                                    </p>
+                                                )}
+                                            </>
+                                        )}
+                                    </div>
+                                )}
+                            </section>
                         </div>
-                        <ul className="mt-5 space-y-2 text-sm text-[#243556]">
-                            <li>• {draftItems.length} producto(s) en la orden</li>
-                            <li>
-                                •{' '}
-                                {selectedCustomer
-                                    ? `${selectedCustomer.name} · ${selectedCustomer.phone}`
-                                    : 'Sin cliente asignado'}{' '}
-                                · {fulfillmentType === 'PICKUP' ? 'Para llevar' : 'Comer aquí'}
-                            </li>
-                            <li>• Los totales serán recalculados por el backend.</li>
-                        </ul>
-                    </section>
-                )}
-                <div className="mt-7 flex flex-wrap justify-end gap-2 border-t border-[#E8EEF6] pt-5">
+                    ) : (
+                        <section className="mt-6 rounded-2xl border border-[#DCE5F3] bg-[#F8FAFE] p-5">
+                            <h3 className="font-display text-xl text-[#12234A]">
+                                Confirma los cambios
+                            </h3>
+                            <p className="mt-1 text-sm text-[#65738A]">
+                                Revisa el resumen antes de guardar la nueva versión.
+                            </p>
+                            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                                <div className="rounded-xl bg-white p-4">
+                                    <p className="text-xs font-bold uppercase text-[#8996A9]">
+                                        Total actual
+                                    </p>
+                                    <p className="mt-2 font-display text-2xl text-[#65738A]">
+                                        {formatMoney(beforeTotal, 'MXN')}
+                                    </p>
+                                </div>
+                                <div className="rounded-xl border border-[#B9CDFD] bg-[#EEF3FF] p-4">
+                                    <p className="text-xs font-bold uppercase text-[#2451C5]">
+                                        Total después
+                                    </p>
+                                    <p className="mt-2 font-display text-2xl text-[#12234A]">
+                                        {formatMoney(draftTotal, 'MXN')}
+                                    </p>
+                                </div>
+                            </div>
+                            <ul className="mt-5 space-y-2 text-sm text-[#243556]">
+                                <li>• {draftItems.length} producto(s) en la orden</li>
+                                <li>
+                                    •{' '}
+                                    {selectedCustomer
+                                        ? `${selectedCustomer.name} · ${selectedCustomer.phone}`
+                                        : 'Sin cliente asignado'}{' '}
+                                    · {fulfillmentType === 'PICKUP' ? 'Para llevar' : 'Comer aquí'}
+                                </li>
+                                <li>• Los totales serán recalculados por el backend.</li>
+                            </ul>
+                        </section>
+                    )}
+                </div>
+                <div className="flex shrink-0 flex-wrap justify-end gap-2 border-t border-[#E8EEF6] bg-white px-5 py-4 sm:px-7">
                     <button
                         type="button"
                         onClick={reviewing ? () => setReviewing(false) : onClose}
@@ -913,103 +934,105 @@ function ComboSelectionDialog({
     })
 
     return (
-        <div className="fixed inset-0 z-[70] grid place-items-center bg-[#10224A]/35 p-4">
+        <div className="fixed inset-0 z-[70] grid place-items-center bg-[#10224A]/35 p-4 pb-[calc(var(--mobile-nav-h)+1rem)]">
             <section
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="combo-selection-title"
-                className="max-h-[88svh] w-full max-w-lg overflow-y-auto rounded-3xl border border-[#DCE5F3] bg-white p-5 shadow-[0_25px_80px_rgb(16_34_74_/_0.24)] sm:p-6"
+                className="flex max-h-[min(88svh,calc(100svh-var(--mobile-nav-h)-2rem))] w-full max-w-lg flex-col overflow-hidden rounded-3xl border border-[#DCE5F3] bg-white shadow-[0_25px_80px_rgb(16_34_74_/_0.24)]"
             >
-                <div className="flex items-start justify-between gap-4">
-                    <div>
-                        <p className="text-xs font-bold uppercase tracking-[.15em] text-[#2451C5]">
-                            Personaliza el combo
-                        </p>
-                        <h3
-                            id="combo-selection-title"
-                            className="mt-1 font-display text-xl text-[#12234A]"
+                <div className="min-h-0 flex-1 overflow-y-auto p-5 sm:p-6">
+                    <div className="flex items-start justify-between gap-4">
+                        <div>
+                            <p className="text-xs font-bold uppercase tracking-[.15em] text-[#2451C5]">
+                                Personaliza el combo
+                            </p>
+                            <h3
+                                id="combo-selection-title"
+                                className="mt-1 font-display text-xl text-[#12234A]"
+                            >
+                                {productName}
+                            </h3>
+                            <p className="mt-1 text-sm text-[#65738A]">
+                                Elige el acompañamiento antes de agregar esta línea a la orden.
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            aria-label="Cancelar selección del combo"
+                            className="grid size-9 place-items-center rounded-xl text-[#65738A] hover:bg-[#F2F5FA]"
                         >
-                            {productName}
-                        </h3>
-                        <p className="mt-1 text-sm text-[#65738A]">
-                            Elige el acompañamiento antes de agregar esta línea a la orden.
-                        </p>
-                    </div>
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        aria-label="Cancelar selección del combo"
-                        className="grid size-9 place-items-center rounded-xl text-[#65738A] hover:bg-[#F2F5FA]"
-                    >
-                        <X className="size-4" />
-                    </button>
-                </div>
-                {isLoading ? (
-                    <div
-                        role="status"
-                        aria-label="Cargando opciones del combo"
-                        className="mt-6 space-y-3"
-                    >
-                        {[1, 2, 3].map((item) => (
-                            <div
-                                key={item}
-                                className="h-14 animate-pulse rounded-xl bg-[#EEF3F9]"
-                            />
-                        ))}
-                    </div>
-                ) : isError ? (
-                    <div
-                        role="alert"
-                        className="mt-6 rounded-xl border border-[#F3C2BD] bg-[#FFF5F3] p-4 text-sm text-[#B42318]"
-                    >
-                        No pudimos cargar los grupos de este combo.{' '}
-                        <button type="button" onClick={onRetry} className="font-bold underline">
-                            Intentar de nuevo
+                            <X className="size-4" />
                         </button>
                     </div>
-                ) : (
-                    <div className="mt-6 space-y-5">
-                        {groups.map((group) => (
-                            <fieldset key={group.id}>
-                                <legend className="text-sm font-bold text-[#243556]">
-                                    {group.name}{' '}
-                                    <span className="font-normal text-[#8996A9]">
-                                        Elige una opción
-                                    </span>
-                                </legend>
-                                <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                                    {group.products
-                                        .filter((choice) => choice.product.isAvailable)
-                                        .map((choice) => (
-                                            <label
-                                                key={choice.id}
-                                                className={`flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-3 text-sm transition ${selectedByGroup[group.id] === choice.id ? 'border-[#2451C5] bg-[#EEF3FF]' : 'border-[#E0E8F4] bg-white hover:border-[#B9CDFD]'}`}
-                                            >
-                                                <input
-                                                    type="radio"
-                                                    name={`new-combo-${group.id}`}
-                                                    checked={
-                                                        selectedByGroup[group.id] === choice.id
-                                                    }
-                                                    onChange={() =>
-                                                        setSelectedByGroup((current) => ({
-                                                            ...current,
-                                                            [group.id]: choice.id,
-                                                        }))
-                                                    }
-                                                    className="size-4 accent-[#2451C5]"
-                                                />
-                                                <span className="font-semibold text-[#243556]">
-                                                    {choice.product.name}
-                                                </span>
-                                            </label>
-                                        ))}
-                                </div>
-                            </fieldset>
-                        ))}
-                    </div>
-                )}
-                <div className="mt-7 flex justify-end gap-2 border-t border-[#E8EEF6] pt-4">
+                    {isLoading ? (
+                        <div
+                            role="status"
+                            aria-label="Cargando opciones del combo"
+                            className="mt-6 space-y-3"
+                        >
+                            {[1, 2, 3].map((item) => (
+                                <div
+                                    key={item}
+                                    className="h-14 animate-pulse rounded-xl bg-[#EEF3F9]"
+                                />
+                            ))}
+                        </div>
+                    ) : isError ? (
+                        <div
+                            role="alert"
+                            className="mt-6 rounded-xl border border-[#F3C2BD] bg-[#FFF5F3] p-4 text-sm text-[#B42318]"
+                        >
+                            No pudimos cargar los grupos de este combo.{' '}
+                            <button type="button" onClick={onRetry} className="font-bold underline">
+                                Intentar de nuevo
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="mt-6 space-y-5">
+                            {groups.map((group) => (
+                                <fieldset key={group.id}>
+                                    <legend className="text-sm font-bold text-[#243556]">
+                                        {group.name}{' '}
+                                        <span className="font-normal text-[#8996A9]">
+                                            Elige una opción
+                                        </span>
+                                    </legend>
+                                    <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                                        {group.products
+                                            .filter((choice) => choice.product.isAvailable)
+                                            .map((choice) => (
+                                                <label
+                                                    key={choice.id}
+                                                    className={`flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-3 text-sm transition ${selectedByGroup[group.id] === choice.id ? 'border-[#2451C5] bg-[#EEF3FF]' : 'border-[#E0E8F4] bg-white hover:border-[#B9CDFD]'}`}
+                                                >
+                                                    <input
+                                                        type="radio"
+                                                        name={`new-combo-${group.id}`}
+                                                        checked={
+                                                            selectedByGroup[group.id] === choice.id
+                                                        }
+                                                        onChange={() =>
+                                                            setSelectedByGroup((current) => ({
+                                                                ...current,
+                                                                [group.id]: choice.id,
+                                                            }))
+                                                        }
+                                                        className="size-4 accent-[#2451C5]"
+                                                    />
+                                                    <span className="font-semibold text-[#243556]">
+                                                        {choice.product.name}
+                                                    </span>
+                                                </label>
+                                            ))}
+                                    </div>
+                                </fieldset>
+                            ))}
+                        </div>
+                    )}
+                </div>
+                <div className="flex shrink-0 justify-end gap-2 border-t border-[#E8EEF6] bg-white px-5 py-3 sm:px-6">
                     <button
                         type="button"
                         onClick={onClose}
@@ -1142,19 +1165,20 @@ function OptionEditor({
                                                     onClick={() => onChange(option.id, -1)}
                                                     disabled={quantity === 0}
                                                     aria-label={`Quitar ${option.name}`}
-                                                    className="grid size-7 place-items-center rounded-full border border-[#D7E1EF] text-[#53647D] disabled:opacity-35"
+                                                    className="pedilo-squish grid size-7 place-items-center rounded-full border border-[#D7E1EF] text-[#53647D] disabled:opacity-35"
                                                 >
                                                     −
                                                 </button>
-                                                <span className="w-4 text-center font-bold text-[#243556]">
-                                                    {quantity}
-                                                </span>
+                                                <QtyNumber
+                                                    className="w-4 text-center font-bold text-[#243556]"
+                                                    value={quantity}
+                                                />
                                                 <button
                                                     type="button"
                                                     onClick={() => onChange(option.id, 1)}
                                                     disabled={quantity >= option.maxSelections}
                                                     aria-label={`Agregar ${option.name}`}
-                                                    className="grid size-7 place-items-center rounded-full bg-[#2451C5] text-white disabled:opacity-35"
+                                                    className="pedilo-squish grid size-7 place-items-center rounded-full bg-[#2451C5] text-white disabled:opacity-35"
                                                 >
                                                     +
                                                 </button>
