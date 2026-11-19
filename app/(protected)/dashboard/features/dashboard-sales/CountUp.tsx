@@ -1,7 +1,9 @@
 'use client'
 
 import { animate, useInView, useMotionValue } from 'motion/react'
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
+
+const noopSubscribe = () => () => {}
 
 interface CountUpProps {
     to: number
@@ -35,6 +37,12 @@ export default function CountUp({
 
     const isInView = useInView(ref, { once: true, margin: '0px' })
     const hasInitialValue = useRef(false)
+    // true en el servidor y durante la hidratación; false en renders solo de cliente.
+    const isServerOrHydrating = useSyncExternalStore(
+        noopSubscribe,
+        () => false,
+        () => true,
+    )
 
     const getDecimalPlaces = (num: number): number => {
         const str = num.toString()
@@ -66,15 +74,32 @@ export default function CountUp({
         [formatValueProp, maxDecimals, separator],
     )
 
+    // Cuando el valor llega en el HTML del servidor, se pinta el número final desde el
+    // primer byte (sin JS) y no se anima desde 0 al hidratar. Constante tras el montaje
+    // para que React no compita con las escrituras de la animación sobre textContent.
+    const [serverText] = useState(() =>
+        isServerOrHydrating ? formatValue(direction === 'down' ? from : to) : null,
+    )
+    const skipFirstAnimation = useRef(serverText !== null)
+
     useEffect(() => {
         if (ref.current && !hasInitialValue.current) {
-            ref.current.textContent = formatValue(direction === 'down' ? to : from)
             hasInitialValue.current = true
+            if (skipFirstAnimation.current) {
+                motionValue.jump(direction === 'down' ? from : to)
+                return
+            }
+            ref.current.textContent = formatValue(direction === 'down' ? to : from)
         }
-    }, [from, to, direction, formatValue])
+    }, [from, to, direction, formatValue, motionValue])
 
     useEffect(() => {
         if (isInView && startWhen) {
+            if (skipFirstAnimation.current) {
+                // El valor ya es visible desde el servidor; los cambios siguientes sí animan.
+                skipFirstAnimation.current = false
+                return
+            }
             onStart?.()
             const controls = animate(motionValue, direction === 'down' ? from : to, {
                 delay,
@@ -106,5 +131,9 @@ export default function CountUp({
         return () => unsubscribe()
     }, [motionValue, formatValue])
 
-    return <span className={className} ref={ref} />
+    return (
+        <span className={className} ref={ref}>
+            {serverText}
+        </span>
+    )
 }
