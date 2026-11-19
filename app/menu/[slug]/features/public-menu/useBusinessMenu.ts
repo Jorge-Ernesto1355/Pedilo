@@ -3,13 +3,22 @@
 import { useMemo } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { getPublicBusinessCatalog, getPublicBusinessDiscounts } from './publicCatalogApi'
-import type { PublicCatalog } from './publicCatalog.types'
+import type { PublicCatalog, PublicDiscountPrice } from './publicCatalog.types'
 
-export function useBusinessMenu(slug: string) {
+export type PublicMenuInitialData = {
+    catalog: PublicCatalog
+    discounts?: PublicDiscountPrice[]
+    /** Server fetch time (ms), so staleTime counts from the real fetch, not hydration. */
+    fetchedAt: number
+}
+
+export function useBusinessMenu(slug: string, initialData?: PublicMenuInitialData) {
     const client = useQueryClient()
     const catalogQuery = useQuery({
         queryKey: ['public-business-catalog', slug],
         queryFn: () => getPublicBusinessCatalog(slug),
+        initialData: initialData?.catalog,
+        initialDataUpdatedAt: initialData?.fetchedAt,
         enabled: Boolean(slug),
         retry: 1,
         staleTime: 5 * 60 * 1000,
@@ -18,6 +27,8 @@ export function useBusinessMenu(slug: string) {
     const discountsQuery = useQuery({
         queryKey: ['public-business-discounts', slug],
         queryFn: () => getPublicBusinessDiscounts(slug),
+        initialData: initialData?.discounts,
+        initialDataUpdatedAt: initialData?.fetchedAt,
         enabled: Boolean(catalogQuery.data?.business.id) && !hasEmbeddedDiscounts,
         retry: 2,
         retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 4000),

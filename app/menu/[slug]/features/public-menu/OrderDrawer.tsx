@@ -1,12 +1,17 @@
 'use client'
 
+import { QtyNumber } from '@/app/components/ui/QtyNumber'
 import { Minus, Pencil, Plus, ShoppingBag, X } from 'lucide-react'
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import Link from 'next/link'
 import type { CartLine } from './types'
-import type { CustomerDiscount, OrderFulfillmentType, OrderPaymentMethod } from '@/src/lib/api/order-types'
+import type {
+    CustomerDiscount,
+    OrderFulfillmentType,
+    OrderPaymentMethod,
+} from '@/src/lib/api/order-types'
 import { getCheckoutCustomerDiscount } from '@/src/lib/api/customerDiscountApi'
 import { Gift, LoaderCircle } from 'lucide-react'
 import { hasAvailableOptions } from './optionGroupValidation'
@@ -22,7 +27,11 @@ function originalUnitPrice(line: CartLine) {
 }
 
 function cartDiscountSavings(lines: CartLine[]) {
-    return lines.reduce((total, line) => total + Math.max(0, originalUnitPrice(line) - line.unitPrice) * line.quantity, 0)
+    return lines.reduce(
+        (total, line) =>
+            total + Math.max(0, originalUnitPrice(line) - line.unitPrice) * line.quantity,
+        0,
+    )
 }
 
 type OrderDrawerProps = {
@@ -90,7 +99,9 @@ export function OrderDrawer({
     const [lookupPhone, setLookupPhone] = useState('')
     const [discountInvalidated, setDiscountInvalidated] = useState(false)
     const knownDiscountRef = useRef<CustomerDiscount | null>(null)
-    const hasProductDiscount = lines.some((line) => line.product.discount && originalUnitPrice(line) > line.unitPrice)
+    const hasProductDiscount = lines.some(
+        (line) => line.product.discount && originalUnitPrice(line) > line.unitPrice,
+    )
 
     useEffect(() => {
         if (!open || !phoneIsValid || customerPhone.length !== 10) {
@@ -109,7 +120,9 @@ export function OrderDrawer({
         refetchOnMount: 'always',
     })
     const customerDiscount =
-        lookupPhone === customerPhone && !discountQuery.isFetching && discountQuery.data?.status === 'AVAILABLE'
+        lookupPhone === customerPhone &&
+        !discountQuery.isFetching &&
+        discountQuery.data?.status === 'AVAILABLE'
             ? discountQuery.data
             : null
     const availableDiscount = hasProductDiscount ? null : customerDiscount
@@ -149,7 +162,15 @@ export function OrderDrawer({
                 return
             }
         }
-        onCheckout(customerName.trim(), customerPhone.trim(), notes.trim(), fulfillmentType, false, false, paymentMethod)
+        onCheckout(
+            customerName.trim(),
+            customerPhone.trim(),
+            notes.trim(),
+            fulfillmentType,
+            false,
+            false,
+            paymentMethod,
+        )
     }
 
     function resetDiscountValidation() {
@@ -387,7 +408,10 @@ export function OrderDrawer({
                                                             <p className="mt-0.5 max-w-full whitespace-normal break-words text-xs leading-5 text-[#65738A] [overflow-wrap:anywhere]">
                                                                 Incluye:{' '}
                                                                 {line.product.includedProducts
-                                                                    .map((item) => `${item.quantity && item.quantity > 1 ? `${item.quantity}× ` : ''}${item.product.name}`)
+                                                                    .map(
+                                                                        (item) =>
+                                                                            `${item.quantity && item.quantity > 1 ? `${item.quantity}× ` : ''}${item.product.name}`,
+                                                                    )
                                                                     .join(', ')}
                                                             </p>
                                                         )}
@@ -408,9 +432,37 @@ export function OrderDrawer({
                                                         )
                                                     )}
                                                     <p className="mt-1 max-w-full whitespace-normal break-words text-xs font-semibold text-[#2451C5] [overflow-wrap:anywhere]">
-                                                        {line.product.discount && originalUnitPrice(line) > line.unitPrice && <span className="mr-1 text-[#8996A9] line-through">${originalUnitPrice(line).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span>}
-                                                        <span className={line.product.discount ? 'text-[#16803D]' : undefined}>${line.unitPrice.toLocaleString('es-MX', { minimumFractionDigits: 2 })} c/u</span>
-                                                        {line.product.discount && <span className="ml-1 text-[11px] font-bold text-[#16803D]">{line.product.discount.label}</span>}
+                                                        {line.product.discount &&
+                                                            originalUnitPrice(line) >
+                                                                line.unitPrice && (
+                                                                <span className="mr-1 text-[#8996A9] line-through">
+                                                                    $
+                                                                    {originalUnitPrice(
+                                                                        line,
+                                                                    ).toLocaleString('es-MX', {
+                                                                        minimumFractionDigits: 2,
+                                                                    })}
+                                                                </span>
+                                                            )}
+                                                        <span
+                                                            className={
+                                                                line.product.discount
+                                                                    ? 'text-[#16803D]'
+                                                                    : undefined
+                                                            }
+                                                        >
+                                                            $
+                                                            {line.unitPrice.toLocaleString(
+                                                                'es-MX',
+                                                                { minimumFractionDigits: 2 },
+                                                            )}{' '}
+                                                            c/u
+                                                        </span>
+                                                        {line.product.discount && (
+                                                            <span className="ml-1 text-[11px] font-bold text-[#16803D]">
+                                                                {line.product.discount.label}
+                                                            </span>
+                                                        )}
                                                     </p>
                                                 </div>
                                                 <div className="flex shrink-0 items-center gap-2 self-start">
@@ -434,20 +486,21 @@ export function OrderDrawer({
                                                                 onChangeQuantity(line.key, -1)
                                                             }
                                                             aria-label={`Quitar una unidad de ${line.product.name}`}
-                                                            className="grid size-10 place-items-center rounded text-[#65738A] hover:bg-[#F5F8FC] sm:size-6"
+                                                            className="pedilo-squish grid size-10 place-items-center rounded text-[#65738A] hover:bg-[#F5F8FC] sm:size-6"
                                                         >
                                                             <Minus className="size-3" />
                                                         </button>
-                                                        <span className="w-4 text-center text-xs font-bold text-[#12234A]">
-                                                            {line.quantity}
-                                                        </span>
+                                                        <QtyNumber
+                                                            className="w-4 text-center text-xs font-bold text-[#12234A]"
+                                                            value={line.quantity}
+                                                        />
                                                         <button
                                                             type="button"
                                                             onClick={() =>
                                                                 onChangeQuantity(line.key, 1)
                                                             }
                                                             aria-label={`Agregar una unidad de ${line.product.name}`}
-                                                            className="grid size-10 place-items-center rounded text-[#2451C5] hover:bg-[#EAF0FF] sm:size-6"
+                                                            className="pedilo-squish grid size-10 place-items-center rounded text-[#2451C5] hover:bg-[#EAF0FF] sm:size-6"
                                                         >
                                                             <Plus className="size-3" />
                                                         </button>
@@ -491,12 +544,33 @@ export function OrderDrawer({
                                         </div>
                                     </fieldset>
                                     {paymentCardAvailable && (
-                                        <fieldset className="mt-5" data-cy="payment-method-selector">
-                                            <legend className="mb-2 block text-sm font-bold text-[#243556]">Método de pago</legend>
+                                        <fieldset
+                                            className="mt-5"
+                                            data-cy="payment-method-selector"
+                                        >
+                                            <legend className="mb-2 block text-sm font-bold text-[#243556]">
+                                                Método de pago
+                                            </legend>
                                             <div className="grid grid-cols-2 gap-2">
-                                                {([['CASH', 'Efectivo'], ['TRANSFER', 'Transferencia']] as const).map(([value, label]) => (
-                                                    <label key={value} className={`flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-semibold ${paymentMethod === value ? 'border-[#2451C5] bg-[#F2F6FF] text-[#1E40AF]' : 'border-[#D7E1EF] text-[#53647D]'}`}>
-                                                        <input type="radio" name="paymentMethod" value={value} checked={paymentMethod === value} onChange={() => setPaymentMethod(value)} className="accent-[#2451C5]" data-cy={`payment-method-${value.toLowerCase()}`} />
+                                                {(
+                                                    [
+                                                        ['CASH', 'Efectivo'],
+                                                        ['TRANSFER', 'Transferencia'],
+                                                    ] as const
+                                                ).map(([value, label]) => (
+                                                    <label
+                                                        key={value}
+                                                        className={`flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-semibold ${paymentMethod === value ? 'border-[#2451C5] bg-[#F2F6FF] text-[#1E40AF]' : 'border-[#D7E1EF] text-[#53647D]'}`}
+                                                    >
+                                                        <input
+                                                            type="radio"
+                                                            name="paymentMethod"
+                                                            value={value}
+                                                            checked={paymentMethod === value}
+                                                            onChange={() => setPaymentMethod(value)}
+                                                            className="accent-[#2451C5]"
+                                                            data-cy={`payment-method-${value.toLowerCase()}`}
+                                                        />
                                                         {label}
                                                     </label>
                                                 ))}
@@ -549,15 +623,25 @@ export function OrderDrawer({
                                             {phoneError}
                                         </p>
                                     )}
-                                    {open && hasProductDiscount && customerDiscount && isValidPhone(customerPhone) && customerPhone.length === 10 && (
-                                        <p className="mt-2 text-xs leading-5 text-[#65738A]" role="status" data-testid="customer-discount-unavailable-with-product-discount">
-                                            Este cupón no se puede combinar con descuentos de productos.
-                                        </p>
-                                    )}
+                                    {open &&
+                                        hasProductDiscount &&
+                                        customerDiscount &&
+                                        isValidPhone(customerPhone) &&
+                                        customerPhone.length === 10 && (
+                                            <p
+                                                className="mt-2 text-xs leading-5 text-[#65738A]"
+                                                role="status"
+                                                data-testid="customer-discount-unavailable-with-product-discount"
+                                            >
+                                                Este cupón no se puede combinar con descuentos de
+                                                productos.
+                                            </p>
+                                        )}
                                     {open &&
                                         isValidPhone(customerPhone) &&
                                         customerPhone.length === 10 &&
-                                        (lookupPhone !== customerPhone || discountQuery.isFetching) && (
+                                        (lookupPhone !== customerPhone ||
+                                            discountQuery.isFetching) && (
                                             <p
                                                 className="mt-2 flex items-center gap-1.5 text-xs text-[#65738A]"
                                                 role="status"
@@ -670,21 +754,46 @@ export function OrderDrawer({
                                         </Link>
                                         .
                                     </p>
-                                    <div data-cy="checkout-summary" className="mt-3 rounded-xl border border-[#E8EEF6] bg-white px-3.5 py-3">
+                                    <div
+                                        data-cy="checkout-summary"
+                                        className="mt-3 rounded-xl border border-[#E8EEF6] bg-white px-3.5 py-3"
+                                    >
                                         <div className="flex items-center justify-between gap-3 text-sm">
                                             <span className="text-[#65738A]">Subtotal</span>
-                                            <span data-cy="checkout-subtotal" className="font-medium text-[#243556]">
+                                            <span
+                                                data-cy="checkout-subtotal"
+                                                className="font-medium text-[#243556]"
+                                            >
                                                 $
                                                 {checkoutSubtotal.toLocaleString('es-MX', {
                                                     minimumFractionDigits: 2,
                                                 })}
                                             </span>
                                         </div>
-                                        {checkoutProductSavings > 0 && <div data-cy="checkout-product-savings" className="mt-2 flex items-center justify-between gap-3 text-sm"><span className="text-[#23794A]">Ahorro en productos</span><span className="font-semibold text-[#23794A]">−${checkoutProductSavings.toLocaleString('es-MX', { minimumFractionDigits: 2 })}</span></div>}
+                                        {checkoutProductSavings > 0 && (
+                                            <div
+                                                data-cy="checkout-product-savings"
+                                                className="mt-2 flex items-center justify-between gap-3 text-sm"
+                                            >
+                                                <span className="text-[#23794A]">
+                                                    Ahorro en productos
+                                                </span>
+                                                <span className="font-semibold text-[#23794A]">
+                                                    −$
+                                                    {checkoutProductSavings.toLocaleString(
+                                                        'es-MX',
+                                                        { minimumFractionDigits: 2 },
+                                                    )}
+                                                </span>
+                                            </div>
+                                        )}
                                         {!discountInvalidated &&
                                             availableDiscount &&
                                             previewDiscountAmount > 0 && (
-                                                <div data-cy="checkout-customer-savings" className="mt-2 flex items-center justify-between gap-3 text-sm">
+                                                <div
+                                                    data-cy="checkout-customer-savings"
+                                                    className="mt-2 flex items-center justify-between gap-3 text-sm"
+                                                >
                                                     <span className="text-[#23794A]">
                                                         Tu descuento
                                                     </span>
@@ -699,7 +808,10 @@ export function OrderDrawer({
                                                     </span>
                                                 </div>
                                             )}
-                                                <div data-cy="checkout-total" className="mt-2 flex items-center justify-between gap-3 border-t border-[#E8EEF6] pt-2.5">
+                                        <div
+                                            data-cy="checkout-total"
+                                            className="mt-2 flex items-center justify-between gap-3 border-t border-[#E8EEF6] pt-2.5"
+                                        >
                                             <span className="text-sm font-bold text-[#243556]">
                                                 Total
                                             </span>
@@ -725,7 +837,7 @@ export function OrderDrawer({
                                             void handleCheckout()
                                         }}
                                         data-cy="checkout-submit"
-                                        className="mt-3 flex w-full items-center justify-between rounded-xl bg-[#1E40AF] px-4 py-3.5 text-sm font-bold text-white transition hover:bg-[#183991] disabled:cursor-not-allowed disabled:opacity-45"
+                                        className="sticky bottom-3 z-10 mt-3 flex w-full items-center justify-between rounded-xl bg-[#1E40AF] px-4 py-3.5 text-sm font-bold text-white shadow-[0_10px_24px_-10px_rgb(30_64_175_/_0.6)] transition hover:bg-[#183991] disabled:cursor-not-allowed disabled:opacity-45"
                                     >
                                         {isSubmitting ? 'Enviando pedido…' : 'Confirmar pedido'}{' '}
                                         <span>
@@ -855,9 +967,34 @@ export function OrderDrawer({
                                         </div>
                                     )}
                                     {orderError && (
-                                        <div role="alert" data-testid="order-error" className="mt-3 rounded-xl border border-[#F4C7C3] bg-[#FFF5F4] px-3 py-2.5 text-center text-xs font-semibold leading-5 text-[#B42318]">
+                                        <div
+                                            role="alert"
+                                            data-testid="order-error"
+                                            className="mt-3 rounded-xl border border-[#F4C7C3] bg-[#FFF5F4] px-3 py-2.5 text-center text-xs font-semibold leading-5 text-[#B42318]"
+                                        >
                                             <p>{orderError}</p>
-                                            {orderError.includes('tarjeta para transferencias') && paymentMethod === 'TRANSFER' && <button type="button" data-cy="transfer-continue-cash" onClick={() => { setPaymentMethod('CASH'); onCheckout(customerName.trim(), customerPhone.trim(), notes.trim(), fulfillmentType, false, false, 'CASH') }} className="mt-2 rounded-lg bg-[#B42318] px-3 py-2 text-xs font-bold text-white">Continuar en efectivo</button>}
+                                            {orderError.includes('tarjeta para transferencias') &&
+                                                paymentMethod === 'TRANSFER' && (
+                                                    <button
+                                                        type="button"
+                                                        data-cy="transfer-continue-cash"
+                                                        onClick={() => {
+                                                            setPaymentMethod('CASH')
+                                                            onCheckout(
+                                                                customerName.trim(),
+                                                                customerPhone.trim(),
+                                                                notes.trim(),
+                                                                fulfillmentType,
+                                                                false,
+                                                                false,
+                                                                'CASH',
+                                                            )
+                                                        }}
+                                                        className="mt-2 rounded-lg bg-[#B42318] px-3 py-2 text-xs font-bold text-white"
+                                                    >
+                                                        Continuar en efectivo
+                                                    </button>
+                                                )}
                                         </div>
                                     )}
                                     <p className="mt-2 text-center text-[11px] leading-4 text-[#8996A9]">

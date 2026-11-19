@@ -1,5 +1,6 @@
 'use client'
 
+import { QtyNumber } from '@/app/components/ui/QtyNumber'
 import { Minus, Plus, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import type { PublicProduct } from './publicCatalog.types'
@@ -32,12 +33,26 @@ export function ProductCustomizeDialog({
         selectionsToQuantities(initialSelections, product?.optionGroups ?? []),
     )
     const [comboSelected, setComboSelected] = useState<Record<string, string>>(() =>
-        Object.fromEntries(initialSelections.filter((selection) => selection.kind === 'combo-choice' && selection.groupId && selection.productId).map((selection) => [selection.groupId!, selection.productId!])),
+        Object.fromEntries(
+            initialSelections
+                .filter(
+                    (selection) =>
+                        selection.kind === 'combo-choice' &&
+                        selection.groupId &&
+                        selection.productId,
+                )
+                .map((selection) => [selection.groupId!, selection.productId!]),
+        ),
     )
     if (!product) return null
-    const comboGroups = product.comboOptionGroups?.slice().sort((a, b) => a.sortOrder - b.sortOrder) ?? []
+    const comboGroups =
+        product.comboOptionGroups?.slice().sort((a, b) => a.sortOrder - b.sortOrder) ?? []
     const validation = validateOptionGroups(groups, selected)
-    const comboValid = comboGroups.every((group) => group.products.some((choice) => choice.product.isAvailable && choice.productId === comboSelected[group.id]))
+    const comboValid = comboGroups.every((group) =>
+        group.products.some(
+            (choice) => choice.product.isAvailable && choice.productId === comboSelected[group.id],
+        ),
+    )
     const selectedOptions = groups.flatMap((group) =>
         group.options
             .filter((option) => (selected[group.id]?.[option.id] ?? 0) > 0)
@@ -50,10 +65,23 @@ export function ProductCustomizeDialog({
     )
     const comboSelections: CartSelection[] = comboGroups.flatMap((group) => {
         const choice = group.products.find((item) => item.productId === comboSelected[group.id])
-        return choice ? [{ id: choice.id, name: `${group.name}: ${choice.product.name}`, price: 0, quantity: 1, kind: 'combo-choice', groupId: group.id, productId: choice.productId }] : []
+        return choice
+            ? [
+                  {
+                      id: choice.id,
+                      name: `${group.name}: ${choice.product.name}`,
+                      price: 0,
+                      quantity: 1,
+                      kind: 'combo-choice',
+                      groupId: group.id,
+                      productId: choice.productId,
+                  },
+              ]
+            : []
     })
     const basePrice = product.priceFinal ?? product.price_final ?? product.price
-    const total = basePrice + selectedOptions.reduce((sum, option) => sum + option.price * option.quantity, 0)
+    const total =
+        basePrice + selectedOptions.reduce((sum, option) => sum + option.price * option.quantity, 0)
     function changeQuantity(groupId: string, optionId: string, delta: number) {
         setSelected((current) => {
             const group = groups.find((item) => item.id === groupId)
@@ -72,7 +100,7 @@ export function ProductCustomizeDialog({
     }
     return (
         <div
-            className="fixed inset-0 z-50 flex items-end justify-center bg-[#10224A]/25 p-0 sm:items-center sm:p-5"
+            className="fixed inset-0 z-50 flex items-end justify-center bg-[#10224A]/25 p-0 pb-[var(--mobile-nav-h)] sm:items-center sm:p-5 sm:pb-[calc(var(--mobile-nav-h)+1.25rem)]"
             role="presentation"
             onMouseDown={(event) => {
                 if (event.target === event.currentTarget) onClose()
@@ -82,7 +110,7 @@ export function ProductCustomizeDialog({
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="customize-title"
-                className="max-h-[92vh] w-full overflow-y-auto rounded-t-[24px] border border-[#DCE5F3] bg-white shadow-[0_24px_80px_-32px_rgba(19,49,117,.45)] sm:max-w-lg sm:rounded-[24px]"
+                className="max-h-[calc(92vh-var(--mobile-nav-h))] w-full overflow-y-auto rounded-t-[24px] border border-[#DCE5F3] bg-white shadow-[0_24px_80px_-32px_rgba(19,49,117,.45)] sm:max-w-lg sm:rounded-[24px]"
             >
                 <div className="flex min-w-0 items-start justify-between gap-4 border-b border-[#E8EEF6] px-5 py-4">
                     <div className="min-w-0 flex-1">
@@ -118,25 +146,63 @@ export function ProductCustomizeDialog({
                         </strong>
                     </p>
                     {product.includedProducts && product.includedProducts.length > 0 && (
-                        <section aria-label="Productos incluidos" className="rounded-xl bg-[#F6F8FC] px-4 py-3">
+                        <section
+                            aria-label="Productos incluidos"
+                            className="rounded-xl bg-[#F6F8FC] px-4 py-3"
+                        >
                             <h3 className="text-sm font-bold text-[#243556]">Incluye</h3>
                             <p className="mt-1 max-w-full break-words text-sm leading-5 text-[#65738A] [overflow-wrap:anywhere]">
-                                {product.includedProducts.map((item) => `${item.quantity && item.quantity > 1 ? `${item.quantity}× ` : ''}${item.product.name}`).join(', ')}
+                                {product.includedProducts
+                                    .map(
+                                        (item) =>
+                                            `${item.quantity && item.quantity > 1 ? `${item.quantity}× ` : ''}${item.product.name}`,
+                                    )
+                                    .join(', ')}
                             </p>
                         </section>
                     )}
                     {comboGroups.map((group) => (
                         <fieldset key={group.id}>
-                            <legend className="text-sm font-bold text-[#243556]">{group.name}<span className="ml-2 text-xs font-normal text-[#8996A9]">Elige una opción</span></legend>
+                            <legend className="text-sm font-bold text-[#243556]">
+                                {group.name}
+                                <span className="ml-2 text-xs font-normal text-[#8996A9]">
+                                    Elige una opción
+                                </span>
+                            </legend>
                             <div className="mt-3 space-y-2">
-                                {group.products.filter((choice) => choice.product.isAvailable).map((choice) => (
-                                    <label key={choice.id} className={`flex min-w-0 cursor-pointer items-center gap-3 rounded-xl border px-3.5 py-3 ${comboSelected[group.id] === choice.productId ? 'border-[#2451C5] bg-[#F4F7FF]' : 'border-[#E8EEF6]'}`}>
-                                        <input type="radio" name={`combo-${group.id}`} value={choice.productId} checked={comboSelected[group.id] === choice.productId} onChange={() => setComboSelected((current) => ({ ...current, [group.id]: choice.productId }))} className="size-4 accent-[#2451C5]" />
-                                        <span className="min-w-0 max-w-full break-words text-sm font-semibold text-[#243556] [overflow-wrap:anywhere]">{choice.product.name}</span>
-                                    </label>
-                                ))}
+                                {group.products
+                                    .filter((choice) => choice.product.isAvailable)
+                                    .map((choice) => (
+                                        <label
+                                            key={choice.id}
+                                            className={`flex min-w-0 cursor-pointer items-center gap-3 rounded-xl border px-3.5 py-3 ${comboSelected[group.id] === choice.productId ? 'border-[#2451C5] bg-[#F4F7FF]' : 'border-[#E8EEF6]'}`}
+                                        >
+                                            <input
+                                                type="radio"
+                                                name={`combo-${group.id}`}
+                                                value={choice.productId}
+                                                checked={
+                                                    comboSelected[group.id] === choice.productId
+                                                }
+                                                onChange={() =>
+                                                    setComboSelected((current) => ({
+                                                        ...current,
+                                                        [group.id]: choice.productId,
+                                                    }))
+                                                }
+                                                className="size-4 accent-[#2451C5]"
+                                            />
+                                            <span className="min-w-0 max-w-full break-words text-sm font-semibold text-[#243556] [overflow-wrap:anywhere]">
+                                                {choice.product.name}
+                                            </span>
+                                        </label>
+                                    ))}
                             </div>
-                            {!comboSelected[group.id] && <p className="mt-2 text-xs text-[#65738A]">Selecciona una opción para continuar.</p>}
+                            {!comboSelected[group.id] && (
+                                <p className="mt-2 text-xs text-[#65738A]">
+                                    Selecciona una opción para continuar.
+                                </p>
+                            )}
                         </fieldset>
                     ))}
                     {groups.map((group) => {
@@ -193,13 +259,14 @@ export function ProductCustomizeDialog({
                                                                 )
                                                             }
                                                             aria-label={`Quitar ${option.name}`}
-                                                            className="grid size-10 place-items-center rounded text-[#65738A] hover:bg-[#F5F8FC] disabled:opacity-30 sm:size-6"
+                                                            className="pedilo-squish grid size-10 place-items-center rounded text-[#65738A] hover:bg-[#F5F8FC] disabled:opacity-30 sm:size-6"
                                                         >
                                                             <Minus className="size-3.5" />
                                                         </button>
-                                                        <span className="w-4 text-center text-xs font-bold text-[#12234A]">
-                                                            {quantity}
-                                                        </span>
+                                                        <QtyNumber
+                                                            className="w-4 text-center text-xs font-bold text-[#12234A]"
+                                                            value={quantity}
+                                                        />
                                                         <button
                                                             type="button"
                                                             disabled={
@@ -214,7 +281,7 @@ export function ProductCustomizeDialog({
                                                                 )
                                                             }
                                                             aria-label={`Agregar ${option.name}`}
-                                                            className="grid size-10 place-items-center rounded text-[#2451C5] hover:bg-[#EAF0FF] disabled:opacity-30 sm:size-6"
+                                                            className="pedilo-squish grid size-10 place-items-center rounded text-[#2451C5] hover:bg-[#EAF0FF] disabled:opacity-30 sm:size-6"
                                                         >
                                                             <Plus className="size-3.5" />
                                                         </button>
@@ -240,7 +307,13 @@ export function ProductCustomizeDialog({
                         type="button"
                         disabled={!validation.valid || !comboValid}
                         onClick={() => {
-                            onAdd([...selectedOptions.map((option) => ({ ...option, kind: 'product-option' as const })), ...comboSelections])
+                            onAdd([
+                                ...selectedOptions.map((option) => ({
+                                    ...option,
+                                    kind: 'product-option' as const,
+                                })),
+                                ...comboSelections,
+                            ])
                             onClose()
                         }}
                         className="min-h-11 rounded-xl bg-[#1E40AF] px-4 py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-45"

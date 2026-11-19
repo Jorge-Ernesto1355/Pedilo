@@ -13,7 +13,8 @@ import { ProductCard } from './features/public-menu/ProductCard'
 import { OrderConfirmationModal } from './features/public-menu/OrderConfirmationModal'
 import { ProductCustomizeDialogSkeleton } from './features/public-menu/ProductCustomizeDialogSkeleton'
 import { CatalogEmptyState } from './features/public-menu/CatalogEmptyState'
-import { useBusinessMenu } from './features/public-menu/useBusinessMenu'
+import { LoadingMenu } from './features/public-menu/LoadingMenu'
+import { useBusinessMenu, type PublicMenuInitialData } from './features/public-menu/useBusinessMenu'
 import { useOrderCart } from './features/public-menu/useOrderCart'
 import { createPublicOrder } from '@/src/lib/api/orderApi'
 import {
@@ -28,23 +29,6 @@ const LazyProductCustomizeDialog = dynamic(
     () => import('./features/public-menu/ProductCustomizeDialog').then((module) => module.ProductCustomizeDialog),
     { loading: () => <ProductCustomizeDialogSkeleton /> },
 )
-
-export function LoadingMenu() {
-    return (
-        <main className="min-h-screen bg-[#F5F8FC] p-4 sm:p-8">
-            <div className="mx-auto max-w-5xl animate-pulse space-y-5">
-                <div className="h-40 rounded-[24px] bg-[#DCE5F3] sm:h-56" />
-                <div className="h-7 w-56 rounded bg-[#DCE5F3]" />
-                <div className="h-12 rounded-xl bg-[#DCE5F3]" />
-                <div className="space-y-3 rounded-[24px] bg-white p-6">
-                    <div className="h-6 w-40 rounded bg-[#E8EEF6]" />
-                    <div className="h-24 rounded bg-[#F1F4F9]" />
-                    <div className="h-24 rounded bg-[#F1F4F9]" />
-                </div>
-            </div>
-        </main>
-    )
-}
 
 function isMissingBusiness(error: unknown) {
     return (
@@ -370,8 +354,14 @@ function getWhatsAppRedirectMarkup(whatsappUrl?: string) {
         </main>`
 }
 
-export default function PublicMenuPage({ slug }: { slug: string }) {
-    const query = useBusinessMenu(slug)
+export default function PublicMenuPage({
+    slug,
+    initialData,
+}: {
+    slug: string
+    initialData?: PublicMenuInitialData
+}) {
+    const query = useBusinessMenu(slug, initialData)
     const cart = useOrderCart()
     const [menuId, setMenuId] = useState('')
     const [activeCategory, setActiveCategory] = useState('')

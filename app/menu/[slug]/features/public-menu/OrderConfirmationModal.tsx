@@ -1,7 +1,7 @@
 'use client'
 
 import { Check, Copy, MessageCircle, X } from 'lucide-react'
-import { motion, useReducedMotion } from 'framer-motion'
+import { motion, useReducedMotion } from 'motion/react'
 import { useState } from 'react'
 import type { OrderPaymentMethod, TransferCardSnapshot } from '@/src/lib/api/order-types'
 import { createTransferCardMessage, normalizeBusinessWhatsAppNumber } from './whatsapp'
