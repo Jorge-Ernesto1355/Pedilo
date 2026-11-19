@@ -5,7 +5,7 @@
 import dynamic from 'next/dynamic'
 import { useState } from 'react'
 import type { UseFormSetError } from 'react-hook-form'
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { ChevronDown, ChevronUp, GripVertical, LoaderCircle, Pencil, Plus, RefreshCw, Trash2, Utensils } from 'lucide-react'
 import { friendlyNotificationError, notify } from '@/src/lib/notifications/notify'
 import { Modal } from '@/app/components/ui/Modal'
@@ -740,6 +740,9 @@ export function MenuManagementPanel({ management }: { management: MenuManagement
                                 key={menu.id}
                                 type="button"
                                 onClick={() => selectMenu(menu.id)}
+                                onPointerEnter={() => management.prefetchMenu(menu.id)}
+                                onFocus={() => management.prefetchMenu(menu.id)}
+                                onTouchStart={() => management.prefetchMenu(menu.id)}
                                 className={`w-full rounded-xl border px-3.5 py-3 text-left transition ${selectedMenuId === menu.id ? 'border-[#2451C5] bg-[#EEF3FF]' : 'border-[#E8EEF6] hover:border-[#BFCDE1]'}`}
                             >
                                 <span className="flex items-center justify-between gap-2">

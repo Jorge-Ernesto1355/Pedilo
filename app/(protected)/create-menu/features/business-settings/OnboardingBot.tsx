@@ -111,7 +111,7 @@ export function OnboardingBot({
     return (
         <aside
             aria-label="Asistente de configuración"
-            className={`pointer-events-none fixed bottom-4 right-4 z-50 flex items-end gap-3 pb-[env(safe-area-inset-bottom)] sm:bottom-6 sm:right-6 ${exiting ? 'animate-[onboarding-bot-out_250ms_ease-in_forwards] motion-reduce:animate-none' : 'animate-[onboarding-bot-in_300ms_ease-out] motion-reduce:animate-none'}`}
+            className={`pointer-events-none fixed bottom-[calc(var(--mobile-nav-h)+1rem)] right-4 z-50 flex items-end gap-3 sm:bottom-[calc(var(--mobile-nav-h)+1.5rem)] sm:right-6 ${exiting ? 'animate-[onboarding-bot-out_250ms_ease-in_forwards] motion-reduce:animate-none' : 'animate-[onboarding-bot-in_300ms_ease-out] motion-reduce:animate-none'}`}
         >
             {messageOpen && (
                 <div

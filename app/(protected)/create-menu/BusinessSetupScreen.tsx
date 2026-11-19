@@ -296,7 +296,10 @@ export default function BusinessSetupScreen({
         )
     }
 
-    if (businessQuery.isLoading || categories.menusQuery.isLoading) {
+    // Solo el negocio decide si se puede mostrar el formulario (crear o editar). Los
+    // menús ya no bloquean la página: MenuManagementPanel muestra su propio skeleton
+    // mientras llegan, y el perfil y la vista previa se pueden usar desde el inicio.
+    if (businessQuery.isLoading) {
         return <CreateMenuPageSkeleton />
     }
 
