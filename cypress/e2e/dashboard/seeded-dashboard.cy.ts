@@ -1,4 +1,5 @@
 import { visitViaClientNavigation } from '../../support/clientNavigation'
+import { revealDashboardModules } from '../../support/deferredModules'
 // Las cifras de "Hoy" llegan del servidor en una carga completa; para inspeccionar la
 // respuesta del backend se entra a la página por navegación interna.
 
@@ -135,6 +136,7 @@ describe('Dashboard · datos históricos sembrados', () => {
                 expect(response?.body.orders).to.be.an('array')
             })
         })
+        revealDashboardModules()
         cy.contains('h2', 'Cómo te fue').should('be.visible')
         cy.contains('h2', 'Lo más vendido').should('be.visible')
         cy.contains('h2', 'Cómo va tu negocio').should('be.visible')

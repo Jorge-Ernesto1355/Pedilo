@@ -1,3 +1,5 @@
+import { revealPaymentCard } from '../support/deferredModules'
+
 const clabes: Record<string, string> = {
     Banamex: '002000000000000008', BBVA: '012000000000000001', Santander: '014000000000000009', HSBC: '021000000000000005',
     BanBajío: '030000000000000009', Inbursa: '036000000000000003', Scotiabank: '044000000000000008', Banregio: '058000000000000007',
@@ -9,7 +11,9 @@ function visitSettings(card: unknown = null) {
     cy.intercept('GET', '**/api/v1/businesses/mine', { statusCode: 200, body: { business: { id: 'business-payment-card-e2e', name: 'Restaurante Cypress Transferencias' } } })
     cy.intercept('GET', '**/api/v1/businesses/payment-card', { statusCode: 200, body: { paymentCard: card } }).as('getPaymentCard')
     cy.visit('/create-menu')
-    cy.get('[data-cy="payment-card-settings"]').should('be.visible')
+    revealPaymentCard()
+    cy.wait('@getPaymentCard')
+    cy.get('[data-cy="payment-card-skeleton"]').should('not.exist')
 }
 
 function fillCard(clabe = '012000000000000001', beneficiary = 'Beneficiario Cypress') {
@@ -22,6 +26,7 @@ describe('Tarjeta para transferencias · ajustes', () => {
         cy.login()
         cy.intercept('GET', '**/api/v1/businesses/payment-card', (request) => request.reply({ delay: 150, statusCode: 500, body: { error: { code: 'INTERNAL_ERROR' } } })).as('paymentCardFailure')
         cy.visit('/create-menu')
+        revealPaymentCard()
         cy.get('[data-cy="payment-card-skeleton"]').should('be.visible')
         cy.wait('@paymentCardFailure')
         cy.get('[data-cy="payment-card-load-error"]').should('contain', 'no se cargó correctamente')
@@ -104,7 +109,7 @@ describe('Tarjeta para transferencias · ajustes', () => {
         let saved = null as unknown
         cy.intercept('GET', '**/api/v1/businesses/payment-card', (req) => req.reply({ statusCode: 200, body: { paymentCard: saved } })).as('cardState')
         cy.intercept('PUT', '**/api/v1/businesses/payment-card', (req) => { saved = { ...req.body, bankName: 'BBVA', bankCode: '012', isActive: true }; req.reply({ statusCode: 200, body: { paymentCard: saved } }) }).as('saveCard')
-        cy.login(); cy.visit('/create-menu'); cy.get('[data-cy="payment-card-settings"]').should('be.visible'); fillCard(); cy.get('[data-cy="payment-card-save"]').click(); cy.wait('@saveCard'); cy.get('[data-cy="payment-card-status"]').should('contain', 'Activa'); cy.reload(); cy.get('[data-cy="payment-card"]').should('be.visible')
+        cy.login(); cy.visit('/create-menu'); revealPaymentCard(); cy.get('[data-cy="payment-card-clabe-input"]').should('be.visible'); fillCard(); cy.get('[data-cy="payment-card-save"]').click(); cy.wait('@saveCard'); cy.get('[data-cy="payment-card-status"]').should('contain', 'Activa'); cy.reload(); revealPaymentCard(); cy.get('[data-cy="payment-card"]').should('be.visible')
     })
     it('S-15: editar permite cambiar de banco', () => {
         visitSettings(paymentCardFixture()); cy.get('[data-cy="payment-card-edit"]').click(); fillCard('014000000000000009'); cy.get('[data-cy="payment-card-bank"]').should('contain', 'Santander')

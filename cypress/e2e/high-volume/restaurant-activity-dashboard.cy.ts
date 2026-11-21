@@ -1,4 +1,5 @@
 import { visitViaClientNavigation } from '../../support/clientNavigation'
+import { revealDashboardModules } from '../../support/deferredModules'
 // Las cifras de "Hoy" llegan del servidor en una carga completa; para inspeccionar la
 // respuesta del backend se entra a la página por navegación interna.
 
@@ -272,6 +273,7 @@ describe('High volume · restaurante con actividad real y métricas', () => {
             const expectedReadyAverage = expectedReadyGross / readyOrders.length
 
             cy.visit('/dashboard')
+            revealDashboardModules()
             cy.contains('Cómo te fue').should('be.visible')
             cy.contains('Cómo va tu negocio').should('be.visible')
             cy.contains('Lo más vendido').should('be.visible')

@@ -1,4 +1,5 @@
 import { visitViaClientNavigation } from '../support/clientNavigation'
+import { revealDashboardModules } from '../support/deferredModules'
 // Las cifras de "Hoy" llegan del servidor en una carga completa; para inspeccionar la
 // respuesta del backend se entra a la página por navegación interna.
 
@@ -34,6 +35,7 @@ describe('Dashboard · escenario E2E persistente', () => {
             })
         })
         cy.get('[aria-label="Resumen del negocio"]').should('be.visible')
+        revealDashboardModules()
         cy.contains('h2', 'Cómo te fue').should('be.visible')
         cy.contains('h2', 'Lo más vendido').should('be.visible')
         cy.contains('h2', 'Cómo va tu negocio').should('be.visible')
@@ -68,9 +70,14 @@ describe('Dashboard · escenario E2E persistente', () => {
             cy.get(`[aria-label="Periodo de ventas"] button[data-value="${value}"]`)
                 .should('contain', label)
                 .click()
-            cy.wait(`@getDashboardSales-${value}`).then(({ request }) => {
-                expect(new URL(request.url).searchParams.get('period')).to.eq(value)
-            })
+            if (value === 'today') {
+                // "Hoy" ya se cargó al entrar: volver a él se sirve desde caché, sin nueva petición.
+                cy.get(`[aria-label="Periodo de ventas"] button[data-value="${value}"]`).should('have.attr', 'aria-checked', 'true')
+            } else {
+                cy.wait(`@getDashboardSales-${value}`).then(({ request }) => {
+                    expect(new URL(request.url).searchParams.get('period')).to.eq(value)
+                })
+            }
             cy.get('[aria-label="Métricas de ventas"]').should('be.visible')
         })
         cy.get('@unexpectedOrderCreation.all').should('have.length', 0)

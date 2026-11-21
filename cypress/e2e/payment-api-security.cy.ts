@@ -1,5 +1,6 @@
 const validClabe = '012000000000000001'
-const apiOrigin = () => `${(Cypress.config('env') as { backendUrl?: string }).backendUrl ?? 'http://localhost:3001'}/api/v1`
+let backendOrigin = 'http://localhost:3001'
+const apiOrigin = () => `${backendOrigin}/api/v1`
 const cardPath = () => `${apiOrigin()}/businesses/payment-card`
 
 function apiRequest(options: Partial<Cypress.RequestOptions> & { method: Cypress.HttpMethod; url: string }) {
@@ -7,6 +8,9 @@ function apiRequest(options: Partial<Cypress.RequestOptions> & { method: Cypress
 }
 
 describe('Tarjeta para transferencias · API y seguridad', () => {
+    before(() => {
+        cy.env(['backendUrl']).then(({ backendUrl }) => { backendOrigin = String(backendUrl).replace(/\/$/, '') })
+    })
     it('A-01: sin sesión todos los endpoints responden 401', () => {
         cy.clearCookies()
         apiRequest({ method: 'GET', url: cardPath() }).its('status').should('eq', 401)
@@ -28,7 +32,7 @@ describe('Tarjeta para transferencias · API y seguridad', () => {
         cy.login(); apiRequest({ method: 'PUT', url: cardPath(), body: { clabe: validClabe, beneficiary_name: 'Primero' } }).then((first) => apiRequest({ method: 'PUT', url: cardPath(), body: { clabe: validClabe, beneficiary_name: 'Segundo' } }).then((second) => { expect(first.body.paymentCard.id).to.eq(second.body.paymentCard.id); expect(second.body.paymentCard.beneficiaryName ?? second.body.paymentCard.beneficiary_name).to.eq('Segundo') }))
     })
     it('A-06: pedido transfer sin tarjeta activa responde 400', () => {
-        cy.login(); apiRequest({ method: 'PATCH', url: `${cardPath()}/status`, body: { is_active: false } }).then(() => apiRequest({ method: 'POST', url: `${apiOrigin()}/businesses/business-payment-card-e2e/orders`, body: { customer: { name: 'Cypress', phone: '6691234567' }, items: [], payment_method: 'transfer' } }).its('status').should('eq', 400))
+        cy.login(); apiRequest({ method: 'GET', url: `${apiOrigin()}/businesses/mine` }).its('body.business').then((business) => apiRequest({ method: 'PATCH', url: `${cardPath()}/status`, body: { is_active: false } }).then(() => apiRequest({ method: 'POST', url: `${apiOrigin()}/businesses/${business.id}/orders`, body: { customer: { name: 'Cypress', phone: '6691234567' }, items: [], payment_method: 'transfer' } }).its('status').should('eq', 400)))
     })
     it('A-07: pedido sin método de pago usa cash', () => {
         cy.login(); apiRequest({ method: 'GET', url: cardPath() }).then((response) => expect(response.status).to.be.oneOf([200, 404]))
@@ -37,6 +41,6 @@ describe('Tarjeta para transferencias · API y seguridad', () => {
         cy.login(); apiRequest({ method: 'GET', url: cardPath() }).then(({ body }) => { expect(body.paymentCard === null || typeof body.paymentCard === 'object').to.eq(true) })
     })
     it('A-09: catálogo público solo expone disponibilidad, nunca CLABE', () => {
-        apiRequest({ method: 'GET', url: `${apiOrigin()}/public/businesses/restaurante-payment-card-e2e/catalog` }).then(({ body }) => { const text = JSON.stringify(body); expect(text).not.to.contain(validClabe); expect(body.business).to.have.any.keys('paymentCardAvailable', 'payment_card_available') })
+        cy.login(); apiRequest({ method: 'GET', url: `${apiOrigin()}/businesses/mine` }).its('body.business.slug').then((slug) => apiRequest({ method: 'GET', url: `${apiOrigin()}/public/businesses/${slug}/catalog` })).then(({ body }) => { const text = JSON.stringify(body); expect(text).not.to.contain(validClabe); expect(body.business).to.have.any.keys('paymentCardAvailable', 'payment_card_available') })
     })
 })
