@@ -1,3 +1,5 @@
+export {}
+
 type QrRedirectResponse = { slug?: string; error?: { code?: string } }
 
 let backendOrigin = ''

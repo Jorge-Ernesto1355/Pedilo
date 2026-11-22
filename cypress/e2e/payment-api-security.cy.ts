@@ -1,3 +1,5 @@
+export {}
+
 const validClabe = '012000000000000001'
 let backendOrigin = 'http://localhost:3001'
 const apiOrigin = () => `${backendOrigin}/api/v1`
