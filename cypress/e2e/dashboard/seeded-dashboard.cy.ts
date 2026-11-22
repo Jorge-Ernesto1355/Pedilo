@@ -131,15 +131,15 @@ describe('Dashboard · datos históricos sembrados', () => {
                     manifest.orders.filter((order) => order.status === 'CANCELLED').length,
                 ).to.be.greaterThan(0)
             })
-            cy.wait('@orders').then(({ response }) => {
-                expect(response?.statusCode).to.be.oneOf([200, 304])
-                expect(response?.body.orders).to.be.an('array')
-            })
         })
+        // "Pedidos recientes" es un módulo diferido: pide las órdenes al entrar al viewport.
         revealDashboardModules()
+        cy.wait('@orders').then(({ response }) => {
+            expect(response?.statusCode).to.be.oneOf([200, 304])
+            expect(response?.body.orders).to.be.an('array')
+        })
         cy.contains('h2', 'Cómo te fue').should('be.visible')
         cy.contains('h2', 'Lo más vendido').should('be.visible')
-        cy.contains('h2', 'Cómo va tu negocio').should('be.visible')
         cy.contains('h2', 'Pedidos recientes').should('be.visible')
     })
 

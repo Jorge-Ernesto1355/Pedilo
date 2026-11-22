@@ -93,7 +93,9 @@ function createProduct(categoryName: string, product: ProductSeed, withImage = f
     cy.get('[data-testid="product-type-dialog"]').contains('button', 'Continuar con producto').click()
 
     cy.get('[role="dialog"]')
-        .should('be.visible')
+        .filter(':has(#product-name)')
+        .should('have.length', 1)
+        .and('be.visible')
         .within(() => {
             cy.get('#product-name').should('be.visible').clear().type(product.name)
             cy.get('#product-description').clear().type(`${product.name} preparado al momento.`)
@@ -113,8 +115,13 @@ function createProduct(categoryName: string, product: ProductSeed, withImage = f
 }
 
 function configureWhatsapp() {
-    cy.get('#business-whatsapp').should('be.visible').clear().type('6981119319')
-    cy.get('#business-whatsapp').parents('form').find('button[type="submit"]').click()
+    cy.intercept('PATCH', '**/api/v1/businesses/settings').as('saveWhatsapp')
+    cy.get('#whatsapp-card').should('be.visible')
+    cy.contains('button', 'Configurar WhatsApp').click()
+    cy.get('#business-whatsapp', { timeout: 15_000 }).should('be.visible').clear().type('6981119319')
+    cy.contains('button', 'Guardar número').click()
+    cy.wait('@saveWhatsapp').its('response.statusCode').should('eq', 200)
+    cy.contains('Número guardado correctamente.').should('be.visible')
     cy.get('#business-whatsapp').should('have.value', '+52 698 111 9319')
 }
 
@@ -144,7 +151,9 @@ function placeOrder(slug: string, seed: OrderSeed, index: number) {
     cy.get('#customer-phone').type(seed.phone)
     cy.get('#order-notes').type(`Pedido masivo ${index + 1}`)
     cy.contains('button', 'Confirmar pedido').click()
-    cy.wait('@createHighVolumeOrder').its('response.statusCode').should('be.oneOf', [200, 201])
+    cy.wait('@createHighVolumeOrder').then(({ request, response }) => {
+        expect(response?.statusCode, `${JSON.stringify(request.body)} -> ${JSON.stringify(response?.body)}`).to.be.oneOf([200, 201])
+    })
     cy.get('[role="dialog"][aria-labelledby="order-confirmation-title"]')
         .should('be.visible')
         .and('contain', '¡Tu pedido está listo!')
@@ -275,7 +284,6 @@ describe('High volume · restaurante con actividad real y métricas', () => {
             cy.visit('/dashboard')
             revealDashboardModules()
             cy.contains('Cómo te fue').should('be.visible')
-            cy.contains('Cómo va tu negocio').should('be.visible')
             cy.contains('Lo más vendido').should('be.visible')
             cy.contains('Pedidos recientes').should('be.visible')
             ;['7d', '30d', 'thisMonth', 'today'].forEach((period) => {

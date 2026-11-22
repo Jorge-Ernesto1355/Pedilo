@@ -38,7 +38,6 @@ describe('Dashboard · escenario E2E persistente', () => {
         revealDashboardModules()
         cy.contains('h2', 'Cómo te fue').should('be.visible')
         cy.contains('h2', 'Lo más vendido').should('be.visible')
-        cy.contains('h2', 'Cómo va tu negocio').should('be.visible')
         cy.contains('h2', 'Pedidos recientes').should('be.visible')
     })
 

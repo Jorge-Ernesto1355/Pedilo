@@ -467,6 +467,9 @@ describe('Dashboard · auditoría exhaustiva de ventas, ticket y tendencia', () 
         })
         cy.contains(money(scenarios.thisMonth.current.total)).should('be.visible')
         cy.reload()
+        // El periodo no se persiste: tras recargar la página vuelve a "Hoy".
+        assertPeriod('today', scenarios.today)
+        selectPeriod('thisMonth')
         assertPeriod('thisMonth', scenarios.thisMonth)
     })
 

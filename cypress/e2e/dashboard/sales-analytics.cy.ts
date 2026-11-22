@@ -330,15 +330,20 @@ describe('Ventas · analítica comparativa', () => {
                 .should('contain', label)
                 .should('be.visible')
                 .click()
-            waitForPeriod('@dashboardSales', value, ({ request }) => {
-                expect(request.query.period).to.eq(value)
-            })
-            waitForPeriod('@dashboardTrend', value, ({ request }) => {
-                expect(request.query.period).to.eq(value)
-            })
-            waitForPeriod('@averageTicket', averageTicketPeriod[value], ({ request }) => {
-                expect(request.query.period).to.eq(averageTicketPeriod[value])
-            })
+            if (value === 'today') {
+                // "Hoy" ya se cargó al entrar: volver a él se sirve desde caché, sin nueva petición.
+                cy.get(`[aria-label="Periodo de ventas"] button[data-value="${value}"]`).should('have.attr', 'aria-checked', 'true')
+            } else {
+                waitForPeriod('@dashboardSales', value, ({ request }) => {
+                    expect(request.query.period).to.eq(value)
+                })
+                waitForPeriod('@dashboardTrend', value, ({ request }) => {
+                    expect(request.query.period).to.eq(value)
+                })
+                waitForPeriod('@averageTicket', averageTicketPeriod[value], ({ request }) => {
+                    expect(request.query.period).to.eq(averageTicketPeriod[value])
+                })
+            }
             cy.get('[aria-label="Métricas de ventas"]').should('be.visible')
         })
     })

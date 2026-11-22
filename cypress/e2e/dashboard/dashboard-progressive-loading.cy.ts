@@ -6,6 +6,9 @@ describe('Dashboard · carga progresiva de módulos', { retries: 0 }, () => {
             }
             cy.loginWithApi({ email: e2eSeedEmail, password: e2eSeedPassword })
         })
+        // loginWithApi deja cargado /dashboard: sus peticiones secundarias llegarían
+        // después de registrar los intercepts y se contarían como del test.
+        cy.visit('about:blank')
     })
 
     it('monta y consulta solo los módulos iniciales, y carga los demás al hacer scroll', () => {
