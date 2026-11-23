@@ -245,6 +245,18 @@ export default function OrdersPage() {
         enabled: false,
         staleTime: 60_000,
     })
+    // Tarjeta de lealtad: chip "Dar sello" y avisos al finalizar (solo con programa activo).
+    const loyaltyProgramQuery = useLoyaltyProgram()
+    const loyaltyContext = {
+        restaurantName: business.data?.name ?? 'Restaurante',
+        rewardLabel: loyaltyProgramQuery.data?.rewardLabel ?? 'tu premio',
+    }
+    const stampOrder = useStampOrder(loyaltyContext)
+    const loyaltyNotice = useLoyaltyStatusNotice(loyaltyContext, stampOrder)
+    const orderLoyalty: OrderLoyaltyProps = {
+        program: loyaltyProgramQuery.active ? loyaltyProgramQuery.data : undefined,
+        stamp: stampOrder,
+    }
     const currency = 'MXN'
     const timezone = 'America/Mazatlan'
     const totalPages = query.data ? Math.max(1, Math.ceil(query.data.total / limit)) : 1
@@ -267,6 +279,9 @@ export default function OrdersPage() {
 
     function changeStatus(orderId: string, next: OrderStatus) {
         setMutationErrorOrderId(null)
+        const order =
+            query.data?.orders.find((item) => item.id === orderId) ??
+            (detail.data?.id === orderId ? detail.data : undefined)
         mutation.mutateStatus(
             { orderId, status: next },
             {
@@ -595,6 +610,7 @@ export default function OrdersPage() {
                         onEdit={setEditingOrder}
                         paymentCard={paymentCardQuery.data?.paymentCard ?? null}
                         businessName={business.data?.name ?? 'Restaurante'}
+                        loyalty={orderLoyalty}
                     />
                 )}
                 {newOrderOpen && (
