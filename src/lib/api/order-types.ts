@@ -123,9 +123,42 @@ export type Order = {
     createdAt?: string
     updatedAt?: string
     version?: number
+    /** Descuento del premio de lealtad canjeado (línea aparte de discountAmount). */
+    loyaltyDiscountAmount?: number
+    /** Premio de lealtad aplicado (copia histórica; active=false si se devolvió al cancelar). */
+    loyaltyReward?: OrderLoyaltyReward | null
+    /** Sello vigente que dio este pedido. */
+    loyaltyStamp?: OrderLoyaltyStamp | null
+    /** Solo al crear un pedido público que creó un cliente NUEVO: llave de su tarjeta. */
+    loyaltyCardToken?: string
+}
+export type OrderLoyaltyReward = {
+    id: string
+    type: 'PERCENT' | 'FIXED' | 'FREE_PRODUCT'
+    label: string
+    active: boolean
+}
+export type OrderLoyaltyStamp = {
+    id: string
+    position: number
+    source: 'ORDER_MANUAL' | 'ORDER_AUTO' | 'WALK_IN'
+    createdAt: string
+}
+/** Tarjeta de lealtad al finalizar un pedido (respuesta del cambio de estado). */
+export type OrderStatusLoyalty = {
+    mode: 'MANUAL' | 'AUTO'
+    stamped: {
+        customerFirstName: string | null
+        stampsCount: number
+        stampsRequired: number
+        completed: boolean
+        rewardLabel: string | null
+    } | null
+    eligible: boolean
 }
 export type OrderStatusUpdate = Pick<Order, 'id' | 'orderNumber' | 'status' | 'updatedAt'> & {
     statusRevision: number
+    loyalty?: OrderStatusLoyalty | null
 }
 export type OrdersResponse = { orders: Order[]; page: number; limit: number; total: number }
 export type CreateOrderPayload = {
@@ -153,6 +186,8 @@ export type CreateOrderPayload = {
     }
     /** Envío que vio el cliente; si el del servidor difiere, el pedido no se crea. */
     expectedDeliveryFee?: number
+    /** Premio de lealtad: llave de la tarjeta (nunca el teléfono) y descuento que vio. */
+    loyalty?: { cardToken: string; rewardId: string; expectedDiscount: number }
 }
 export type RestaurantOrderItemPayload = {
     productId: string
@@ -166,6 +201,8 @@ export type CreateRestaurantOrderPayload = {
     fulfillmentType?: RestaurantFulfillmentType
     notes?: string
     items: RestaurantOrderItemPayload[]
+    /** "Aplicar premio": premio disponible del cliente elegido (lo valida el servidor). */
+    loyaltyRewardId?: string
 }
 export type UpdateOrderPayload = {
     expectedVersion: number
