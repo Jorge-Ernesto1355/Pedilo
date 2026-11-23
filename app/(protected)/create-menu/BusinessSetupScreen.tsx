@@ -34,6 +34,8 @@ import { BusinessPreviewSkeleton, CreateMenuPageSkeleton } from './components/Cr
 import Link from 'next/link'
 import { CreateMenuErrorState } from './components/CreateMenuStates'
 import { DeferredPaymentCard } from './features/payment-card/DeferredPaymentCard'
+import { DeferredDeliverySettings } from './features/delivery-settings/DeferredDeliverySettings'
+import { useQueryClient } from '@tanstack/react-query'
 import { DiscountsPanel } from './features/discounts/DiscountsPanel'
 import { GlobalOptionGroupsPanel } from './features/option-management/GlobalOptionGroupsPanel'
 import {
@@ -140,6 +142,7 @@ export default function BusinessSetupScreen({
     const saveProfile = useSaveBusinessProfile()
     const location = useBusinessLocation(profile.coordinates ?? null)
     const businessQuery = useCurrentBusiness()
+    const queryClient = useQueryClient()
     const businessConfirmed = businessQuery.isSuccess && !businessQuery.isFetching
     const hydratedBusinessId = useRef<string | null>(null)
     const { getValues, reset } = form
@@ -224,6 +227,14 @@ export default function BusinessSetupScreen({
     function handleLocationSave(coordinates: LocationCoordinates) {
         form.setValue('coordinates', coordinates, { shouldDirty: true, shouldValidate: true })
         location.saveLocation(coordinates)
+    }
+
+    // "Envío a domicilio" guarda la misma ubicación del negocio: se sincroniza el perfil
+    // (sin marcarlo como modificado) para que un guardado posterior no la sobrescriba.
+    function handleDeliveryOriginSaved(coordinates: LocationCoordinates) {
+        form.setValue('coordinates', coordinates)
+        location.saveLocation(coordinates)
+        void queryClient.invalidateQueries({ queryKey: ['business', 'mine'] })
     }
 
     function handleLocationSelect(locationText: string, coordinates: LocationCoordinates) {
@@ -448,6 +459,10 @@ export default function BusinessSetupScreen({
                             {businessQuery.data && (
                                 <>
                                     <DeferredPaymentCard business={businessQuery.data} />
+                                    <DeferredDeliverySettings
+                                        locationText={profile.location}
+                                        onOriginSaved={handleDeliveryOriginSaved}
+                                    />
                                     <DiscountsPanel
                                         businessId={businessQuery.data.id}
                                         menus={categories.menus}
