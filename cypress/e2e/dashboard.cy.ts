@@ -83,7 +83,12 @@ describe('Dashboard · escenario E2E persistente', () => {
     })
 
     it('muestra las órdenes sembradas y conserva sus estados', () => {
-        cy.intercept('GET', '**/businesses/*/orders*').as('getDashboardOrders')
+        // La página también pide contadores por estado (limit=1): solo la lista lleva el total completo.
+        cy.intercept('GET', '**/businesses/*/orders*', (request) => {
+            if (new URL(request.url).searchParams.get('limit') !== '1') {
+                request.alias = 'getDashboardOrders'
+            }
+        })
         cy.visit('/dashboard/orders')
         cy.readFile<SeedManifest>('test-results/dashboard-seed-manifest.json').then((manifest) => {
             cy.wait('@getDashboardOrders').then(({ response }) => {

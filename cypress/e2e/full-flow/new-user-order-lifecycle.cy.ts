@@ -87,16 +87,14 @@ function createCatalog() {
 }
 
 function configureWhatsapp() {
-    cy.intercept('**/api/v1/businesses/settings', (request) => {
-        if (request.method === 'POST' || request.method === 'PATCH') {
-            request.alias = 'saveBusinessSettings'
-        }
-        request.continue()
-    })
-    cy.get('#business-whatsapp').parents('form').find('button[type="submit"]').should('be.visible')
-    cy.get('#business-whatsapp').should('be.visible').clear().type('6981119319')
-    cy.get('#business-whatsapp').parents('form').find('button[type="submit"]').click()
-    cy.wait('@saveBusinessSettings').its('response.statusCode').should('be.oneOf', [200, 201])
+    cy.intercept('PATCH', '**/api/v1/businesses/settings').as('saveBusinessSettings')
+    // El formulario de WhatsApp vive tras la tarjeta de configuración del panel.
+    cy.get('#whatsapp-card').should('be.visible')
+    cy.contains('button', 'Configurar WhatsApp').click()
+    cy.get('#business-whatsapp', { timeout: 15_000 }).should('be.visible').clear().type('6981119319')
+    cy.contains('button', 'Guardar número').click()
+    cy.wait('@saveBusinessSettings').its('response.statusCode').should('eq', 200)
+    cy.contains('Número guardado correctamente.').should('be.visible')
     cy.get('#business-whatsapp').should('have.value', '+52 698 111 9319')
 }
 
