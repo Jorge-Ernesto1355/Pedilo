@@ -196,7 +196,7 @@ describe('Órdenes en tiempo real por SSE', () => {
                 cy.contains(product.name).should('be.visible')
                 cy.contains('button', 'Agregar al carrito').click()
                 cy.contains('button', 'Continuar').click()
-                cy.get('input[autocomplete="name"]').type('Cliente SSE Cypress')
+                cy.get('input[role="combobox"][aria-controls="customer-suggestions"]').type('Cliente SSE Cypress')
                 cy.get('input[autocomplete="tel"]').type('6691236382')
                 cy.get('#restaurant-order-notes').type('Pedido de prueba del stream')
                 cy.contains('button', 'Crear orden').click()

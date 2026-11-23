@@ -2,9 +2,14 @@
 
 import { Check, Copy, MessageCircle, X } from 'lucide-react'
 import { motion, useReducedMotion } from 'motion/react'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import type { OrderPaymentMethod, TransferCardSnapshot } from '@/src/lib/api/order-types'
-import { createTransferCardMessage, normalizeBusinessWhatsAppNumber } from './whatsapp'
+import {
+    createTransferCardMessage,
+    deliveryTransferNote,
+    formatMoney,
+    normalizeBusinessWhatsAppNumber,
+} from './whatsapp'
 import { PaymentCardView } from '@/app/(protected)/create-menu/features/payment-card/PaymentCard'
 import { detectBank } from '@/src/lib/validation/clabe'
 
@@ -17,6 +22,8 @@ export function OrderConfirmationModal({
     businessWhatsAppNumber,
     orderNumber,
     customerName = 'cliente',
+    deliveryFee = null,
+    loyaltySlot = null,
 }: {
     onClose: () => void
     whatsappUrl?: string | null
@@ -26,6 +33,10 @@ export function OrderConfirmationModal({
     businessWhatsAppNumber?: string | null
     orderNumber?: number
     customerName?: string
+    /** Solo pedidos a domicilio. `total` es solo la comida. */
+    deliveryFee?: number | null
+    /** Tarjeta de lealtad: bloque secundario debajo de los botones de pago y WhatsApp. */
+    loyaltySlot?: ReactNode
 }) {
     const reducedMotion = useReducedMotion()
     const [copied, setCopied] = useState(false)
@@ -80,6 +91,16 @@ export function OrderConfirmationModal({
                 <p className="mx-auto mt-4 max-w-md text-base leading-7 text-[#65738A]">
                     {isTransfer ? 'Tu pedido fue creado. Realiza la transferencia con los datos del negocio.' : 'Continúa en WhatsApp para enviarlo al negocio y esperar su respuesta.'}
                 </p>
+                {deliveryFee !== null && (
+                    <p
+                        data-cy="confirmation-delivery-payment"
+                        className="mx-auto mt-4 max-w-md rounded-xl bg-[#F5F8FC] px-4 py-3 text-sm font-semibold leading-6 text-[#243556]"
+                    >
+                        {isTransfer
+                            ? deliveryTransferNote(deliveryFee)
+                            : `Pagas $${formatMoney(total + deliveryFee)} en efectivo al repartidor (comida $${formatMoney(total)} + envío $${formatMoney(deliveryFee)}).`}
+                    </p>
+                )}
                 {isTransfer && !showCard && (
                     <button type="button" data-cy="open-transfer-card" onClick={() => setShowCard(true)} className="mt-6 flex min-h-12 w-full items-center justify-center rounded-xl bg-[#1E40AF] px-5 text-base font-bold text-white">Ver tarjeta para pagar</button>
                 )}
@@ -112,6 +133,7 @@ export function OrderConfirmationModal({
                 >
                     Seguir viendo el menú
                 </button>
+                {loyaltySlot}
                 <button
                     type="button"
                     onClick={onClose}

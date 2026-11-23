@@ -53,18 +53,19 @@ describe('Descuentos · administración granular', () => {
         cy.intercept('GET', '**/api/v1/businesses/mine/menus', { statusCode: 200, body: { menus: [menu] } })
         cy.intercept({ method: 'GET', url: /\/businesses\/[^/]+\/discounts\/?(?:\?.*)?$/ }, (request) => request.reply({ delay: 300, statusCode: 200, body: { discounts } })).as('loadDiscounts')
         cy.visit('/dashboard/discounts')
-        cy.get('[data-cy="discount-admin-skeleton"]').should('be.visible')
+        cy.get('[aria-label="Cargando descuentos"]').should('be.visible')
         cy.wait('@loadDiscounts')
         cy.contains('Fin de semana').should('be.visible')
         cy.contains('Activo').should('be.visible')
         cy.contains('Promoción pasada').should('be.visible')
-        cy.contains('Vencido').should('be.visible')
+        cy.contains('Finalizado').should('be.visible')
     })
 
     it('ADM-02: muestra error amigable y permite reintentar la consulta', () => {
         cy.intercept('GET', '**/api/v1/businesses/mine/menus', { statusCode: 200, body: { menus: [menu] } })
-        cy.intercept({ method: 'GET', url: /\/businesses\/[^/]+\/discounts\/?(?:\?.*)?$/, times: 1 }, { statusCode: 500, body: { error: { code: 'INTERNAL_ERROR', message: 'Internal server error' } } }).as('discountsFail')
+        // Cypress evalúa los intercepts en orden inverso: el de éxito va primero y el 500 (una sola vez) al final.
         cy.intercept({ method: 'GET', url: /\/businesses\/[^/]+\/discounts\/?(?:\?.*)?$/ }, { statusCode: 200, body: { discounts: [activeDiscount('discount-retry-e2e', 'Descuento recuperado', 'PERCENT', 10)] } }).as('discountsRetry')
+        cy.intercept({ method: 'GET', url: /\/businesses\/[^/]+\/discounts\/?(?:\?.*)?$/, times: 1 }, { statusCode: 500, body: { error: { code: 'INTERNAL_ERROR', message: 'Internal server error' } } }).as('discountsFail')
         cy.visit('/dashboard/discounts')
         cy.location('pathname').should('eq', '/dashboard/discounts')
         cy.wait('@discountsFail')
@@ -131,7 +132,7 @@ describe('Descuentos · administración granular', () => {
         cy.get('[data-cy="discount-card"]').eq(1).should('have.attr', 'data-discount-id', 'older-discount-e2e').within(() => {
             cy.contains('Descuento antiguo').should('be.visible')
             cy.contains('10% de descuento').should('be.visible')
-            cy.contains('Vencido').should('be.visible')
+            cy.contains('Finalizado').should('be.visible')
         })
     })
 

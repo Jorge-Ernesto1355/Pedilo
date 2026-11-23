@@ -1,8 +1,12 @@
 export {}
 
-const businessId = 'business-realtime-granular-e2e'
+// El negocio llega sembrado desde el servidor (SSR), así que un id inventado no coincide con
+// `restaurantId` de los eventos y la app los descarta. Se reemplaza por el id real en beforeEach.
+let businessId = 'business-realtime-granular-e2e'
 const orderBase = {
-    businessId,
+    get businessId() {
+        return businessId
+    },
     orderNumber: 701,
     status: 'PENDING',
     source: 'PUBLIC',
@@ -135,6 +139,17 @@ function visitAs(path: '/dashboard' | '/dashboard/orders' | '/dashboard/customer
 }
 
 describe('SSE de nuevas órdenes: escenarios granulares', () => {
+    beforeEach(() => {
+        cy.login()
+        cy.env(['backendUrl']).then(({ backendUrl }) => {
+            cy.request(`${String(backendUrl).replace(/\/$/, '')}/api/v1/businesses/mine`)
+                .its('body.business.id')
+                .then((id) => {
+                    businessId = String(id)
+                })
+        })
+    })
+
     it('fuera de Pedidos muestra toast, incrementa badge y reproduce sonido para una orden pública', () => {
         const state = visitAs('/dashboard/customers', 'public')
         let playCalls = 0

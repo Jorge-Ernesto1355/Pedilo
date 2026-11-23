@@ -236,7 +236,7 @@ describe('Productos · historial y cambios concurrentes', () => {
         addProductToCart()
         openCheckout()
         cy.get('[role="dialog"][aria-labelledby="order-title"]')
-            .should('contain', '$100 c/u')
+            .should('contain', '$100.00 c/u')
             .and('be.visible')
 
         cy.then(() => {

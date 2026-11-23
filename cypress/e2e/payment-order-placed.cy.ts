@@ -2,7 +2,7 @@ import { installPaymentPublicApi, openPaymentCheckout, paymentSlug, validBbvaCla
 
 function placed(paymentMethod: 'TRANSFER' | 'CASH') {
     installPaymentPublicApi({ available: true, orderBody: { id: 'order-placed-e2e', orderNumber: 42, status: 'PENDING', customerId: 'customer', customerName: 'Cliente Cypress', customerPhone: '6691234567', subtotal: 240, total: paymentMethod === 'TRANSFER' ? 204 : 240, discountAmount: paymentMethod === 'TRANSFER' ? 36 : 0, fulfillmentType: 'DINE_IN', paymentMethod, payment_method: paymentMethod.toLowerCase(), items: [], statusHistory: [], ...(paymentMethod === 'TRANSFER' ? { transferCard: { clabe: validBbvaClabe, beneficiaryName: 'Restaurante Cypress SA de CV', bankCode: '012', bankName: 'BBVA', restaurantName: 'Restaurante Cypress Transferencias' } } : {}) } })
-    cy.visit(`/${paymentSlug}`); cy.wait('@paymentCatalog'); openPaymentCheckout(); if (paymentMethod === 'TRANSFER') cy.get('[data-cy="payment-method-transfer"]').check(); cy.contains('button', 'Confirmar pedido').click(); cy.wait('@createPaymentOrder'); cy.get('[role="dialog"][aria-labelledby="order-confirmation-title"]').should('be.visible')
+    cy.visit(`/${paymentSlug}`); cy.wait('@paymentCatalog'); cy.window().then((win) => { cy.stub(win, 'open').returns({ document: { title: '', body: { innerHTML: '' } }, location: { href: '' }, close: () => undefined }) }); openPaymentCheckout(); if (paymentMethod === 'TRANSFER') cy.get('[data-cy="payment-method-transfer"]').check(); cy.contains('button', 'Confirmar pedido').click(); cy.wait('@createPaymentOrder'); cy.get('[role="dialog"][aria-labelledby="order-confirmation-title"]').should('be.visible')
 }
 
 describe('Tarjeta para transferencias · pedido realizado', () => {

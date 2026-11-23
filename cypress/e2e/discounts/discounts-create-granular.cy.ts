@@ -24,8 +24,10 @@ describe('Descuentos · creación granular', () => {
 
     it('CRE-00A: muestra skeleton mientras carga las opciones de menú', () => {
         cy.get('[role="dialog"] [aria-label="Cerrar"]').click()
-        cy.intercept('GET', '**/api/v1/businesses/mine/menus', { delay: 300, statusCode: 200, body: { menus: [createMenu, secondCreateMenu] } }).as('menusSlow')
+        cy.intercept('GET', '**/api/v1/businesses/mine/menus', { delay: 3000, statusCode: 200, body: { menus: [createMenu, secondCreateMenu] } }).as('menusSlow') // la consulta arranca al recargar; la demora debe sobrevivir a la apertura del diálogo
         cy.reload()
+        // Esperar los descuentos asegura que la página ya hidrató; un clic antes se pierde.
+        cy.wait('@discounts')
         cy.get('[data-cy="create-discount"]').click()
         cy.get('[data-cy="discount-targets-skeleton"]').should('be.visible')
         cy.wait('@menusSlow')
@@ -34,8 +36,9 @@ describe('Descuentos · creación granular', () => {
 
     it('CRE-00B: muestra error amigable y permite reintentar las opciones de menú', () => {
         cy.get('[role="dialog"] [aria-label="Cerrar"]').click()
-        cy.intercept('GET', '**/api/v1/businesses/mine/menus', { times: 1, statusCode: 500, body: { error: { code: 'INTERNAL_ERROR', message: 'Internal server error' } } }).as('menusFail')
+        cy.intercept('GET', '**/api/v1/businesses/mine/menus', { times: 2, statusCode: 500, body: { error: { code: 'INTERNAL_ERROR', message: 'Internal server error' } } }).as('menusFail') // petición inicial + su único reintento automático (retry: 1)
         cy.reload()
+        cy.wait('@discounts')
         cy.get('[data-cy="create-discount"]').click()
         cy.wait('@menusFail')
         cy.get('[role="dialog"] [role="alert"]').should('contain', 'No pudimos cargar las opciones del menú')

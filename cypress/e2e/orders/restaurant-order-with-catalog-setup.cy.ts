@@ -19,7 +19,8 @@ type CatalogState = {
     product: typeof product | null
 }
 
-const businessId = 'business-restaurant-order-complete'
+// El negocio llega sembrado desde el servidor (SSR): se usa su id real, no uno inventado.
+let businessId = 'business-restaurant-order-complete'
 const menuId = 'menu-restaurant-order-complete'
 const categoryId = 'category-restaurant-order-complete'
 const productId = 'product-restaurant-order-complete'
@@ -242,10 +243,16 @@ describe('E2E completo: crear catálogo y ordenar desde Pedidos', () => {
 
         cy.login()
         cy.location('pathname').should('eq', '/dashboard')
+        cy.env(['backendUrl']).then(({ backendUrl }) => {
+            cy.request(`${String(backendUrl).replace(/\/$/, '')}/api/v1/businesses/mine`)
+                .its('body.business.id')
+                .then((id) => {
+                    businessId = String(id)
+                })
+        })
 
-        installCatalogSetupApi(state)
+        cy.then(() => installCatalogSetupApi(state))
         cy.visit('/create-menu')
-        cy.wait('@currentBusiness')
         cy.wait('@listMenus')
 
         cy.contains('button', 'Crear menú').first().click()
@@ -293,7 +300,7 @@ describe('E2E completo: crear catálogo y ordenar desde Pedidos', () => {
             })
 
         cy.contains('Todos son opcionales.').should('be.visible')
-        cy.get('input[autocomplete="name"]').type('Juan E2E')
+        cy.get('input[role="combobox"][aria-controls="customer-suggestions"]').type('Juan E2E')
         cy.get('input[autocomplete="tel"]').type('6681234567')
         cy.get('textarea').type('Sin cebolla')
         cy.contains('button', 'Crear orden').click()

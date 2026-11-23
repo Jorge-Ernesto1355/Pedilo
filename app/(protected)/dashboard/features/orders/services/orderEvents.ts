@@ -1,5 +1,5 @@
 import { getBackendUrl } from '@/lib/auth/config'
-import type { OrderSource, OrderStatus } from '@/src/lib/api/order-types'
+import { ORDER_STATUSES, type OrderSource, type OrderStatus } from '@/src/lib/api/order-types'
 
 export type NewOrderEventPayload = {
     id: string
@@ -73,7 +73,7 @@ export function parseOrderStatusEvent(
     if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return null
     const value = payload as Record<string, unknown>
     const id = typeof value.orderId === 'string' ? value.orderId : value.id
-    const statuses: OrderStatus[] = ['PENDING', 'PREPARING', 'READY', 'CANCELLED']
+    const statuses: readonly OrderStatus[] = ORDER_STATUSES
     if (
         typeof id !== 'string' ||
         !/^[A-Za-z0-9_-]{1,128}$/.test(id.trim()) ||
@@ -100,6 +100,42 @@ export function parseOrderStatusEvent(
     }
 }
 
+export type DeliveryUpdatedEventPayload = {
+    orderId: string
+    restaurantId: string
+    eventId: string
+    type: 'delivery_updated'
+}
+
+/** La entrega de un pedido cambió (oferta, tomada, liberada, entregada…). */
+export function parseDeliveryUpdatedEvent(
+    data: string,
+    businessId: string,
+): DeliveryUpdatedEventPayload | null {
+    let payload: unknown
+    try {
+        payload = JSON.parse(data)
+    } catch {
+        return null
+    }
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return null
+    const value = payload as Record<string, unknown>
+    if (
+        value.type !== 'delivery_updated' ||
+        value.restaurantId !== businessId ||
+        typeof value.eventId !== 'string' ||
+        typeof value.orderId !== 'string' ||
+        !/^[A-Za-z0-9_-]{1,128}$/.test(value.orderId.trim())
+    )
+        return null
+    return {
+        orderId: value.orderId.trim(),
+        restaurantId: businessId,
+        eventId: value.eventId,
+        type: 'delivery_updated',
+    }
+}
+
 function parseFrame(frame: string) {
     let eventName = 'message'
     const data: string[] = []
@@ -119,11 +155,13 @@ export async function readOrderEventStream({
     onOpen,
     onOrder,
     onStatus,
+    onDelivery,
 }: {
     signal: AbortSignal
     onOpen: () => void
     onOrder: (data: string) => void
     onStatus?: (data: string) => void
+    onDelivery?: (data: string) => void
 }) {
     const response = await fetch(getOrderEventsUrl(), {
         method: 'GET',
@@ -161,6 +199,7 @@ export async function readOrderEventStream({
                 const parsed = parseFrame(frame)
                 if (parsed?.eventName === 'new_order') onOrder(parsed.data)
                 else if (parsed?.eventName === 'order_status_updated') onStatus?.(parsed.data)
+                else if (parsed?.eventName === 'delivery_updated') onDelivery?.(parsed.data)
                 separator = /\r?\n\r?\n/.exec(buffer)
             }
         }

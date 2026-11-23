@@ -21,6 +21,17 @@ function fillCard(clabe = '012000000000000001', beneficiary = 'Beneficiario Cypr
     cy.get('[data-cy="payment-card-beneficiary-input"]').clear().type(beneficiary)
 }
 
+// El nombre del restaurante en la tarjeta viene del negocio real (sembrado por SSR), no de un mock.
+function assertRestaurantName() {
+    cy.env(['backendUrl']).then(({ backendUrl }) => {
+        cy.request(`${String(backendUrl).replace(/\/$/, '')}/api/v1/businesses/mine`)
+            .its('body.business.name')
+            .then((name) => {
+                cy.get('[data-cy="payment-card-restaurant"]').should('contain', String(name))
+            })
+    })
+}
+
 describe('Tarjeta para transferencias · ajustes', () => {
     it('estado de carga muestra skeleton y error controlado al fallar', () => {
         cy.login()
@@ -76,7 +87,7 @@ describe('Tarjeta para transferencias · ajustes', () => {
         cy.get('[data-cy="payment-card"]').should('be.visible').and('have.css', 'background-color', 'rgb(0, 68, 129)')
         cy.get('[data-cy="payment-card-bank"]').should('contain', 'BBVA')
         cy.get('[data-cy="payment-card-clabe"]').should('contain', '012000000000000001')
-        cy.get('[data-cy="payment-card-restaurant"]').should('contain', 'Cypress')
+        assertRestaurantName()
         cy.get('[data-cy="payment-card-beneficiary"]').should('contain', 'Beneficiario Cypress')
     })
     Object.entries(clabes).forEach(([bank, clabe]) => {
@@ -103,7 +114,7 @@ describe('Tarjeta para transferencias · ajustes', () => {
         cy.get('[data-cy="payment-card-beneficiary-input"]').invoke('val').should('have.length', 80)
     })
     it('S-13: el restaurante es automático y no editable', () => {
-        visitSettings(); fillCard(); cy.get('[data-cy="payment-card-restaurant"]').should('contain', 'Restaurante Cypress Transferencias'); cy.get('[data-cy="payment-card-settings"]').should('not.contain', 'Nombre del restaurante')
+        visitSettings(); fillCard(); assertRestaurantName(); cy.get('[data-cy="payment-card-settings"]').should('not.contain', 'Nombre del restaurante')
     })
     it('S-14: guarda una tarjeta activa y la conserva al recargar', () => {
         let saved = null as unknown
