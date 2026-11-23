@@ -17,13 +17,35 @@ import { LoadingMenu } from './features/public-menu/LoadingMenu'
 import { useBusinessMenu, type PublicMenuInitialData } from './features/public-menu/useBusinessMenu'
 import { useOrderCart } from './features/public-menu/useOrderCart'
 import { createPublicOrder } from '@/src/lib/api/orderApi'
+import { useMenuLoyalty } from './features/public-menu/loyalty/useMenuLoyalty'
+import { CheckoutLoyaltyPanel } from './features/public-menu/loyalty/CheckoutLoyaltyPanel'
 import {
     createWhatsAppOrderMessage,
+    deliveryTransferNote,
+    formatMoney,
     normalizeBusinessWhatsAppNumber,
 } from './features/public-menu/whatsapp'
+import type {
+    DeliveryCheckout,
+    DeliveryFeeChange,
+} from './features/public-menu/delivery/deliveryQuote'
 import type { PublicProduct } from './features/public-menu/publicCatalog.types'
 import type { CartLine } from './features/public-menu/types'
 import type { OrderFulfillmentType, OrderPaymentMethod, TransferCardSnapshot } from '@/src/lib/api/order-types'
+
+// Tarjeta de lealtad: la banda y el bloque de "Pedido realizado" se cargan aparte (solo si
+// el restaurante tiene programa) para no engordar la carga del menú.
+const LazyLoyaltyMenuBand = dynamic(
+    () => import('./features/public-menu/loyalty/LoyaltyMenuBand').then((mod) => mod.LoyaltyMenuBand),
+    { ssr: false },
+)
+const LazyOrderConfirmationLoyalty = dynamic(
+    () =>
+        import('./features/public-menu/loyalty/OrderConfirmationLoyalty').then(
+            (mod) => mod.OrderConfirmationLoyalty,
+        ),
+    { ssr: false },
+)
 
 const LazyProductCustomizeDialog = dynamic(
     () => import('./features/public-menu/ProductCustomizeDialog').then((module) => module.ProductCustomizeDialog),
@@ -378,12 +400,16 @@ export default function PublicMenuPage({
         currentSubtotal: number
         difference: number
     } | null>(null)
+    const [deliveryFeeChange, setDeliveryFeeChange] = useState<DeliveryFeeChange | null>(null)
+    const [confirmedDeliveryFee, setConfirmedDeliveryFee] = useState<number | null>(null)
     const [orderConfirmed, setOrderConfirmed] = useState(false)
     const [manualWhatsAppUrl, setManualWhatsAppUrl] = useState<string | null>(null)
     const [transferCard, setTransferCard] = useState<TransferCardSnapshot | null>(null)
     const [confirmedOrderTotal, setConfirmedOrderTotal] = useState<number | null>(null)
     const [confirmedOrderNumber, setConfirmedOrderNumber] = useState<number | undefined>()
     const [confirmedCustomerName, setConfirmedCustomerName] = useState('cliente')
+    // Tarjeta de lealtad: premio en el checkout (lo valida el servidor) y llave del cliente.
+    const menuLoyalty = useMenuLoyalty(slug, priceChange?.currentSubtotal ?? cart.total)
     const menus = useMemo(
         () => query.data?.menus.filter((menu) => menu.isActive) ?? [],
         [query.data],
@@ -539,6 +565,7 @@ export default function PublicMenuPage({
         ignoreCustomerDiscount = false,
         acceptPriceChange = false,
         paymentMethod: OrderPaymentMethod = 'CASH',
+        delivery?: DeliveryCheckout,
     ) {
         const businessWhatsAppNumber = normalizeBusinessWhatsAppNumber(
             catalog.business.whatsappNumber,
@@ -586,7 +613,23 @@ export default function PublicMenuPage({
                 ...(ignoreCustomerDiscount ? { ignoreCustomerDiscount: true } : {}),
                 expectedSubtotal: cart.total,
                 ...(acceptPriceChange ? { acceptPriceChange: true } : {}),
+                ...(menuLoyalty.payload ? { loyalty: menuLoyalty.payload } : {}),
+                ...(fulfillmentType === 'DELIVERY' && delivery
+                    ? {
+                          delivery: {
+                              address: delivery.address,
+                              neighborhood: delivery.neighborhood,
+                              ...(delivery.reference ? { reference: delivery.reference } : {}),
+                              latitude: delivery.latitude,
+                              longitude: delivery.longitude,
+                          },
+                          expectedDeliveryFee: delivery.expectedFee,
+                      }
+                    : {}),
             })
+            // El envío confirmado es el que calculó el servidor al crear el pedido.
+            const confirmedFee =
+                fulfillmentType === 'DELIVERY' ? (createdOrder.deliveryFee ?? delivery?.expectedFee ?? 0) : 0
 
             const lines = cart.lines.flatMap((line) => [
                 `${line.quantity}x ${line.product.name} — $${(line.unitPrice * line.quantity).toLocaleString('es-MX')}`,
@@ -609,20 +652,48 @@ export default function PublicMenuPage({
                     `Descuento personal: −$${createdOrder.discountAmount.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`,
                 )
             }
+            if (createdOrder.loyaltyDiscountAmount && createdOrder.loyaltyDiscountAmount > 0) {
+                lines.push(
+                    `Premio de lealtad${createdOrder.loyaltyReward ? ` (${createdOrder.loyaltyReward.label})` : ''}: −$${formatMoney(createdOrder.loyaltyDiscountAmount)}`,
+                )
+            }
+            if (fulfillmentType === 'DELIVERY') {
+                lines.push(`Envío a domicilio: $${formatMoney(confirmedFee)}`)
+            }
             const message = createWhatsAppOrderMessage({
                 businessName: catalog.business.name,
                 customerName,
                 customerPhone,
                 fulfillmentType,
                 lines,
-                total: `$${createdOrder.total.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`,
+                total: `$${(createdOrder.total + confirmedFee).toLocaleString('es-MX', { minimumFractionDigits: 2 })}`,
                 notes,
+                ...(fulfillmentType === 'DELIVERY' && delivery
+                    ? {
+                          delivery: {
+                              address: delivery.address,
+                              neighborhood: delivery.neighborhood,
+                              reference: delivery.reference,
+                              latitude: delivery.latitude,
+                              longitude: delivery.longitude,
+                              paymentNote:
+                                  paymentMethod === 'TRANSFER'
+                                      ? deliveryTransferNote(confirmedFee)
+                                      : `Efectivo al repartidor ($${formatMoney(createdOrder.total + confirmedFee)})`,
+                          },
+                      }
+                    : {}),
             })
             const whatsappUrl = `https://wa.me/${businessWhatsAppNumber}?text=${encodeURIComponent(message)}`
             setTransferCard(createdOrder.transferCard ?? null)
             setConfirmedOrderTotal(createdOrder.total)
+            setConfirmedDeliveryFee(fulfillmentType === 'DELIVERY' ? confirmedFee : null)
+            setDeliveryFeeChange(null)
             setConfirmedOrderNumber(createdOrder.orderNumber)
             setConfirmedCustomerName(customerName)
+            // Solo un cliente NUEVO recibe la llave de su tarjeta (nunca por teléfono).
+            if (createdOrder.loyaltyCardToken) menuLoyalty.rememberToken(createdOrder.loyaltyCardToken)
+            if (createdOrder.loyaltyReward) menuLoyalty.reset()
 
             // Only attempt to open WhatsApp after the backend has confirmed the
             // order. Errors, warnings and price conflicts stay in checkout.
@@ -657,6 +728,57 @@ export default function PublicMenuPage({
                 error instanceof ApiError &&
                 error.code === 'CUSTOMER_DISCOUNT_APPLICATION_FAILED'
             const customerDisabled = error instanceof ApiError && error.code === 'CUSTOMER_DISABLED'
+            if (error instanceof ApiError && error.code === 'DELIVERY_FEE_CHANGED') {
+                // Misma regla que el cambio de precio: el pedido no se creó y el cliente
+                // debe confirmar el nuevo total antes de reintentar.
+                const details = error.details as Partial<DeliveryFeeChange> | undefined
+                if (
+                    typeof details?.expectedDeliveryFee === 'number' &&
+                    typeof details.currentDeliveryFee === 'number'
+                ) {
+                    setDeliveryFeeChange({
+                        expectedDeliveryFee: details.expectedDeliveryFee,
+                        currentDeliveryFee: details.currentDeliveryFee,
+                        distanceKm: Number(details.distanceKm ?? 0),
+                    })
+                    setOrderError(null)
+                    return
+                }
+            }
+            if (
+                error instanceof ApiError &&
+                (error.code === 'LOYALTY_REWARD_CHANGED' || error.code === 'LOYALTY_REWARD_UNAVAILABLE')
+            ) {
+                // Igual que el cambio de precio: el pedido no se creó y el cliente confirma el
+                // nuevo total (el premio se recalcula o se quita si ya no aplica).
+                const details = error.details as
+                    | { expectedDiscount?: number; currentDiscount?: number; reason?: string }
+                    | undefined
+                menuLoyalty.markChanged({
+                    expectedDiscount: Number(details?.expectedDiscount ?? menuLoyalty.discount),
+                    currentDiscount: Number(details?.currentDiscount ?? 0),
+                    reason: details?.reason ?? null,
+                })
+                setOrderError(null)
+                return
+            }
+            if (error instanceof ApiError && error.code === 'DELIVERY_OUT_OF_RANGE') {
+                setDeliveryFeeChange(null)
+                setOrderError(
+                    'Tu ubicación está fuera del área de entrega. Marca otra ubicación o elige recogerlo.',
+                )
+                return
+            }
+            if (
+                error instanceof ApiError &&
+                (error.code === 'DELIVERY_UNAVAILABLE' || error.code === 'DELIVERY_NOT_CONFIGURED')
+            ) {
+                setDeliveryFeeChange(null)
+                setOrderError(
+                    'Este negocio ya no está entregando a domicilio. Elige otra forma de entrega.',
+                )
+                return
+            }
             if (error instanceof ApiError && error.code === 'ORDER_PRICE_CHANGED') {
                 const details = error.details as {
                     expectedSubtotal?: number
@@ -710,6 +832,13 @@ export default function PublicMenuPage({
         <main className="min-h-screen bg-[#F5F8FC] text-[#12234A]">
             <div className="mx-auto max-w-5xl px-4 py-5 pb-28 sm:px-6 sm:py-8 sm:pb-32">
                 <MenuHeader business={query.data.business} />
+                {menuLoyalty.program && (
+                    <LazyLoyaltyMenuBand
+                        program={menuLoyalty.program}
+                        progress={menuLoyalty.quote?.programActive ? menuLoyalty.quote.card : null}
+                        rewardReady={Boolean(menuLoyalty.reward && menuLoyalty.usable)}
+                    />
+                )}
                 {menus.length > 0 ? (
                     <section className="mt-6" aria-label="Menús">
                         <div className="flex gap-2 overflow-x-auto pb-1">
@@ -829,8 +958,18 @@ export default function PublicMenuPage({
                     setOrderOpen(false)
                     setOrderError(null)
                 }}
-                onCheckout={(customerName, customerPhone, notes, fulfillmentType, ignoreCustomerDiscount, acceptPriceChange, paymentMethod) => {
-                    void sendWhatsAppOrder(customerName, customerPhone, notes, fulfillmentType, ignoreCustomerDiscount, acceptPriceChange, paymentMethod)
+                onCheckout={(customerName, customerPhone, notes, fulfillmentType, ignoreCustomerDiscount, acceptPriceChange, paymentMethod, delivery) => {
+                    void sendWhatsAppOrder(customerName, customerPhone, notes, fulfillmentType, ignoreCustomerDiscount, acceptPriceChange, paymentMethod, delivery)
+                }}
+                deliveryAvailable={query.data.business.delivery?.enabled ?? false}
+                restaurantLocation={query.data.business.ubicationMaps}
+                deliveryFeeChange={deliveryFeeChange}
+                onCancelDeliveryFeeChange={() => setDeliveryFeeChange(null)}
+                loyalty={{
+                    panel: <CheckoutLoyaltyPanel loyalty={menuLoyalty} />,
+                    discount: menuLoyalty.discount,
+                    label: menuLoyalty.reward?.label ?? null,
+                    freeProduct: menuLoyalty.freeProduct,
                 }}
                 isSubmitting={isSubmittingOrder}
                 orderError={orderError}
@@ -870,14 +1009,24 @@ export default function PublicMenuPage({
                         setManualWhatsAppUrl(null)
                         setTransferCard(null)
                         setConfirmedOrderNumber(undefined)
+                        setConfirmedDeliveryFee(null)
                     }}
                     whatsappUrl={manualWhatsAppUrl}
                     paymentMethod={transferCard ? 'TRANSFER' : 'CASH'}
                     transferCard={transferCard}
                     total={confirmedOrderTotal ?? 0}
+                    deliveryFee={confirmedDeliveryFee}
                     businessWhatsAppNumber={catalog.business.whatsappNumber}
                     orderNumber={confirmedOrderNumber}
                     customerName={confirmedCustomerName}
+                    loyaltySlot={
+                        menuLoyalty.program ? (
+                            <LazyOrderConfirmationLoyalty
+                                program={menuLoyalty.program}
+                                token={menuLoyalty.token}
+                            />
+                        ) : null
+                    }
                 />
             )}
         </main>

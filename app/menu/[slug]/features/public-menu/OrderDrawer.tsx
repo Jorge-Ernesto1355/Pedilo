@@ -3,7 +3,7 @@
 import { QtyNumber } from '@/app/components/ui/QtyNumber'
 import { Minus, Pencil, Plus, ShoppingBag, X } from 'lucide-react'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import Link from 'next/link'
 import type { CartLine } from './types'
@@ -16,6 +16,19 @@ import { getCheckoutCustomerDiscount } from '@/src/lib/api/customerDiscountApi'
 import { Gift, LoaderCircle } from 'lucide-react'
 import { hasAvailableOptions } from './optionGroupValidation'
 import { isValidPhone, sanitizePhoneInput } from '@/src/lib/validation/phone'
+import { DeliveryCheckoutFields } from './delivery/DeliveryCheckoutFields'
+import {
+    DELIVERY_ADDRESS_MIN_LENGTH,
+    DELIVERY_NEIGHBORHOOD_MIN_LENGTH,
+    emptyDeliveryDraft,
+    isDeliveryDraftComplete,
+    useDeliveryQuote,
+    type DeliveryCheckout,
+    type DeliveryDraft,
+    type DeliveryFeeChange,
+    type DeliveryPin,
+} from './delivery/deliveryQuote'
+import { deliveryTransferNote, formatMoney } from './whatsapp'
 
 const PUBLIC_ORDER_TEXT_MAX_LENGTH = 200
 const PUBLIC_CUSTOMER_NAME_MAX_LENGTH = 20
@@ -54,6 +67,7 @@ type OrderDrawerProps = {
         ignoreCustomerDiscount?: boolean,
         acceptPriceChange?: boolean,
         paymentMethod?: OrderPaymentMethod,
+        delivery?: DeliveryCheckout,
     ) => void
     isSubmitting?: boolean
     phoneError?: string | null
@@ -61,6 +75,22 @@ type OrderDrawerProps = {
     couponApplicationError?: boolean
     priceChange?: { expectedSubtotal: number; currentSubtotal: number; difference: number } | null
     onCancelPriceChange?: () => void
+    /** El restaurante tiene envío a domicilio activo y completo. */
+    deliveryAvailable?: boolean
+    restaurantLocation?: DeliveryPin | null
+    deliveryFeeChange?: DeliveryFeeChange | null
+    onCancelDeliveryFeeChange?: () => void
+    /** Tarjeta de lealtad: bloque del checkout y premio aplicado (lo calcula el servidor). */
+    loyalty?: CheckoutLoyalty
+}
+
+export type CheckoutLoyalty = {
+    panel: ReactNode
+    /** Descuento del premio aplicado (0 si no se usa). */
+    discount: number
+    label: string | null
+    /** Premio "producto gratis": se agrega a precio completo y se descuenta completo. */
+    freeProduct: { name: string; price: number } | null
 }
 
 export function OrderDrawer({
@@ -82,6 +112,11 @@ export function OrderDrawer({
     couponApplicationError = false,
     priceChange = null,
     onCancelPriceChange,
+    deliveryAvailable = false,
+    restaurantLocation = null,
+    deliveryFeeChange = null,
+    onCancelDeliveryFeeChange,
+    loyalty,
 }: OrderDrawerProps) {
     const [customerName, setCustomerName] = useState('')
     const [customerPhone, setCustomerPhone] = useState('')
@@ -150,7 +185,70 @@ export function OrderDrawer({
               ) / 100,
           )
         : 0
-    const previewTotal = Math.max(0, checkoutTotalBeforeCustomerDiscount - previewDiscountAmount)
+    // Un beneficio por pedido: con el premio de lealtad no se aplica el descuento de cliente.
+    const loyaltyDiscount = loyalty?.discount ?? 0
+    const loyaltyApplied = loyaltyDiscount > 0
+    const loyaltyFreeProductPrice = loyaltyApplied ? (loyalty?.freeProduct?.price ?? 0) : 0
+    const previewTotal = loyaltyApplied
+        ? Math.max(
+              0,
+              checkoutTotalBeforeCustomerDiscount + loyaltyFreeProductPrice - loyaltyDiscount,
+          )
+        : Math.max(0, checkoutTotalBeforeCustomerDiscount - previewDiscountAmount)
+
+    // Envío a domicilio. La distancia y el envío los calcula el servidor (cotización).
+    const [deliveryDraft, setDeliveryDraft] = useState<DeliveryDraft>(emptyDeliveryDraft)
+    const isDelivery = fulfillmentType === 'DELIVERY'
+    const deliveryQuote = useDeliveryQuote(businessId, deliveryDraft.pin, open && isDelivery)
+    const quoteState = deliveryQuote.state
+    // Si el servidor avisó que el envío cambió, se muestra el envío nuevo hasta que se confirme.
+    const deliveryFee = !isDelivery
+        ? 0
+        : deliveryFeeChange
+          ? deliveryFeeChange.currentDeliveryFee
+          : quoteState.status === 'ok'
+            ? quoteState.fee
+            : null
+    const deliveryReady =
+        !isDelivery ||
+        (isDeliveryDraftComplete(deliveryDraft) &&
+            quoteState.status === 'ok' &&
+            !deliveryQuote.isFetching)
+    const orderTotal = previewTotal + (deliveryFee ?? 0)
+
+    function deliveryCheckout(expectedFee?: number): DeliveryCheckout | undefined {
+        if (!isDelivery || !deliveryDraft.pin || quoteState.status !== 'ok') return undefined
+        return {
+            address: deliveryDraft.address.trim(),
+            neighborhood: deliveryDraft.neighborhood.trim(),
+            reference: deliveryDraft.reference.trim(),
+            latitude: deliveryDraft.pin.latitude,
+            longitude: deliveryDraft.pin.longitude,
+            expectedFee: expectedFee ?? quoteState.fee,
+            distanceKm: quoteState.distanceKm,
+        }
+    }
+
+    /** Envía con todos los datos actuales del checkout (incluido el método de pago y el domicilio). */
+    function checkout(
+        options: {
+            ignoreCustomerDiscount?: boolean
+            acceptPriceChange?: boolean
+            paymentMethod?: OrderPaymentMethod
+            expectedDeliveryFee?: number
+        } = {},
+    ) {
+        onCheckout(
+            customerName.trim(),
+            customerPhone.trim(),
+            notes.trim(),
+            fulfillmentType,
+            options.ignoreCustomerDiscount ?? false,
+            options.acceptPriceChange ?? false,
+            options.paymentMethod ?? paymentMethod,
+            deliveryCheckout(options.expectedDeliveryFee),
+        )
+    }
 
     async function handleCheckout() {
         const knownDiscount = knownDiscountRef.current
@@ -162,15 +260,7 @@ export function OrderDrawer({
                 return
             }
         }
-        onCheckout(
-            customerName.trim(),
-            customerPhone.trim(),
-            notes.trim(),
-            fulfillmentType,
-            false,
-            false,
-            paymentMethod,
-        )
+        checkout()
     }
 
     function resetDiscountValidation() {
@@ -524,11 +614,15 @@ export function OrderDrawer({
                                                 [
                                                     ['DINE_IN', 'Comer aquí'],
                                                     ['PICKUP', 'Para llevar / recoger'],
+                                                    ...(deliveryAvailable
+                                                        ? ([['DELIVERY', 'A domicilio']] as const)
+                                                        : []),
                                                 ] as const
                                             ).map(([value, label]) => (
                                                 <label
                                                     key={value}
-                                                    className={`flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-semibold ${fulfillmentType === value ? 'border-[#2451C5] bg-[#F2F6FF] text-[#1E40AF]' : 'border-[#D7E1EF] text-[#53647D]'}`}
+                                                    data-cy={`fulfillment-${value.toLowerCase()}`}
+                                                    className={`flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-semibold ${value === 'DELIVERY' ? 'col-span-2' : ''} ${fulfillmentType === value ? 'border-[#2451C5] bg-[#F2F6FF] text-[#1E40AF]' : 'border-[#D7E1EF] text-[#53647D]'}`}
                                                 >
                                                     <input
                                                         type="radio"
@@ -542,6 +636,16 @@ export function OrderDrawer({
                                                 </label>
                                             ))}
                                         </div>
+                                        {isDelivery && (
+                                            <DeliveryCheckoutFields
+                                                businessName={businessName}
+                                                restaurantLocation={restaurantLocation}
+                                                value={deliveryDraft}
+                                                onChange={setDeliveryDraft}
+                                                quote={quoteState}
+                                                onRetryQuote={() => void deliveryQuote.refetch()}
+                                            />
+                                        )}
                                     </fieldset>
                                     {paymentCardAvailable && (
                                         <fieldset
@@ -575,6 +679,14 @@ export function OrderDrawer({
                                                     </label>
                                                 ))}
                                             </div>
+                                            {isDelivery && paymentMethod === 'TRANSFER' && (
+                                                <p
+                                                    data-cy="delivery-transfer-note"
+                                                    className="mt-2 rounded-xl bg-[#F5F8FC] px-3 py-2.5 text-xs font-semibold leading-5 text-[#243556]"
+                                                >
+                                                    {deliveryTransferNote(deliveryFee)}
+                                                </p>
+                                            )}
                                         </fieldset>
                                     )}
                                     <label
@@ -754,6 +866,7 @@ export function OrderDrawer({
                                         </Link>
                                         .
                                     </p>
+                                    {loyalty?.panel}
                                     <div
                                         data-cy="checkout-summary"
                                         className="mt-3 rounded-xl border border-[#E8EEF6] bg-white px-3.5 py-3"
@@ -787,7 +900,35 @@ export function OrderDrawer({
                                                 </span>
                                             </div>
                                         )}
-                                        {!discountInvalidated &&
+                                        {loyaltyApplied && loyalty?.freeProduct && (
+                                            <div
+                                                data-cy="checkout-loyalty-free-product"
+                                                className="mt-2 flex items-center justify-between gap-3 text-sm"
+                                            >
+                                                <span className="text-[#65738A]">
+                                                    {loyalty.freeProduct.name} (premio)
+                                                </span>
+                                                <span className="font-medium text-[#243556]">
+                                                    ${formatMoney(loyalty.freeProduct.price)}
+                                                </span>
+                                            </div>
+                                        )}
+                                        {loyaltyApplied && (
+                                            <div
+                                                data-cy="checkout-loyalty-discount"
+                                                className="mt-2 flex items-center justify-between gap-3 text-sm"
+                                            >
+                                                <span className="text-[#1E40AF]">
+                                                    Premio de lealtad
+                                                    {loyalty?.label ? ` · ${loyalty.label}` : ''}
+                                                </span>
+                                                <span className="font-semibold text-[#1E40AF]">
+                                                    −${formatMoney(loyaltyDiscount)}
+                                                </span>
+                                            </div>
+                                        )}
+                                        {!loyaltyApplied &&
+                                            !discountInvalidated &&
                                             availableDiscount &&
                                             previewDiscountAmount > 0 && (
                                                 <div
@@ -808,6 +949,27 @@ export function OrderDrawer({
                                                     </span>
                                                 </div>
                                             )}
+                                        {isDelivery && (
+                                            <div
+                                                data-cy="checkout-delivery-fee"
+                                                className="mt-2 flex items-center justify-between gap-3 text-sm"
+                                            >
+                                                <span className="text-[#65738A]">
+                                                    Envío
+                                                    {paymentMethod === 'TRANSFER' && (
+                                                        <span className="text-[#8996A9]">
+                                                            {' '}
+                                                            · en efectivo al repartidor
+                                                        </span>
+                                                    )}
+                                                </span>
+                                                <span className="font-medium text-[#243556]">
+                                                    {deliveryFee === null
+                                                        ? 'Marca tu ubicación'
+                                                        : `$${formatMoney(deliveryFee)}`}
+                                                </span>
+                                            </div>
+                                        )}
                                         <div
                                             data-cy="checkout-total"
                                             className="mt-2 flex items-center justify-between gap-3 border-t border-[#E8EEF6] pt-2.5"
@@ -817,7 +979,7 @@ export function OrderDrawer({
                                             </span>
                                             <span className="text-base font-bold text-[#12234A]">
                                                 $
-                                                {previewTotal.toLocaleString('es-MX', {
+                                                {orderTotal.toLocaleString('es-MX', {
                                                     minimumFractionDigits: 2,
                                                 })}
                                             </span>
@@ -831,7 +993,9 @@ export function OrderDrawer({
                                             !phoneIsValid ||
                                             lines.length === 0 ||
                                             isSubmitting ||
-                                            discountInvalidated
+                                            discountInvalidated ||
+                                            !deliveryReady ||
+                                            Boolean(deliveryFeeChange)
                                         }
                                         onClick={() => {
                                             void handleCheckout()
@@ -842,11 +1006,74 @@ export function OrderDrawer({
                                         {isSubmitting ? 'Enviando pedido…' : 'Confirmar pedido'}{' '}
                                         <span>
                                             $
-                                            {previewTotal.toLocaleString('es-MX', {
+                                            {orderTotal.toLocaleString('es-MX', {
                                                 minimumFractionDigits: 2,
                                             })}
                                         </span>
                                     </button>
+                                    {isDelivery && !deliveryReady && !isSubmitting && (
+                                        <p
+                                            data-cy="delivery-submit-hint"
+                                            className="mt-2 text-center text-xs text-[#65738A]"
+                                        >
+                                            {deliveryDraft.address.trim().length <
+                                            DELIVERY_ADDRESS_MIN_LENGTH
+                                                ? 'Escribe tu dirección de entrega.'
+                                                : deliveryDraft.neighborhood.trim().length <
+                                                    DELIVERY_NEIGHBORHOOD_MIN_LENGTH
+                                                  ? 'Escribe tu colonia.'
+                                                  : !deliveryDraft.pin
+                                                    ? 'Marca tu ubicación en el mapa para continuar.'
+                                                    : quoteState.status === 'out_of_range'
+                                                      ? 'Tu ubicación está fuera del área de entrega.'
+                                                      : 'Esperando el cálculo del envío…'}
+                                        </p>
+                                    )}
+                                    {deliveryFeeChange && (
+                                        <div
+                                            className="mt-3 rounded-xl border border-[#F1C46A] bg-[#FFF9E8] px-3 py-3 text-left"
+                                            data-cy="delivery-fee-change-warning"
+                                            role="alert"
+                                        >
+                                            <p className="text-sm font-bold text-[#8A5A00]">
+                                                El envío cambió mientras hacías tu pedido
+                                            </p>
+                                            <p className="mt-1 text-xs leading-5 text-[#8A5A00]">
+                                                Ahora es $
+                                                {formatMoney(deliveryFeeChange.currentDeliveryFee)}{' '}
+                                                (antes $
+                                                {formatMoney(deliveryFeeChange.expectedDeliveryFee)}
+                                                ). El total con envío es ${formatMoney(orderTotal)}.
+                                                ¿Quieres continuar?
+                                            </p>
+                                            <div className="mt-2 flex gap-2">
+                                                <button
+                                                    type="button"
+                                                    data-cy="delivery-fee-change-cancel"
+                                                    onClick={() => {
+                                                        onCancelDeliveryFeeChange?.()
+                                                        void deliveryQuote.refetch()
+                                                    }}
+                                                    className="min-h-9 flex-1 rounded-lg border border-[#D7B35A] px-2 text-xs font-bold text-[#8A5A00]"
+                                                >
+                                                    Cancelar
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    data-cy="delivery-fee-change-accept"
+                                                    onClick={() =>
+                                                        checkout({
+                                                            expectedDeliveryFee:
+                                                                deliveryFeeChange.currentDeliveryFee,
+                                                        })
+                                                    }
+                                                    className="min-h-9 flex-1 rounded-lg bg-[#B77900] px-2 text-xs font-bold text-white"
+                                                >
+                                                    Continuar
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
                                     {priceChange && (
                                         <div
                                             className="mt-3 rounded-xl border border-[#F1C46A] bg-[#FFF9E8] px-3 py-3 text-left"
@@ -879,14 +1106,7 @@ export function OrderDrawer({
                                                 <button
                                                     type="button"
                                                     onClick={() =>
-                                                        onCheckout(
-                                                            customerName.trim(),
-                                                            customerPhone.trim(),
-                                                            notes.trim(),
-                                                            fulfillmentType,
-                                                            false,
-                                                            true,
-                                                        )
+                                                        checkout({ acceptPriceChange: true })
                                                     }
                                                     className="min-h-9 flex-1 rounded-lg bg-[#B77900] px-2 text-xs font-bold text-white"
                                                 >
@@ -917,14 +1137,7 @@ export function OrderDrawer({
                                                 </button>
                                                 <button
                                                     type="button"
-                                                    onClick={() =>
-                                                        onCheckout(
-                                                            customerName.trim(),
-                                                            customerPhone.trim(),
-                                                            notes.trim(),
-                                                            fulfillmentType,
-                                                        )
-                                                    }
+                                                    onClick={() => checkout()}
                                                     className="min-h-10 flex-1 rounded-lg bg-[#B42318] px-3 py-2 text-sm font-bold text-white"
                                                 >
                                                     Continuar sin descuento
@@ -951,13 +1164,7 @@ export function OrderDrawer({
                                                 <button
                                                     type="button"
                                                     onClick={() =>
-                                                        onCheckout(
-                                                            customerName.trim(),
-                                                            customerPhone.trim(),
-                                                            notes.trim(),
-                                                            fulfillmentType,
-                                                            true,
-                                                        )
+                                                        checkout({ ignoreCustomerDiscount: true })
                                                     }
                                                     className="min-h-8 rounded-md bg-[#B42318] px-2.5 py-1 text-[11px] font-bold text-white"
                                                 >
@@ -980,15 +1187,7 @@ export function OrderDrawer({
                                                         data-cy="transfer-continue-cash"
                                                         onClick={() => {
                                                             setPaymentMethod('CASH')
-                                                            onCheckout(
-                                                                customerName.trim(),
-                                                                customerPhone.trim(),
-                                                                notes.trim(),
-                                                                fulfillmentType,
-                                                                false,
-                                                                false,
-                                                                'CASH',
-                                                            )
+                                                            checkout({ paymentMethod: 'CASH' })
                                                         }}
                                                         className="mt-2 rounded-lg bg-[#B42318] px-3 py-2 text-xs font-bold text-white"
                                                     >
