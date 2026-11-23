@@ -149,7 +149,7 @@ describe('Nueva orden desde el dashboard', () => {
         cy.contains('button', 'Agregar al carrito').click()
         cy.get('button[aria-label="Agregar una unidad de Hamburguesa de la casa"]').click()
         cy.contains('button', 'Continuar').click()
-        cy.get('input').filter('[autocomplete="name"]').type('Juan')
+        cy.get('input').filter('[role="combobox"][aria-controls="customer-suggestions"]').type('Juan')
         cy.get('input').filter('[autocomplete="tel"]').type('6681234567')
         cy.get('textarea').type('Sin cebolla')
         cy.contains('button', 'Crear orden').click()

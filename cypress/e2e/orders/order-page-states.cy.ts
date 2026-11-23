@@ -34,11 +34,11 @@ function installOrderApi({ empty = true, failMain = false } = {}) {
         const hasSearch = Boolean(url.searchParams.get('search'))
         if (!hasStatus && !hasSearch) {
             mainCalls += 1
-            request.alias = mainCalls === 1 ? 'mainOrders' : mainCalls === 5 ? 'retryOrders' : undefined
-            // React Query retries failed queries three times by default. Fail the
-            // initial request plus those retries so the error state is observable;
-            // the explicit UI retry is the fifth request and succeeds.
-            if (failMain && mainCalls <= 4) {
+            request.alias = mainCalls === 1 ? 'mainOrders' : mainCalls === 3 ? 'retryOrders' : undefined
+            // QueryProvider configura `retry: 1`. Se falla la petición inicial y su único
+            // reintento automático para que el estado de error sea observable; el reintento
+            // explícito desde la UI es la tercera petición y responde bien.
+            if (failMain && mainCalls <= 2) {
                 request.reply({ statusCode: 500, body: { error: { message: 'temporary failure' } } })
                 return
             }

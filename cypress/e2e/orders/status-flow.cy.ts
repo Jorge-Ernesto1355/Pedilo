@@ -110,7 +110,12 @@ describe('Cambio rápido de estados de órdenes', () => {
         })
 
         orderCard().contains('button', 'Marcar listo').click()
-        orderCard().contains('button', 'Actualizando…').should('be.disabled').click({ force: true })
+        // UI optimista: la tarjeta pasa a "Lista" de inmediato y ya no ofrece otra acción de avance,
+        // por eso no hay un botón "Actualizando…" (solo existe mientras el nuevo estado tenga siguiente paso).
+        orderCard().within(() => {
+            cy.contains('Lista').should('be.visible')
+            cy.contains('button', 'Marcar listo').should('not.exist')
+        })
         cy.wait('@updateOrderStatus')
         cy.then(() => expect(counters.updates).to.eq(2))
         cy.wait('@listOrders')
@@ -144,7 +149,8 @@ describe('Cambio rápido de estados de órdenes', () => {
         })
 
         cy.get('[role="dialog"][aria-labelledby="order-detail-title"]').should('not.exist')
-        orderCard().contains('button', 'Actualizando…').should('be.disabled').click({ force: true })
+        // UI optimista: pasa a "Cancelado" de inmediato, sin botón "Actualizando…" (no hay siguiente paso).
+        orderCard().contains('Cancelado').should('be.visible')
         cy.wait('@updateOrderStatus')
         cy.then(() => expect(counters.updates).to.eq(1))
         cy.wait('@listOrders')

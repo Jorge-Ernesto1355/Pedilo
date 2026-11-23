@@ -99,7 +99,7 @@ describe('Flujo completo de nueva orden desde el dashboard', () => {
         cy.contains('Teléfono (opcional)').should('be.visible')
         cy.contains('Notas (opcional)').should('be.visible')
 
-        cy.get('input[autocomplete="name"]').type('Juan E2E')
+        cy.get('input[role="combobox"][aria-controls="customer-suggestions"]').type('Juan E2E')
         cy.get('input[autocomplete="tel"]').type('6681234567')
         cy.get('textarea').type('Sin cebolla')
 
