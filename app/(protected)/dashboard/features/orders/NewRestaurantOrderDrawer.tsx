@@ -1,7 +1,7 @@
 'use client'
 
 import { QtyNumber } from '@/app/components/ui/QtyNumber'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import {
     AlertCircle,
@@ -31,6 +31,7 @@ import { useOrderCart } from '@/app/menu/[slug]/features/public-menu/useOrderCar
 import type { CartLine, CartSelection } from '@/app/menu/[slug]/features/public-menu/types'
 import { isValidPhone, sanitizePhoneInput } from '@/src/lib/validation/phone'
 import { useCustomers } from '../customers/useCustomers'
+import { NewOrderLoyaltyReward } from './loyalty/NewOrderLoyaltyReward'
 import { useCreateRestaurantOrder } from './useCreateRestaurantOrder'
 import { CompactProductCard } from './CompactProductCard'
 import { MobileCartBar } from './MobileCartBar'
@@ -271,6 +272,7 @@ export function NewRestaurantOrderDrawer({
     const [customizing, setCustomizing] = useState<PublicProduct | null>(null)
     const [customerName, setCustomerName] = useState('')
     const [customerPhone, setCustomerPhone] = useState('')
+    const [loyaltyRewardId, setLoyaltyRewardId] = useState<string | null>(null)
     const [notes, setNotes] = useState('')
     const [error, setError] = useState<string | null>(null)
     const [priceChange, setPriceChange] = useState<{
@@ -395,6 +397,7 @@ export function NewRestaurantOrderDrawer({
             ...(customerName.trim() ? { customerName: customerName.trim() } : {}),
             ...(customerPhone.trim() ? { customerPhone: customerPhone.trim() } : {}),
             ...(notes.trim() ? { notes: notes.trim() } : {}),
+            ...(loyaltyRewardId && customerPhone.trim() ? { loyaltyRewardId } : {}),
             items: cart.lines.map((line) => ({
                 productId: line.product.id,
                 quantity: line.quantity,
@@ -660,7 +663,17 @@ export function NewRestaurantOrderDrawer({
                             priceChange={priceChange}
                             isSubmitting={mutation.isPending}
                             onNameChange={setCustomerName}
-                            onPhoneChange={setCustomerPhone}
+                            onPhoneChange={(value) => {
+                                setCustomerPhone(value)
+                                setLoyaltyRewardId(null)
+                            }}
+                            loyaltySlot={
+                                <NewOrderLoyaltyReward
+                                    phone={customerPhone.trim()}
+                                    rewardId={loyaltyRewardId}
+                                    onChange={setLoyaltyRewardId}
+                                />
+                            }
                             onNotesChange={setNotes}
                             onBack={() => setStep(1)}
                             onSubmit={() => void createOrder()}
@@ -912,6 +925,7 @@ function CustomerStep({
     onSubmit,
     onCancelPriceChange,
     onContinueAfterPriceChange,
+    loyaltySlot,
 }: {
     customerName: string
     customerPhone: string
@@ -927,6 +941,8 @@ function CustomerStep({
     onSubmit: () => void
     onCancelPriceChange: () => void
     onContinueAfterPriceChange: () => void
+    /** "Aplicar premio" de la tarjeta de lealtad (si el cliente tiene uno). */
+    loyaltySlot?: ReactNode
 }) {
     const normalizedName = customerName.trim()
     const normalizedNotes = notes.trim()
@@ -1091,6 +1107,7 @@ function CustomerStep({
                                 </span>
                             )}
                         </label>
+                        {loyaltySlot}
                         <label className="block text-sm font-bold text-[#243556]">
                             Notas <span className="font-normal text-[#8996A9]">(opcional)</span>
                             <textarea
