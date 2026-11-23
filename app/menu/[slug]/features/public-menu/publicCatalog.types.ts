@@ -97,6 +97,8 @@ export type PublicBusiness = {
     whatsappNumber?: string | null
     paymentCardAvailable?: boolean
     payment_card_available?: boolean
+    /** Envío a domicilio. `enabled` solo si el restaurante lo tiene completo y activo. */
+    delivery?: { enabled: boolean; maxDeliveryKm: number | null }
 }
 export type PublicCatalog = { business: PublicBusiness; menus: PublicMenu[] }
 export type PublicDiscountPrice = {
