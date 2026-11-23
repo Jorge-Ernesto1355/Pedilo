@@ -6,6 +6,7 @@ import {
     ArrowRight,
     BadgePercent,
     BellRing,
+    Bike,
     CalendarDays,
     ChefHat,
     ChevronDown,
@@ -14,6 +15,7 @@ import {
     CircleX,
     Clock3,
     LoaderCircle,
+    PackageCheck,
     Phone,
     RefreshCw,
     Search,
@@ -105,6 +107,24 @@ const statusMeta: Record<OrderStatus, StatusMeta> = {
         dot: 'bg-[#39A86B]',
         panel: 'border-[#B8E2C8] bg-[#F7FCF8]',
         button: 'bg-[#A8E7BF] text-[#17643A] hover:bg-[#8DD9A9]',
+    },
+    OUT_FOR_DELIVERY: {
+        label: 'En camino',
+        description: 'El repartidor lleva el pedido al cliente',
+        icon: Bike,
+        badge: 'border-[#A7DCE0] bg-[#EAF7F8] text-[#0E6E76]',
+        dot: 'bg-[#1497A1]',
+        panel: 'border-[#A7DCE0] bg-[#F4FBFB]',
+        button: 'bg-[#1497A1] text-white hover:bg-[#0E7C86]',
+    },
+    DELIVERED: {
+        label: 'Entregado',
+        description: 'El repartidor entregó el pedido',
+        icon: PackageCheck,
+        badge: 'border-[#B8E2C8] bg-[#F1F8F3] text-[#1D5E3A]',
+        dot: 'bg-[#23794A]',
+        panel: 'border-[#B8E2C8] bg-[#F7FCF8]',
+        button: 'bg-[#23794A] text-white hover:bg-[#1D6B3F]',
     },
     CANCELLED: {
         label: 'Cancelado',
@@ -272,8 +292,14 @@ export default function OrdersPage() {
     if (query.isLoading) return <OrdersSkeleton />
 
     const averageMinutes = averagePreparationMinutes(query.data?.orders ?? [])
-    const countFor = (index: number) =>
-        statusCounts[index]?.isLoading ? null : (statusCounts[index]?.data?.total ?? 0)
+    // useOrderStatusCounts sigue el orden de ORDER_STATUSES.
+    const countFor = (value: OrderStatus) => {
+        const entry = statusCounts[ORDER_STATUSES.indexOf(value)]
+        return entry?.isLoading ? null : (entry?.data?.total ?? 0)
+    }
+    // Los filtros de domicilio solo aparecen cuando hay pedidos en esos estados (o están activos).
+    const showDeliveryFilter = (value: OrderStatus) =>
+        status === value || (countFor(value) ?? 0) > 0
     const countsLoading = statusCounts.some((item) => item.isLoading)
     const allStatusesCount = statusCounts.reduce((sum, item) => sum + (item.data?.total ?? 0), 0)
     const updateStatusFilter = (nextStatus?: OrderStatus) => {
@@ -333,28 +359,46 @@ export default function OrdersPage() {
                         />
                         <StatusPill
                             label="Pendientes"
-                            count={countFor(0)}
+                            count={countFor('PENDING')}
                             dot="bg-[#F5A000]"
                             active={status === 'PENDING'}
                             onClick={() => updateStatusFilter('PENDING')}
                         />
                         <StatusPill
                             label="En preparación"
-                            count={countFor(1)}
+                            count={countFor('PREPARING')}
                             dot="bg-[#315FE8]"
                             active={status === 'PREPARING'}
                             onClick={() => updateStatusFilter('PREPARING')}
                         />
                         <StatusPill
                             label="Listas"
-                            count={countFor(2)}
+                            count={countFor('READY')}
                             dot="bg-[#39A86B]"
                             active={status === 'READY'}
                             onClick={() => updateStatusFilter('READY')}
                         />
+                        {showDeliveryFilter('OUT_FOR_DELIVERY') && (
+                            <StatusPill
+                                label="En camino"
+                                count={countFor('OUT_FOR_DELIVERY')}
+                                dot="bg-[#1497A1]"
+                                active={status === 'OUT_FOR_DELIVERY'}
+                                onClick={() => updateStatusFilter('OUT_FOR_DELIVERY')}
+                            />
+                        )}
+                        {showDeliveryFilter('DELIVERED') && (
+                            <StatusPill
+                                label="Entregados"
+                                count={countFor('DELIVERED')}
+                                dot="bg-[#23794A]"
+                                active={status === 'DELIVERED'}
+                                onClick={() => updateStatusFilter('DELIVERED')}
+                            />
+                        )}
                         <StatusPill
                             label="Cancelados"
-                            count={countFor(3)}
+                            count={countFor('CANCELLED')}
                             dot="bg-[#D64545]"
                             active={status === 'CANCELLED'}
                             onClick={() => updateStatusFilter('CANCELLED')}
@@ -652,6 +696,8 @@ function OrderCard({
         PENDING: 'bg-[#FFF4D6]',
         PREPARING: 'bg-[#EAF2FF]',
         READY: 'bg-[#E3F7EA]',
+        OUT_FOR_DELIVERY: 'bg-[#E3F4F5]',
+        DELIVERED: 'bg-[#E9F5EE]',
         CANCELLED: 'bg-[#E7EDF3]',
     }[order.status]
     const isCreating = order.creationState === 'pending'
