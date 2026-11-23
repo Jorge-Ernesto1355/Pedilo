@@ -307,7 +307,7 @@ describe('Catálogo público', () => {
             .should('be.visible')
             .within(() => {
                 cy.contains('Agua fresca').should('be.visible')
-                cy.contains('$35 c/u').should('be.visible')
+                cy.contains('$35.00 c/u').should('be.visible')
 
                 cy.get('button[aria-label="Agregar una unidad de Agua fresca"]').click()
                 cy.get('button[aria-label="Agregar una unidad de Agua fresca"]')

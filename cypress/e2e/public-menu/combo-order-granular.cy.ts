@@ -231,14 +231,15 @@ describe('Selección de combos en el catálogo público', () => {
         cy.get('#customer-name').type('Jorge')
         cy.get('#customer-phone').type('6691234567')
         cy.contains('[role="dialog"] button', 'Confirmar pedido').click()
-        cy.wait('@createComboOrder').its('request.body.items').should('deep.equal', [
-            {
+        cy.wait('@createComboOrder').its('request.body.items').should('have.length', 1).then(([item]) => {
+            expect(item).to.deep.include({
                 productId: comboId,
                 quantity: 1,
                 optionIds: [],
                 comboChoiceIds: [friesChoiceId, waterChoiceId],
-            },
-        ])
+            })
+            expect(item.expectedUnitPrice).to.be.a('number')
+        })
     })
 
     it('muestra el error de la orden y permite conservar el carrito para reintentar', () => {
@@ -261,7 +262,7 @@ describe('Selección de combos en el catálogo público', () => {
         cy.wait('@createComboOrderFailure')
         cy.get('[data-testid="order-error"]')
             .should('be.visible')
-            .and('contain', 'Ocurrió un problema en el servidor')
+            .and('contain', 'No pudimos crear tu pedido')
         cy.contains('Combo familiar').should('be.visible')
         cy.contains('[role="dialog"] button', 'Confirmar pedido').should('not.be.disabled')
     })

@@ -144,7 +144,7 @@ describe('Catálogo público · cambios de disponibilidad y precio', () => {
         installPublicCatalog({ isAvailable: true, price: serverPrice })
         cy.intercept('POST', '**/api/v1/businesses/*/orders', (request) => {
             request.alias = 'createOrder'
-            expect(request.body.items).to.deep.equal([{ productId, quantity: 1, optionIds: [] }])
+            expect(request.body.items).to.deep.equal([{ productId, quantity: 1, expectedUnitPrice: 25, optionIds: [] }])
             expect(request.body).not.to.have.property('price')
             request.reply({
                 statusCode: 201,
@@ -153,6 +153,7 @@ describe('Catálogo público · cambios de disponibilidad y precio', () => {
                         id: 'order-product-lifecycle-e2e',
                         orderNumber: 31,
                         status: 'PENDING',
+                        subtotal: serverPrice,
                         total: serverPrice,
                     },
                 },
