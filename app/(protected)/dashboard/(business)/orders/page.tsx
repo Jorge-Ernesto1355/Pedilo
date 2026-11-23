@@ -15,6 +15,7 @@ import {
     CircleX,
     Clock3,
     LoaderCircle,
+    MapPin,
     PackageCheck,
     Phone,
     RefreshCw,
@@ -183,8 +184,10 @@ function itemPriceSummary(item: Order['items'][number]) {
     }
 }
 
-function canCancel(status: OrderStatus) {
-    return status !== 'CANCELLED'
+const fulfillmentLabels: Record<Order['fulfillmentType'], string> = {
+    DINE_IN: 'Comer aquí',
+    PICKUP: 'Para llevar / recoger',
+    DELIVERY: 'A domicilio',
 }
 
 function statusErrorMessage(error: unknown) {
@@ -262,6 +265,11 @@ export default function OrdersPage() {
     const detail = useOrder(selectedId)
     const mutation = useOrderStatusMutation()
     const business = useCurrentBusiness()
+    // La tarjeta solo hace falta para el botón "Enviar tarjeta" de pedidos por transferencia:
+    // se consulta únicamente cuando hay uno a la vista (o abierto en el detalle).
+    const needsPaymentCard =
+        (query.data?.orders.some((order) => order.paymentMethod === 'TRANSFER') ?? false) ||
+        detail.data?.paymentMethod === 'TRANSFER'
     const paymentCardQuery = useQuery({
         queryKey: ['payment-card'],
         queryFn: getPaymentCard,
@@ -309,7 +317,10 @@ export default function OrdersPage() {
             { orderId, status: next },
             {
                 onError: () => setMutationErrorOrderId(orderId),
-                onSuccess: () => setMutationErrorOrderId(null),
+                onSuccess: (update) => {
+                    setMutationErrorOrderId(null)
+                    loyaltyNotice(update, order)
+                },
             },
         )
     }
@@ -327,7 +338,9 @@ export default function OrdersPage() {
         clearSearch()
     }
 
-    if (query.isLoading) return <OrdersSkeleton />
+    // isPending (no isLoading): mientras la query está deshabilitada por falta de businessId
+    // no hay datos ni petición; pintar la lista vacía y saltar luego al skeleton parpadea.
+    if (query.isPending) return <OrdersSkeleton />
 
     const averageMinutes = averagePreparationMinutes(query.data?.orders ?? [])
     // useOrderStatusCounts sigue el orden de ORDER_STATUSES.
@@ -577,6 +590,7 @@ export default function OrdersPage() {
                                 onStatusChange={changeStatus}
                                 paymentCard={paymentCardQuery.data?.paymentCard ?? null}
                                 businessName={business.data?.name ?? 'Restaurante'}
+                                loyalty={orderLoyalty}
                             />
                         ))}
                     </div>
@@ -716,6 +730,7 @@ function OrderCard({
     onStatusChange,
     paymentCard,
     businessName,
+    loyalty,
 }: {
     order: Order
     currency: string
@@ -728,6 +743,7 @@ function OrderCard({
     onStatusChange: (orderId: string, status: OrderStatus) => void
     paymentCard: PaymentCard | null
     businessName: string
+    loyalty?: OrderLoyaltyProps
 }) {
     const meta = statusMeta[order.status]
     const next = nextStatus(order.status)
@@ -739,6 +755,11 @@ function OrderCard({
         DELIVERED: 'bg-[#E9F5EE]',
         CANCELLED: 'bg-[#E7EDF3]',
     }[order.status]
+    const [confirmingCancel, setConfirmingCancel] = useState(false)
+    const requestCancel = () => {
+        if (cancelNeedsConfirmation(order)) setConfirmingCancel(true)
+        else onStatusChange(order.id, 'CANCELLED')
+    }
     const isCreating = order.creationState === 'pending'
     const isUncertain = order.creationState === 'uncertain'
     const number = order.orderNumber > 0 ? String(order.orderNumber).padStart(3, '0') : '…'
@@ -791,12 +812,28 @@ function OrderCard({
                         <UserRound className="size-4 text-[#71819A]" />
                         {displayCustomerName(order.customerName)}
                     </span>
-                    <span className="mt-1 inline-flex items-center gap-1.5 rounded-md bg-[#F1F5F8] px-2 py-1 text-xs font-semibold text-[#53647D]">
-                        <Utensils className="size-3.5" />
-                        {order.fulfillmentType === 'PICKUP'
-                            ? 'Para llevar / recoger'
-                            : 'Comer aquí'}
+                    <span
+                        data-cy="order-fulfillment"
+                        className="mt-1 inline-flex items-center gap-1.5 rounded-md bg-[#F1F5F8] px-2 py-1 text-xs font-semibold text-[#53647D]"
+                    >
+                        {order.fulfillmentType === 'DELIVERY' ? (
+                            <Bike className="size-3.5" />
+                        ) : (
+                            <Utensils className="size-3.5" />
+                        )}
+                        {fulfillmentLabels[order.fulfillmentType]}
                     </span>
+                    {order.fulfillmentType === 'DELIVERY' && order.delivery && (
+                        <span
+                            data-cy="order-delivery-address"
+                            className="mt-1 flex items-start gap-1.5 text-xs leading-5 text-[#53647D]"
+                        >
+                            <MapPin className="mt-0.5 size-3.5 shrink-0" />
+                            <span className="line-clamp-2 break-words">
+                                {deliveryAddressLine(order.delivery)}
+                            </span>
+                        </span>
+                    )}
                     {displayPhone(order.customerPhone) && (
                         <span className="mt-1 flex items-center gap-2 text-xs text-[#71819A]">
                             <Phone className="size-3.5" />
@@ -814,6 +851,10 @@ function OrderCard({
                             · −{formatMoney(order.discountAmount, currency)}
                         </span>
                     ) : null}
+                    <OrderLoyaltyDiscount
+                        order={order}
+                        format={(value) => formatMoney(value, currency)}
+                    />
                 </button>
                 <div className="max-h-[192px] min-h-[192px] space-y-3 overflow-y-auto pr-1 [scrollbar-color:#B9CDFD_transparent] [scrollbar-width:thin]">
                     {order.items.map((item, index) => (
@@ -855,6 +896,14 @@ function OrderCard({
                     ))}
                 </div>
             </div>
+            {order.fulfillmentType === 'DELIVERY' && !isCreating && !isUncertain && (
+                <OrderDeliveryPanel
+                    order={order}
+                    businessName={businessName}
+                    currency={currency}
+                    timezone={timezone}
+                />
+            )}
             <div className="mt-auto flex flex-wrap items-center justify-between gap-3 bg-[#F1F5F8] px-4 py-3">
                 <div className="flex min-w-0 items-center gap-3">
                     <span className="inline-flex min-w-0 items-center gap-1.5 text-xs font-semibold text-[#53647D]">
@@ -865,8 +914,24 @@ function OrderCard({
                     <strong className="shrink-0 font-display text-xl font-bold tracking-[-.03em] text-[#12234A]">
                         {formatMoney(order.total, currency)}
                     </strong>
+                    {order.fulfillmentType === 'DELIVERY' && (order.deliveryFee ?? 0) > 0 && (
+                        <span
+                            data-cy="order-delivery-fee"
+                            className="shrink-0 text-xs font-semibold text-[#65738A]"
+                        >
+                            + {formatMoney(order.deliveryFee ?? 0, currency)} envío
+                        </span>
+                    )}
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
+                    {loyalty && !isCreating && !isUncertain && (
+                        <OrderLoyaltyChip
+                            order={order}
+                            program={loyalty.program}
+                            stamp={loyalty.stamp}
+                            variant="card"
+                        />
+                    )}
                     {order.paymentMethod === 'TRANSFER' &&
                         paymentCard?.isActive &&
                         (transferUrl ? (
@@ -917,11 +982,11 @@ function OrderCard({
                             {isUpdating ? 'Actualizando…' : meta.actionLabel}
                         </button>
                     ) : null}
-                    {!isCreating && !isUncertain && canCancel(order.status) && (
+                    {!isCreating && !isUncertain && canCancelOrder(order) && (
                         <button
                             type="button"
                             disabled={isUpdating}
-                            onClick={() => onStatusChange(order.id, 'CANCELLED')}
+                            onClick={requestCancel}
                             className="grid size-10 place-items-center rounded-xl border border-[#F3C2BD] text-[#B42318] transition hover:bg-[#FFF3F1] focus:outline-none focus:ring-2 focus:ring-[#B42318]/20 disabled:cursor-wait disabled:opacity-50"
                             aria-label={`Cancelar pedido #${order.orderNumber}`}
                             title="Cancelar pedido"
@@ -931,6 +996,23 @@ function OrderCard({
                     )}
                 </div>
             </div>
+            {confirmingCancel && (
+                <div className="border-t border-[#E8EEF6] px-4 py-3" data-cy="order-cancel-confirm">
+                    <Confirm
+                        text={`${order.dispatch?.courier?.name ?? 'Un repartidor'} ya tomó esta entrega. Si cancelas el pedido, pierde la entrega.`}
+                        confirmLabel="Sí, cancelar pedido"
+                        confirmCy="order-cancel-confirm-yes"
+                        onConfirm={() => {
+                            setConfirmingCancel(false)
+                            onStatusChange(order.id, 'CANCELLED')
+                        }}
+                        onCancel={() => setConfirmingCancel(false)}
+                        busy={isUpdating}
+                        buttonSize="min-h-10 px-3 text-xs"
+                        tone="danger"
+                    />
+                </div>
+            )}
             {hasMutationError && errorMessage && (
                 <p
                     role="alert"
@@ -956,6 +1038,7 @@ function OrderDetailModal({
     onEdit,
     paymentCard,
     businessName,
+    loyalty,
 }: {
     order?: Order
     isLoading: boolean
@@ -969,6 +1052,7 @@ function OrderDetailModal({
     onEdit: (order: Order) => void
     paymentCard: PaymentCard | null
     businessName: string
+    loyalty?: OrderLoyaltyProps
 }) {
     const [confirmingCancel, setConfirmingCancel] = useState(false)
     const transferPhone = normalizeMexicanWhatsAppNumber(order?.customerPhone)
@@ -1165,6 +1249,22 @@ function OrderDetailModal({
                                 </div>
                             </aside>
                         ) : null}
+                        {order.loyaltyDiscountAmount && order.loyaltyDiscountAmount > 0 ? (
+                            <OrderLoyaltyDiscount
+                                order={order}
+                                format={(value) => formatMoney(value, currency)}
+                            />
+                        ) : null}
+                        {loyalty && (
+                            <div data-cy="order-detail-loyalty" className="empty:hidden">
+                                <OrderLoyaltyChip
+                                    order={order}
+                                    program={loyalty.program}
+                                    stamp={loyalty.stamp}
+                                    variant="detail"
+                                />
+                            </div>
+                        )}
                         <CustomerDiscountPanel order={order} currency={currency} />
                         <div>
                             <div className="mb-3 flex items-center justify-between">
@@ -1349,6 +1449,23 @@ function OrderDetailModal({
                                     </button>
                                 )}
                             </div>
+                            {confirmingCancel && (
+                                <div className="w-full" data-cy="order-detail-cancel-confirm">
+                                    <Confirm
+                                        text={`${order.dispatch?.courier?.name ?? 'Un repartidor'} ya tomó esta entrega. Si cancelas el pedido, pierde la entrega.`}
+                                        confirmLabel="Sí, cancelar pedido"
+                                        confirmCy="order-detail-cancel-confirm-yes"
+                                        onConfirm={() => {
+                                            setConfirmingCancel(false)
+                                            onStatusChange(order.id, 'CANCELLED')
+                                        }}
+                                        onCancel={() => setConfirmingCancel(false)}
+                                        busy={isUpdating}
+                                        buttonSize="min-h-11 px-4 text-sm"
+                                        tone="danger"
+                                    />
+                                </div>
+                            )}
                             {hasMutationError && errorMessage && (
                                 <p role="alert" className="text-xs font-medium text-[#B42318]">
                                     {errorMessage}
