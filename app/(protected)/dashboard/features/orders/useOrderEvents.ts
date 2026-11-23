@@ -6,12 +6,13 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/store/authStore'
 import { useOrderEventsStore } from '@/store/orderEventsStore'
 import { getOrder } from '@/src/lib/api/orderApi'
-import type { Order } from '@/src/lib/api/order-types'
+import { ORDER_STATUSES, type Order } from '@/src/lib/api/order-types'
 import { reconcileOrderStatusInCache } from './orderStatusSync'
 import {
     getOrderSoundPreferenceKey,
     getReconnectDelay,
     OrderEventsHttpError,
+    parseDeliveryUpdatedEvent,
     parseNewOrderEvent,
     parseOrderStatusEvent,
     readOrderEventStream,
@@ -23,7 +24,7 @@ function isOrder(value: Order, id: string, businessId: string) {
         value.id === id &&
         (!value.businessId || value.businessId === businessId) &&
         Number.isFinite(value.orderNumber) &&
-        ['PENDING', 'PREPARING', 'READY', 'CANCELLED'].includes(value.status) &&
+        (ORDER_STATUSES as readonly string[]).includes(value.status) &&
         Array.isArray(value.items)
     )
 }
@@ -141,6 +142,17 @@ export function useOrderEvents() {
                 void queryClient.invalidateQueries({ queryKey: ['orders', activeBusinessId] })
         }
 
+        // La entrega cambió (la tomaron, la liberaron, se entregó…): se vuelve a leer el
+        // pedido para mostrar el repartidor y las acciones correctas en la comanda.
+        function processDelivery(raw: string) {
+            const event = parseDeliveryUpdatedEvent(raw, activeBusinessId)
+            if (!event) return
+            void queryClient.invalidateQueries({
+                queryKey: ['order', userId ?? 'anonymous', activeBusinessId, event.orderId],
+            })
+            void queryClient.invalidateQueries({ queryKey: ['orders', activeBusinessId] })
+        }
+
         async function connect() {
             while (!disposed) {
                 controller = new AbortController()
@@ -163,6 +175,7 @@ export function useOrderEvents() {
                         },
                         onOrder: (data) => void processOrder(data),
                         onStatus: processStatus,
+                        onDelivery: processDelivery,
                     })
                 } catch (error) {
                     if (disposed || controller.signal.aborted) break
