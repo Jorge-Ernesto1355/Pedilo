@@ -1412,28 +1412,29 @@ describe(
             it('la palomita se dibuja solo al marcar', () => {
                 start({ groups: [makeGroup()], products: catalog }, { open: true })
                 productCheckbox('Producto 1').should(($input) => {
-                    expect(getComputedStyle($input[0]).backgroundSize).to.eq('0px')
+                    expect(getComputedStyle($input[0]).backgroundSize).to.match(/^0(px)?( auto)?$/)
                 })
                 productCheckbox('Producto 1').check()
                 productCheckbox('Producto 1').should(($input) => {
-                    expect(getComputedStyle($input[0]).backgroundSize).not.to.eq('0px')
+                    expect(getComputedStyle($input[0]).backgroundSize).not.to.match(/^0(px)?( auto)?$/)
                 })
             })
 
             it('la fila del producto se resalta al marcarse y vuelve a su estilo al desmarcar', () => {
                 start({ groups: [makeGroup()], products: catalog }, { open: true })
                 const row = () => panel().contains('label', /^Producto 2$/)
-                // Los colores calculados llegan en oklch: se compara contra el estado inicial.
+                // El resaltado se mide con el fondo de la fila (blanco → #F4F7FF); el color del
+                // borde no sirve de señal porque se resuelve igual en ambos estados.
                 row()
-                    .invoke('css', 'border-top-color')
+                    .invoke('css', 'background-color')
                     .then((before) => {
                         productCheckbox('Producto 2').check()
                         row().should(($row) => {
-                            expect($row.css('border-top-color')).not.to.eq(before)
+                            expect($row.css('background-color')).to.eq('rgb(244, 247, 255)')
                         })
                         productCheckbox('Producto 2').uncheck()
                         row().should(($row) => {
-                            expect($row.css('border-top-color')).to.eq(before)
+                            expect($row.css('background-color')).to.eq(before)
                         })
                     })
             })
