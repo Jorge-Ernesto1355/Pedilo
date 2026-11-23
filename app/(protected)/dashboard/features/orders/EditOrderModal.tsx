@@ -364,7 +364,8 @@ export function EditOrderModal({
                 payload: {
                     expectedVersion: order.version ?? 1,
                     customerId: selectedCustomer?.id ?? null,
-                    fulfillmentType,
+                    // Un pedido a domicilio conserva su modalidad: la edición no la cambia.
+                    ...(fulfillmentType !== 'DELIVERY' ? { fulfillmentType } : {}),
                     paymentMethod,
                     items: draftItems.map((item) => ({
                         id: item.id,
@@ -532,22 +533,37 @@ export function EditOrderModal({
                                             </div>
                                         )}
                                 </div>
-                                <ChoiceField label="Modalidad">
-                                    <ChoiceButton
-                                        active={fulfillmentType === 'DINE_IN'}
-                                        onClick={() => setFulfillmentType('DINE_IN')}
-                                        icon={<Utensils className="size-4" />}
-                                        title="Comer aquí"
-                                        description="Consumo en el restaurante"
-                                    />
-                                    <ChoiceButton
-                                        active={fulfillmentType === 'PICKUP'}
-                                        onClick={() => setFulfillmentType('PICKUP')}
-                                        icon={<ShoppingBag className="size-4" />}
-                                        title="Para llevar"
-                                        description="El cliente recoge el pedido"
-                                    />
-                                </ChoiceField>
+                                {fulfillmentType === 'DELIVERY' ? (
+                                    // Un pedido a domicilio tiene dirección, envío y entrega propios:
+                                    // su modalidad no se cambia desde la edición.
+                                    <div data-cy="edit-order-delivery-locked">
+                                        <p className="mb-2 text-sm font-bold text-[#243556]">
+                                            Modalidad
+                                        </p>
+                                        <p className="rounded-xl border border-[#D7E1EF] bg-[#F7F9FC] px-3.5 py-3 text-sm text-[#53647D]">
+                                            <strong className="text-[#243556]">A domicilio</strong>{' '}
+                                            · La modalidad de un pedido a domicilio no se puede
+                                            cambiar.
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <ChoiceField label="Modalidad">
+                                        <ChoiceButton
+                                            active={fulfillmentType === 'DINE_IN'}
+                                            onClick={() => setFulfillmentType('DINE_IN')}
+                                            icon={<Utensils className="size-4" />}
+                                            title="Comer aquí"
+                                            description="Consumo en el restaurante"
+                                        />
+                                        <ChoiceButton
+                                            active={fulfillmentType === 'PICKUP'}
+                                            onClick={() => setFulfillmentType('PICKUP')}
+                                            icon={<ShoppingBag className="size-4" />}
+                                            title="Para llevar"
+                                            description="El cliente recoge el pedido"
+                                        />
+                                    </ChoiceField>
+                                )}
                                 <ChoiceField label="Método de pago">
                                     <ChoiceButton
                                         active={paymentMethod === 'CASH'}
@@ -846,7 +862,12 @@ export function EditOrderModal({
                                     {selectedCustomer
                                         ? `${selectedCustomer.name} · ${selectedCustomer.phone}`
                                         : 'Sin cliente asignado'}{' '}
-                                    · {fulfillmentType === 'PICKUP' ? 'Para llevar' : 'Comer aquí'}
+                                    ·{' '}
+                                    {fulfillmentType === 'DELIVERY'
+                                        ? 'A domicilio'
+                                        : fulfillmentType === 'PICKUP'
+                                          ? 'Para llevar'
+                                          : 'Comer aquí'}
                                 </li>
                                 <li>• Los totales serán recalculados por el backend.</li>
                             </ul>
