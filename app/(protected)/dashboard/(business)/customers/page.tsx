@@ -1,5 +1,6 @@
 'use client'
 
+import dynamic from 'next/dynamic'
 import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import posthog from 'posthog-js'
@@ -38,6 +39,27 @@ import {
     createTransferCardMessage,
     normalizeMexicanWhatsAppNumber,
 } from '../../../../menu/[slug]/features/public-menu/whatsapp'
+import type { LoyaltyCardFilter } from '@/app/components/loyalty/loyaltyOwnerApi'
+import {
+    useFilteredLoyaltyCards,
+    useLoyaltyCardsFor,
+    useLoyaltyProgram,
+    useLoyaltySummary,
+} from '../../features/customers/loyalty/useCustomerLoyalty'
+import {
+    LoyaltyFilteredList,
+    LoyaltyFilterTabs,
+    LoyaltyMenuActions,
+    LoyaltyMetrics,
+    LoyaltyProgress,
+} from '../../features/customers/loyalty/LoyaltyCustomerParts'
+const LoyaltyCardPanel = dynamic(
+    () =>
+        import('../../features/customers/loyalty/LoyaltyCardPanel').then(
+            (module) => module.LoyaltyCardPanel,
+        ),
+    { ssr: false },
+)
 
 const CUSTOMER_NAME_MAX_LENGTH = 20
 
@@ -51,6 +73,9 @@ export default function CustomersPage() {
     const [form, setForm] = useState({ name: '', phone: '' })
     const [formError, setFormError] = useState('')
     const [openCustomerMenu, setOpenCustomerMenu] = useState<string | null>(null)
+    const [loyaltyFilter, setLoyaltyFilter] = useState<LoyaltyCardFilter>('all')
+    const [loyaltyPage, setLoyaltyPage] = useState(1)
+    const [loyaltyCustomerId, setLoyaltyCustomerId] = useState<string | null>(null)
     useEffect(() => {
         if (!openCustomerMenu) return
 
@@ -107,6 +132,24 @@ export default function CustomersPage() {
                 )
               : undefined
     const totalPages = query.data ? Math.max(1, Math.ceil(query.data.total / limit)) : 1
+    // Tarjeta de lealtad: solo si el programa existe y está activo.
+    const loyalty = useLoyaltyProgram()
+    const loyaltyProgram = loyalty.active ? loyalty.data : undefined
+    const loyaltySummary = useLoyaltySummary(loyalty.active)
+    const loyaltyCards = useLoyaltyCardsFor(
+        (query.data?.customers ?? []).map((customer) => customer.id),
+        loyalty.active && loyaltyFilter === 'all',
+    )
+    const loyaltyCardByCustomer = new Map(
+        (loyaltyCards.data?.cards ?? []).map((card) => [card.customer.id, card]),
+    )
+    const filteredLoyalty = useFilteredLoyaltyCards(
+        loyaltyFilter,
+        debouncedSearch,
+        loyaltyPage,
+        loyalty.active,
+    )
+    const restaurantName = business.data?.name ?? 'Restaurante'
 
     if (query.isLoading) return <CustomersSkeleton />
 
@@ -216,243 +259,343 @@ export default function CustomersPage() {
                     <RefreshCw className="size-4" />
                 </button>
             </div>
-            <div
-                aria-busy={query.isPlaceholderData}
-                className={`space-y-6 transition-opacity duration-200 ${query.isPlaceholderData ? 'opacity-60' : ''}`}
-            >
-                {query.isError ? (
-                    <DashboardErrorState
-                        title="No pudimos cargar tus clientes"
-                        description="No logramos obtener la lista de clientes. Revisa tu conexión e inténtalo nuevamente."
-                        onRetry={() => void query.refetch()}
+            {loyaltyProgram && (
+                <section aria-label="Tarjeta de lealtad" className="space-y-3">
+                    <LoyaltyMetrics
+                        summary={loyaltySummary.data}
+                        loading={loyaltySummary.isLoading}
                     />
-                ) : query.data?.customers.length === 0 ? (
-                    search.trim() ? (
-                        <EmptyState
-                            icon={Users}
-                            title="No encontramos resultados"
-                            description="Prueba con otro término o cambia la búsqueda para encontrar clientes."
-                        />
-                    ) : (
-                        <EmptyState
-                            icon={Users}
-                            title="Aún no tienes clientes"
-                            description="Crea tu primer cliente o deja que tus clientes lo creen por ti."
-                            action={{ label: 'Crear cliente', onClick: openCreate }}
-                        />
-                    )
-                ) : (
-                    <div className="overflow-visible rounded-2xl border border-[#DCE5F3] bg-white shadow-[0_12px_30px_rgb(18_35_74/0.05)]">
-                        <div className="divide-y divide-[#E8EEF6]">
-                            {query.data?.customers.map((customer) => (
-                                <div
-                                    key={customer.id}
-                                    className="flex flex-col gap-4 p-4 transition hover:bg-[#FBFCFF] sm:flex-row sm:items-center sm:px-5"
+                    <LoyaltyFilterTabs
+                        value={loyaltyFilter}
+                        onChange={(value) => {
+                            setLoyaltyFilter(value)
+                            setLoyaltyPage(1)
+                        }}
+                    />
+                </section>
+            )}
+            {loyaltyProgram && loyaltyFilter !== 'all' ? (
+                <>
+                    <LoyaltyFilteredList
+                        cards={filteredLoyalty.data?.cards}
+                        loading={filteredLoyalty.isLoading}
+                        error={filteredLoyalty.isError}
+                        onRetry={() => void filteredLoyalty.refetch()}
+                        filter={loyaltyFilter}
+                        program={loyaltyProgram}
+                        restaurantName={restaurantName}
+                        onView={setLoyaltyCustomerId}
+                    />
+                    {filteredLoyalty.data && filteredLoyalty.data.total > 10 && (
+                        <div className="flex items-center justify-between">
+                            <p className="text-xs text-[#8996A9]">
+                                Página {loyaltyPage} de {Math.ceil(filteredLoyalty.data.total / 10)}
+                            </p>
+                            <div className="flex gap-2">
+                                <button
+                                    type="button"
+                                    disabled={loyaltyPage <= 1}
+                                    onClick={() => setLoyaltyPage((value) => value - 1)}
+                                    className="rounded-lg border px-3 py-2 text-sm disabled:opacity-40"
                                 >
-                                    <button
-                                        type="button"
-                                        onClick={() => setSelected(customer)}
-                                        className="min-w-0 flex-1 text-left"
-                                    >
-                                        <p className="truncate font-bold text-[#12234A]">
-                                            {customer.name}
-                                        </p>
-                                        <p className="mt-1 truncate text-sm text-[#65738A]">
-                                            {customer.phone || 'Sin teléfono registrado'}
-                                        </p>
-                                    </button>
-                                    <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
-                                        <div className="flex min-w-0 items-center gap-2 rounded-xl bg-[#F7F9FD] px-3 py-2 sm:min-w-[112px]">
-                                            <ShoppingBag className="size-4 shrink-0 text-[#2451C5]" />
-                                            <div className="min-w-0">
-                                                <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#8996A9]">
-                                                    Pedidos
-                                                </p>
-                                                <p className="font-bold text-[#12234A]">
-                                                    {customer.orderCount}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <div className="flex min-w-0 items-center gap-2 rounded-xl bg-[#F0FDF7] px-3 py-2 sm:min-w-[132px]">
-                                            <Wallet className="size-4 shrink-0 text-[#23814C]" />
-                                            <div className="min-w-0">
-                                                <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#6B8A78]">
-                                                    Gastado
-                                                </p>
-                                                <p className="truncate font-bold text-[#17643A]">
-                                                    $
-                                                    {customer.totalSpent.toLocaleString('es-MX', {
-                                                        minimumFractionDigits: 2,
-                                                    })}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div
-                                        className="relative flex justify-end border-t border-[#EEF2F7] pt-2 sm:border-0 sm:pt-0"
-                                        data-customer-actions={customer.id}
-                                    >
-                                        <button
-                                            type="button"
-                                            onClick={() =>
-                                                setOpenCustomerMenu((current) =>
-                                                    current === customer.id ? null : customer.id,
-                                                )
-                                            }
-                                            aria-label={`Acciones de ${customer.name}`}
-                                            aria-expanded={openCustomerMenu === customer.id}
-                                            aria-haspopup="menu"
-                                            className="grid size-9 place-items-center rounded-lg text-[#65738A] hover:bg-[#EEF3FF]"
-                                        >
-                                            <MoreHorizontal className="size-5" />
-                                        </button>
-                                        {openCustomerMenu === customer.id && (
-                                            <div
-                                                role="menu"
-                                                aria-label={`Acciones para ${customer.name}`}
-                                                className="absolute right-0 top-11 z-20 min-w-48 rounded-xl border border-[#DCE5F3] bg-white p-1.5 shadow-[0_14px_36px_rgb(18_35_74/0.16)]"
-                                            >
-                                                {customer.phone && (
-                                                    <a
-                                                        href={`https://wa.me/52${customer.phone.replace(/\D/g, '')}`}
-                                                        target="_blank"
-                                                        rel="noreferrer"
-                                                        role="menuitem"
-                                                        aria-label={`Enviar WhatsApp a ${customer.name}`}
-                                                        className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-[#17643A] hover:bg-[#F0FDF7]"
-                                                    >
-                                                        <MessageCircle className="size-4" />
-                                                        Enviar WhatsApp
-                                                    </a>
-                                                )}
-                                                <button
-                                                    type="button"
-                                                    role="menuitem"
-                                                    data-cy="customer-send-transfer-card"
-                                                    disabled={
-                                                        !normalizeMexicanWhatsAppNumber(
-                                                            customer.phone,
-                                                        ) || paymentCardQuery.isFetching
-                                                    }
-                                                    title={
-                                                        !customer.phone
-                                                            ? 'El cliente no tiene teléfono registrado'
-                                                            : undefined
-                                                    }
-                                                    onClick={async () => {
-                                                        const phone =
-                                                            normalizeMexicanWhatsAppNumber(
-                                                                customer.phone,
-                                                            )
-                                                        if (!phone) return
-                                                        const result =
-                                                            await paymentCardQuery.refetch()
-                                                        const card = result.data?.paymentCard
-                                                        if (!card?.isActive || !phone) return
-                                                        const message = createTransferCardMessage({
-                                                            customerName: customer.name,
-                                                            businessName:
-                                                                business.data?.name ??
-                                                                'Restaurante',
-                                                            bankName: card.bankName,
-                                                            clabe: card.clabe,
-                                                            beneficiaryName: card.beneficiaryName,
-                                                        })
-                                                        window.open(
-                                                            `https://wa.me/${phone}?text=${encodeURIComponent(message)}`,
-                                                            '_blank',
-                                                            'noopener,noreferrer',
-                                                        )
-                                                        setOpenCustomerMenu(null)
-                                                    }}
-                                                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-[#53647D] hover:bg-[#EEF3FF] disabled:cursor-not-allowed disabled:opacity-45"
-                                                >
-                                                    <CreditCard className="size-4" />
-                                                    Enviar tarjeta
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    role="menuitem"
-                                                    onClick={() => openEdit(customer)}
-                                                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-[#53647D] hover:bg-[#EEF3FF]"
-                                                >
-                                                    <Pencil className="size-4" />
-                                                    Editar cliente
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    role="menuitem"
-                                                    onClick={() => toggleDisabled(customer)}
-                                                    disabled={mutations.toggleDisabled.isPending}
-                                                    className="flex w-full items-start gap-2 rounded-lg px-3 py-2 text-left hover:bg-[#FFF7ED] disabled:cursor-wait disabled:opacity-50"
-                                                >
-                                                    {mutations.toggleDisabled.isPending ? (
-                                                        <LoaderCircle className="mt-0.5 size-4 animate-spin text-[#B45309]" />
-                                                    ) : customer.isDisabled ? (
-                                                        <CheckCircle2 className="mt-0.5 size-4 text-[#17643A]" />
-                                                    ) : (
-                                                        <Ban className="mt-0.5 size-4 text-[#B45309]" />
-                                                    )}
-                                                    <span>
-                                                        <span className="block text-sm font-semibold text-[#53647D]">
-                                                            {customer.isDisabled
-                                                                ? 'Habilitar cliente'
-                                                                : 'Deshabilitar cliente'}
-                                                        </span>
-                                                        <span className="block text-[11px] font-normal leading-4 text-[#8996A9]">
-                                                            {customer.isDisabled
-                                                                ? 'Podrá volver a hacer pedidos'
-                                                                : 'Ya no podrá hacer pedidos'}
-                                                        </span>
-                                                    </span>
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    role="menuitem"
-                                                    onClick={() => remove(customer)}
-                                                    disabled={mutations.remove.isPending}
-                                                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-[#B42318] hover:bg-[#FFF0EF] disabled:cursor-wait disabled:opacity-50"
-                                                >
-                                                    {mutations.remove.isPending ? (
-                                                        <LoaderCircle className="size-4 animate-spin" />
-                                                    ) : (
-                                                        <Trash2 className="size-4" />
-                                                    )}
-                                                    Eliminar cliente
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            ))}
+                                    Anterior
+                                </button>
+                                <button
+                                    type="button"
+                                    disabled={
+                                        loyaltyPage >= Math.ceil(filteredLoyalty.data.total / 10)
+                                    }
+                                    onClick={() => setLoyaltyPage((value) => value + 1)}
+                                    className="rounded-lg border px-3 py-2 text-sm disabled:opacity-40"
+                                >
+                                    Siguiente
+                                </button>
+                            </div>
                         </div>
+                    )}
+                </>
+            ) : (
+                <>
+                    <div
+                        aria-busy={query.isPlaceholderData}
+                        className={`space-y-6 transition-opacity duration-200 ${query.isPlaceholderData ? 'opacity-60' : ''}`}
+                    >
+                        {query.isError ? (
+                            <DashboardErrorState
+                                title="No pudimos cargar tus clientes"
+                                description="No logramos obtener la lista de clientes. Revisa tu conexión e inténtalo nuevamente."
+                                onRetry={() => void query.refetch()}
+                            />
+                        ) : query.data?.customers.length === 0 ? (
+                            search.trim() ? (
+                                <EmptyState
+                                    icon={Users}
+                                    title="No encontramos resultados"
+                                    description="Prueba con otro término o cambia la búsqueda para encontrar clientes."
+                                />
+                            ) : (
+                                <EmptyState
+                                    icon={Users}
+                                    title="Aún no tienes clientes"
+                                    description="Crea tu primer cliente o deja que tus clientes lo creen por ti."
+                                    action={{ label: 'Crear cliente', onClick: openCreate }}
+                                />
+                            )
+                        ) : (
+                            <div className="overflow-visible rounded-2xl border border-[#DCE5F3] bg-white shadow-[0_12px_30px_rgb(18_35_74/0.05)]">
+                                <div className="divide-y divide-[#E8EEF6]">
+                                    {query.data?.customers.map((customer) => (
+                                        <div
+                                            key={customer.id}
+                                            className="flex flex-col gap-4 p-4 transition hover:bg-[#FBFCFF] sm:flex-row sm:items-center sm:px-5"
+                                        >
+                                            <button
+                                                type="button"
+                                                onClick={() => setSelected(customer)}
+                                                className="min-w-0 flex-1 text-left"
+                                            >
+                                                <p className="truncate font-bold text-[#12234A]">
+                                                    {customer.name}
+                                                </p>
+                                                <p className="mt-1 truncate text-sm text-[#65738A]">
+                                                    {customer.phone || 'Sin teléfono registrado'}
+                                                </p>
+                                            </button>
+                                            <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
+                                                {loyaltyProgram && (
+                                                    <div className="col-span-2 sm:col-span-1">
+                                                        <LoyaltyProgress
+                                                            card={loyaltyCardByCustomer.get(
+                                                                customer.id,
+                                                            )}
+                                                            program={loyaltyProgram}
+                                                            restaurantName={restaurantName}
+                                                        />
+                                                    </div>
+                                                )}
+                                                <div className="flex min-w-0 items-center gap-2 rounded-xl bg-[#F7F9FD] px-3 py-2 sm:min-w-[112px]">
+                                                    <ShoppingBag className="size-4 shrink-0 text-[#2451C5]" />
+                                                    <div className="min-w-0">
+                                                        <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#8996A9]">
+                                                            Pedidos
+                                                        </p>
+                                                        <p className="font-bold text-[#12234A]">
+                                                            {customer.orderCount}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex min-w-0 items-center gap-2 rounded-xl bg-[#F0FDF7] px-3 py-2 sm:min-w-[132px]">
+                                                    <Wallet className="size-4 shrink-0 text-[#23814C]" />
+                                                    <div className="min-w-0">
+                                                        <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#6B8A78]">
+                                                            Gastado
+                                                        </p>
+                                                        <p className="truncate font-bold text-[#17643A]">
+                                                            $
+                                                            {customer.totalSpent.toLocaleString(
+                                                                'es-MX',
+                                                                {
+                                                                    minimumFractionDigits: 2,
+                                                                },
+                                                            )}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div
+                                                className="relative flex justify-end border-t border-[#EEF2F7] pt-2 sm:border-0 sm:pt-0"
+                                                data-customer-actions={customer.id}
+                                            >
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        setOpenCustomerMenu((current) =>
+                                                            current === customer.id
+                                                                ? null
+                                                                : customer.id,
+                                                        )
+                                                    }
+                                                    aria-label={`Acciones de ${customer.name}`}
+                                                    aria-expanded={openCustomerMenu === customer.id}
+                                                    aria-haspopup="menu"
+                                                    className="grid size-9 place-items-center rounded-lg text-[#65738A] hover:bg-[#EEF3FF]"
+                                                >
+                                                    <MoreHorizontal className="size-5" />
+                                                </button>
+                                                {openCustomerMenu === customer.id && (
+                                                    <div
+                                                        role="menu"
+                                                        aria-label={`Acciones para ${customer.name}`}
+                                                        className="absolute right-0 top-11 z-20 min-w-48 rounded-xl border border-[#DCE5F3] bg-white p-1.5 shadow-[0_14px_36px_rgb(18_35_74/0.16)]"
+                                                    >
+                                                        {customer.phone && (
+                                                            <a
+                                                                href={`https://wa.me/52${customer.phone.replace(/\D/g, '')}`}
+                                                                target="_blank"
+                                                                rel="noreferrer"
+                                                                role="menuitem"
+                                                                aria-label={`Enviar WhatsApp a ${customer.name}`}
+                                                                className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-[#17643A] hover:bg-[#F0FDF7]"
+                                                            >
+                                                                <MessageCircle className="size-4" />
+                                                                Enviar WhatsApp
+                                                            </a>
+                                                        )}
+                                                        <button
+                                                            type="button"
+                                                            role="menuitem"
+                                                            data-cy="customer-send-transfer-card"
+                                                            disabled={
+                                                                !normalizeMexicanWhatsAppNumber(
+                                                                    customer.phone,
+                                                                ) || paymentCardQuery.isFetching
+                                                            }
+                                                            title={
+                                                                !customer.phone
+                                                                    ? 'El cliente no tiene teléfono registrado'
+                                                                    : undefined
+                                                            }
+                                                            onClick={async () => {
+                                                                const phone =
+                                                                    normalizeMexicanWhatsAppNumber(
+                                                                        customer.phone,
+                                                                    )
+                                                                if (!phone) return
+                                                                const result =
+                                                                    await paymentCardQuery.refetch()
+                                                                const card =
+                                                                    result.data?.paymentCard
+                                                                if (!card?.isActive || !phone)
+                                                                    return
+                                                                const message =
+                                                                    createTransferCardMessage({
+                                                                        customerName: customer.name,
+                                                                        businessName:
+                                                                            business.data?.name ??
+                                                                            'Restaurante',
+                                                                        bankName: card.bankName,
+                                                                        clabe: card.clabe,
+                                                                        beneficiaryName:
+                                                                            card.beneficiaryName,
+                                                                    })
+                                                                window.open(
+                                                                    `https://wa.me/${phone}?text=${encodeURIComponent(message)}`,
+                                                                    '_blank',
+                                                                    'noopener,noreferrer',
+                                                                )
+                                                                setOpenCustomerMenu(null)
+                                                            }}
+                                                            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-[#53647D] hover:bg-[#EEF3FF] disabled:cursor-not-allowed disabled:opacity-45"
+                                                        >
+                                                            <CreditCard className="size-4" />
+                                                            Enviar tarjeta
+                                                        </button>
+                                                        {loyaltyProgram && (
+                                                            <LoyaltyMenuActions
+                                                                customer={customer}
+                                                                card={loyaltyCardByCustomer.get(
+                                                                    customer.id,
+                                                                )}
+                                                                program={loyaltyProgram}
+                                                                restaurantName={restaurantName}
+                                                                onView={() => {
+                                                                    setOpenCustomerMenu(null)
+                                                                    setLoyaltyCustomerId(
+                                                                        customer.id,
+                                                                    )
+                                                                }}
+                                                                onDone={() =>
+                                                                    setOpenCustomerMenu(null)
+                                                                }
+                                                            />
+                                                        )}
+                                                        <button
+                                                            type="button"
+                                                            role="menuitem"
+                                                            onClick={() => openEdit(customer)}
+                                                            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-[#53647D] hover:bg-[#EEF3FF]"
+                                                        >
+                                                            <Pencil className="size-4" />
+                                                            Editar cliente
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            role="menuitem"
+                                                            onClick={() => toggleDisabled(customer)}
+                                                            disabled={
+                                                                mutations.toggleDisabled.isPending
+                                                            }
+                                                            className="flex w-full items-start gap-2 rounded-lg px-3 py-2 text-left hover:bg-[#FFF7ED] disabled:cursor-wait disabled:opacity-50"
+                                                        >
+                                                            {mutations.toggleDisabled.isPending ? (
+                                                                <LoaderCircle className="mt-0.5 size-4 animate-spin text-[#B45309]" />
+                                                            ) : customer.isDisabled ? (
+                                                                <CheckCircle2 className="mt-0.5 size-4 text-[#17643A]" />
+                                                            ) : (
+                                                                <Ban className="mt-0.5 size-4 text-[#B45309]" />
+                                                            )}
+                                                            <span>
+                                                                <span className="block text-sm font-semibold text-[#53647D]">
+                                                                    {customer.isDisabled
+                                                                        ? 'Habilitar cliente'
+                                                                        : 'Deshabilitar cliente'}
+                                                                </span>
+                                                                <span className="block text-[11px] font-normal leading-4 text-[#8996A9]">
+                                                                    {customer.isDisabled
+                                                                        ? 'Podrá volver a hacer pedidos'
+                                                                        : 'Ya no podrá hacer pedidos'}
+                                                                </span>
+                                                            </span>
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            role="menuitem"
+                                                            onClick={() => remove(customer)}
+                                                            disabled={mutations.remove.isPending}
+                                                            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-semibold text-[#B42318] hover:bg-[#FFF0EF] disabled:cursor-wait disabled:opacity-50"
+                                                        >
+                                                            {mutations.remove.isPending ? (
+                                                                <LoaderCircle className="size-4 animate-spin" />
+                                                            ) : (
+                                                                <Trash2 className="size-4" />
+                                                            )}
+                                                            Eliminar cliente
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
-                )}
-            </div>
-            {query.data && totalPages > 1 && (
-                <div className="flex items-center justify-between">
-                    <p className="text-xs text-[#8996A9]">
-                        Página {page} de {totalPages}
-                    </p>
-                    <div className="flex gap-2">
-                        <button
-                            type="button"
-                            disabled={page <= 1}
-                            onClick={() => setPage((value) => value - 1)}
-                            className="rounded-lg border px-3 py-2 text-sm disabled:opacity-40"
-                        >
-                            Anterior
-                        </button>
-                        <button
-                            type="button"
-                            disabled={page >= totalPages}
-                            onClick={() => setPage((value) => value + 1)}
-                            className="rounded-lg border px-3 py-2 text-sm disabled:opacity-40"
-                        >
-                            Siguiente
-                        </button>
-                    </div>
-                </div>
+                    {query.data && totalPages > 1 && (
+                        <div className="flex items-center justify-between">
+                            <p className="text-xs text-[#8996A9]">
+                                Página {page} de {totalPages}
+                            </p>
+                            <div className="flex gap-2">
+                                <button
+                                    type="button"
+                                    disabled={page <= 1}
+                                    onClick={() => setPage((value) => value - 1)}
+                                    className="rounded-lg border px-3 py-2 text-sm disabled:opacity-40"
+                                >
+                                    Anterior
+                                </button>
+                                <button
+                                    type="button"
+                                    disabled={page >= totalPages}
+                                    onClick={() => setPage((value) => value + 1)}
+                                    className="rounded-lg border px-3 py-2 text-sm disabled:opacity-40"
+                                >
+                                    Siguiente
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </>
             )}
             {customerModalOpen && (
                 <div className="fixed inset-0 z-50 grid place-items-center bg-[#10224A]/25 p-4 pb-[calc(var(--mobile-nav-h)+1rem)]">
@@ -555,6 +698,15 @@ export default function CustomersPage() {
                         />
                     ) : null
                 ) : null)}
+            {loyaltyProgram && loyaltyCustomerId && (
+                <LoyaltyCardPanel
+                    customerId={loyaltyCustomerId}
+                    program={loyaltyProgram}
+                    restaurantName={restaurantName}
+                    logoUrl={business.data?.logoUrl ?? null}
+                    onClose={() => setLoyaltyCustomerId(null)}
+                />
+            )}
             {mutations.remove.isError && (
                 <p role="alert" className="text-sm text-[#B42318]">
                     {mutations.remove.error instanceof ApiError &&
