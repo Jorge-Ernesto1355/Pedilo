@@ -66,6 +66,13 @@ import {
     LazyEditOrderModal,
     preloadEditOrderModal,
 } from '../../features/orders/LazyEditOrderModal'
+import { Confirm, OrderDeliveryPanel } from '../../features/orders/delivery/OrderDeliveryPanel'
+import {
+    canCancelOrder,
+    cancelNeedsConfirmation,
+    deliveryAddressLine,
+    deliveryMapsUrl,
+} from '../../features/orders/delivery/deliveryDispatch'
 
 type StatusMeta = {
     label: string
@@ -76,6 +83,22 @@ type StatusMeta = {
     dot: string
     panel: string
     button: string
+}
+
+import type { LoyaltyProgram } from '@/app/components/loyalty/loyaltyOwnerApi'
+import { useLoyaltyProgram } from '../../features/customers/loyalty/useCustomerLoyalty'
+import {
+    useLoyaltyStatusNotice,
+    useStampOrder,
+} from '../../features/orders/loyalty/useOrderLoyalty'
+import {
+    OrderLoyaltyChip,
+    OrderLoyaltyDiscount,
+} from '../../features/orders/loyalty/OrderLoyaltyChip'
+
+type OrderLoyaltyProps = {
+    program: LoyaltyProgram | undefined
+    stamp: ReturnType<typeof useStampOrder>
 }
 
 const statusMeta: Record<OrderStatus, StatusMeta> = {
@@ -242,7 +265,7 @@ export default function OrdersPage() {
     const paymentCardQuery = useQuery({
         queryKey: ['payment-card'],
         queryFn: getPaymentCard,
-        enabled: false,
+        enabled: needsPaymentCard,
         staleTime: 60_000,
     })
     // Tarjeta de lealtad: chip "Dar sello" y avisos al finalizar (solo con programa activo).
@@ -947,6 +970,7 @@ function OrderDetailModal({
     paymentCard: PaymentCard | null
     businessName: string
 }) {
+    const [confirmingCancel, setConfirmingCancel] = useState(false)
     const transferPhone = normalizeMexicanWhatsAppNumber(order?.customerPhone)
     const transferUrl =
         order && paymentCard?.isActive && order.paymentMethod === 'TRANSFER' && transferPhone
@@ -1021,9 +1045,7 @@ function OrderDetailModal({
                                 <div className="min-w-0">
                                     <p className="text-xs font-medium text-[#8996A9]">Modalidad</p>
                                     <p className="mt-1 break-words text-sm font-semibold leading-5 text-[#243556]">
-                                        {order.fulfillmentType === 'PICKUP'
-                                            ? 'Para llevar / recoger'
-                                            : 'Comer aquí'}
+                                        {fulfillmentLabels[order.fulfillmentType]}
                                     </p>
                                 </div>
                             </div>
@@ -1059,6 +1081,63 @@ function OrderDetailModal({
                                 </div>
                             </div>
                         </section>
+                        {order.fulfillmentType === 'DELIVERY' && order.delivery && (
+                            <section
+                                data-cy="order-detail-delivery"
+                                aria-label="Dirección de entrega"
+                                className="flex items-start gap-3 rounded-xl border border-[#E8EEF6] bg-white p-3.5"
+                            >
+                                <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-[#EAF7F8] text-[#0E6E76]">
+                                    <MapPin className="size-4" aria-hidden="true" />
+                                </span>
+                                <div className="min-w-0 flex-1 text-sm">
+                                    <p className="text-xs font-medium text-[#8996A9]">
+                                        Entregar en
+                                    </p>
+                                    <p className="mt-1 break-words font-semibold leading-5 text-[#243556]">
+                                        {deliveryAddressLine(order.delivery)}
+                                    </p>
+                                    {order.delivery.reference && (
+                                        <p className="mt-0.5 break-words text-xs leading-5 text-[#65738A]">
+                                            Referencia: {order.delivery.reference}
+                                        </p>
+                                    )}
+                                    <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#53647D]">
+                                        <span>
+                                            {order.delivery.distanceKm.toLocaleString('es-MX')} km ·
+                                            Envío{' '}
+                                            {formatMoney(order.deliveryFee ?? 0, currency)}
+                                        </span>
+                                        <span>
+                                            El cliente paga{' '}
+                                            <strong className="text-[#243556]">
+                                                {formatMoney(
+                                                    order.total + (order.deliveryFee ?? 0),
+                                                    currency,
+                                                )}
+                                            </strong>
+                                        </span>
+                                        <a
+                                            href={deliveryMapsUrl(order.delivery)}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="font-bold text-[#2451C5] underline-offset-2 hover:underline"
+                                        >
+                                            Ver en el mapa
+                                        </a>
+                                    </p>
+                                </div>
+                            </section>
+                        )}
+                        {order.fulfillmentType === 'DELIVERY' && (
+                            <OrderDeliveryPanel
+                                order={order}
+                                businessName={businessName}
+                                currency={currency}
+                                timezone={timezone}
+                                variant="detail"
+                            />
+                        )}
                         {order.notes?.trim() && (
                             <aside className="flex items-start gap-3 rounded-xl border border-[#F0DDAF] bg-[#FFFAEC] p-3.5 text-sm text-[#6E5012]">
                                 <StickyNote className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
@@ -1254,11 +1333,15 @@ function OrderDetailModal({
                                             : statusMeta[order.status].actionLabel}
                                     </button>
                                 )}
-                                {canCancel(order.status) && (
+                                {canCancelOrder(order) && (
                                     <button
                                         type="button"
                                         disabled={isUpdating}
-                                        onClick={() => onStatusChange(order.id, 'CANCELLED')}
+                                        onClick={() => {
+                                            if (cancelNeedsConfirmation(order))
+                                                setConfirmingCancel(true)
+                                            else onStatusChange(order.id, 'CANCELLED')
+                                        }}
                                         className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[#F3C2BD] px-4 text-sm font-bold text-[#B42318] transition hover:bg-[#FFF3F1] disabled:opacity-50"
                                     >
                                         <CircleX className="size-4" />
