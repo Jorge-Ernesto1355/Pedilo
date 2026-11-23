@@ -35,6 +35,7 @@ import Link from 'next/link'
 import { CreateMenuErrorState } from './components/CreateMenuStates'
 import { DeferredPaymentCard } from './features/payment-card/DeferredPaymentCard'
 import { DeferredDeliverySettings } from './features/delivery-settings/DeferredDeliverySettings'
+import { DeferredLoyaltySettings } from './features/loyalty/DeferredLoyaltySettings'
 import { useQueryClient } from '@tanstack/react-query'
 import { DiscountsPanel } from './features/discounts/DiscountsPanel'
 import { GlobalOptionGroupsPanel } from './features/option-management/GlobalOptionGroupsPanel'
@@ -459,6 +460,7 @@ export default function BusinessSetupScreen({
                             {businessQuery.data && (
                                 <>
                                     <DeferredPaymentCard business={businessQuery.data} />
+                                    <DeferredLoyaltySettings business={businessQuery.data} />
                                     <DeferredDeliverySettings
                                         locationText={profile.location}
                                         onOriginSaved={handleDeliveryOriginSaved}
