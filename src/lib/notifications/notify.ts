@@ -49,7 +49,7 @@ export const notify = {
 }
 
 export function orderStatusNotification(
-    status: 'PENDING' | 'PREPARING' | 'READY' | 'CANCELLED',
+    status: 'PENDING' | 'PREPARING' | 'READY' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'CANCELLED',
     orderNumber: number,
 ) {
     const messages = {
@@ -59,6 +59,8 @@ export function orderStatusNotification(
         ],
         PREPARING: ['Orden en preparación', `La orden #${orderNumber} ahora está en preparación.`],
         READY: ['¡Orden lista!', `La orden #${orderNumber} está lista para entregar.`],
+        OUT_FOR_DELIVERY: ['Orden en camino', `La orden #${orderNumber} va en camino al cliente.`],
+        DELIVERED: ['Orden entregada', `La orden #${orderNumber} fue entregada al cliente.`],
         CANCELLED: ['Orden cancelada', `La orden #${orderNumber} fue cancelada.`],
     } as const
     const [title, description] = messages[status]

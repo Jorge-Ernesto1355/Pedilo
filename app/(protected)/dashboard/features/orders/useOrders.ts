@@ -9,7 +9,12 @@ import {
 import { useAuthStore } from '@/store/authStore'
 import { ApiError } from '@/app/auth/lib/client/api-error'
 import { getOrder, getOrders, updateOrder, updateOrderStatus } from '@/src/lib/api/orderApi'
-import type { OrderPeriod, OrderStatus, UpdateOrderPayload } from '@/src/lib/api/order-types'
+import {
+    ORDER_STATUSES,
+    type OrderPeriod,
+    type OrderStatus,
+    type UpdateOrderPayload,
+} from '@/src/lib/api/order-types'
 import {
     friendlyNotificationError,
     notify,
@@ -43,7 +48,8 @@ export function useOrders(params: {
 export function useOrderStatusCounts(params: { search?: string; period?: OrderPeriod }) {
     const businessId = useAuthStore((state) => state.user?.businessId)
     return useQueries({
-        queries: (['PENDING', 'PREPARING', 'READY', 'CANCELLED'] as const).map((status) => ({
+        // Mismo orden que ORDER_STATUSES: el índice de cada conteo es el de su estado.
+        queries: ORDER_STATUSES.map((status) => ({
             queryKey: ['orders', businessId, { ...params, status, page: 1, limit: 1 }],
             queryFn: () =>
                 getOrders(businessId as string, {

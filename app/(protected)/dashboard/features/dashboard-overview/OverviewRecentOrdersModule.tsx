@@ -6,6 +6,15 @@ import { DashboardCardError } from '../../components/DashboardCardError'
 import type { OrderStatus } from '@/src/lib/api/order-types'
 import type { OrdersData } from '../dashboard-data/dashboardData.types'
 
+const recentStatus: Record<OrderStatus, OrdersData['recent'][number]['status']> = {
+    PENDING: 'pending',
+    PREPARING: 'preparing',
+    READY: 'ready',
+    OUT_FOR_DELIVERY: 'out_for_delivery',
+    DELIVERED: 'delivered',
+    CANCELLED: 'cancelled',
+}
+
 function toOrdersData(orders: Array<{ id: string; orderNumber: number; customerName: string | null; total: number; status: OrderStatus }>): OrdersData {
     return {
         total: orders.length,
@@ -13,7 +22,7 @@ function toOrdersData(orders: Array<{ id: string; orderNumber: number; customerN
             id: `#${order.orderNumber}`,
             customer: order.customerName ?? 'Cliente sin nombre',
             amount: order.total,
-            status: order.status === 'READY' ? 'ready' : order.status === 'CANCELLED' ? 'cancelled' : order.status === 'PENDING' ? 'pending' : 'preparing',
+            status: recentStatus[order.status],
         })),
     }
 }
