@@ -28,6 +28,20 @@ const nextConfig: NextConfig = {
     outputFileTracingIncludes: {
         '/*': ['./docs/legal/**/*'],
     },
+    async headers() {
+        return [
+            {
+                // Link privado de la tarjeta de lealtad: no se indexa, no se guarda en cachés
+                // y no se filtra a otros sitios por Referer.
+                source: '/tarjeta/:token',
+                headers: [
+                    { key: 'X-Robots-Tag', value: 'noindex, nofollow' },
+                    { key: 'Cache-Control', value: 'no-store' },
+                    { key: 'Referrer-Policy', value: 'no-referrer' },
+                ],
+            },
+        ]
+    },
 }
 
 const sentryConfig = withSentryConfig(nextConfig, {
