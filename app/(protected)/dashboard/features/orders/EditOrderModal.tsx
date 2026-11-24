@@ -1,7 +1,7 @@
 'use client'
 
 import { QtyNumber } from '@/app/components/ui/QtyNumber'
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { useQueries, useQuery } from '@tanstack/react-query'
 import {
     AlertTriangle,
@@ -20,8 +20,7 @@ import {
 import type { Order, OrderFulfillmentType, OrderPaymentMethod } from '@/src/lib/api/order-types'
 import type { MenuProduct } from '@/app/(protected)/create-menu/features/category-management/menu.types'
 import { getMenus } from '@/app/(protected)/create-menu/features/category-management/menuApi'
-import { getCustomers } from '@/src/lib/api/orderApi'
-import { useAuthStore } from '@/store/authStore'
+import { OrderCustomerPicker, type PickedCustomer } from './OrderCustomerPicker'
 import { formatMoney } from '../dashboard-data/formatters'
 import { ApiError } from '@/app/auth/lib/client/api-error'
 import { useOrderUpdateMutation } from './useOrders'
@@ -76,39 +75,12 @@ export function EditOrderModal({
         staleTime: 60_000,
     })
     const update = useOrderUpdateMutation()
-    const businessId = useAuthStore((state) => state.user?.businessId)
     const products = productsFromMenus(menus.data)
-    const [customerSearch, setCustomerSearch] = useState('')
-    const [debouncedCustomerSearch, setDebouncedCustomerSearch] = useState('')
-    const [selectedCustomer, setSelectedCustomer] = useState<{
-        id: string
-        name: string
-        phone: string
-    } | null>(
+    const [selectedCustomer, setSelectedCustomer] = useState<PickedCustomer | null>(
         order.customerId && order.customerName
             ? { id: order.customerId, name: order.customerName, phone: order.customerPhone ?? '' }
             : null,
     )
-    const customers = useQuery({
-        queryKey: ['customers', 'order-edit', businessId, debouncedCustomerSearch],
-        queryFn: () =>
-            getCustomers(businessId as string, {
-                page: 1,
-                limit: 8,
-                search: debouncedCustomerSearch,
-            }),
-        enabled: Boolean(businessId && debouncedCustomerSearch.length >= 2),
-        retry: false,
-        staleTime: 30_000,
-        refetchOnWindowFocus: false,
-    })
-    useEffect(() => {
-        const timer = window.setTimeout(
-            () => setDebouncedCustomerSearch(customerSearch.trim()),
-            350,
-        )
-        return () => window.clearTimeout(timer)
-    }, [customerSearch])
     const [fulfillmentType, setFulfillmentType] = useState<OrderFulfillmentType>(
         order.fulfillmentType,
     )
@@ -436,103 +408,11 @@ export function EditOrderModal({
                     {!reviewing ? (
                         <div className="mt-6 space-y-6">
                             <section className="grid gap-4 sm:grid-cols-2">
-                                <div className="sm:col-span-2">
-                                    <label className="text-sm font-semibold text-[#243556]">
-                                        Buscar cliente existente
-                                        <input
-                                            aria-label="Buscar cliente para la orden"
-                                            value={customerSearch}
-                                            onChange={(event) =>
-                                                setCustomerSearch(event.target.value)
-                                            }
-                                            placeholder="Busca por nombre o teléfono"
-                                            className="mt-1 h-11 w-full rounded-xl border border-[#C9D7EA] px-3 font-normal outline-none focus:border-[#2451C5]"
-                                        />
-                                    </label>
-                                    {selectedCustomer && (
-                                        <div className="mt-2 flex items-center justify-between rounded-xl border border-[#B9CDFD] bg-[#EEF3FF] px-3 py-2 text-sm text-[#243556]">
-                                            <span>
-                                                <strong>{selectedCustomer.name}</strong> ·{' '}
-                                                {selectedCustomer.phone || 'Sin teléfono'}
-                                            </span>
-                                            <button
-                                                type="button"
-                                                onClick={() => setSelectedCustomer(null)}
-                                                className="text-xs font-bold text-[#B42318]"
-                                            >
-                                                Quitar
-                                            </button>
-                                        </div>
-                                    )}
-                                    {customerSearch.trim().length >= 2 &&
-                                        (customers.isFetching ||
-                                            customerSearch.trim() !== debouncedCustomerSearch) && (
-                                            <div
-                                                role="status"
-                                                aria-label="Buscando clientes"
-                                                className="mt-2 space-y-2 rounded-xl border border-[#DCE5F3] bg-white p-3"
-                                            >
-                                                {[1, 2, 3].map((item) => (
-                                                    <div
-                                                        key={item}
-                                                        className="h-10 animate-pulse rounded-lg bg-[#F1F5FA]"
-                                                    />
-                                                ))}
-                                            </div>
-                                        )}
-                                    {customerSearch.trim().length >= 2 && customers.isError && (
-                                        <div
-                                            role="alert"
-                                            className="mt-2 rounded-xl border border-[#F3C2BD] bg-[#FFF5F3] p-3 text-sm text-[#B42318]"
-                                        >
-                                            No pudimos cargar los clientes.{' '}
-                                            <button
-                                                type="button"
-                                                data-cy="edit-order-customer-retry"
-                                                onClick={() => void customers.refetch()}
-                                                className="font-bold underline"
-                                            >
-                                                Intentar de nuevo
-                                            </button>
-                                        </div>
-                                    )}
-                                    {customerSearch.trim().length >= 2 &&
-                                        customers.isSuccess &&
-                                        customers.data.customers.length === 0 && (
-                                            <p className="mt-2 rounded-xl border border-[#DCE5F3] bg-[#F8FAFE] p-3 text-center text-sm text-[#65738A]">
-                                                No hay ningún cliente que coincida con la búsqueda.
-                                            </p>
-                                        )}
-                                    {customers.isSuccess &&
-                                        !customers.isFetching &&
-                                        customers.data?.customers &&
-                                        customers.data.customers.length > 0 && (
-                                            <div className="mt-2 max-h-64 overflow-y-auto divide-y divide-[#E8EEF6] rounded-xl border border-[#DCE5F3] bg-white">
-                                                {customers.data.customers
-                                                    .slice(0, 8)
-                                                    .map((customer) => (
-                                                        <button
-                                                            key={customer.id}
-                                                            type="button"
-                                                            onClick={() => {
-                                                                setSelectedCustomer({
-                                                                    id: customer.id,
-                                                                    name: customer.name,
-                                                                    phone: customer.phone,
-                                                                })
-                                                                setCustomerSearch('')
-                                                            }}
-                                                            className="block w-full px-3 py-2 text-left text-sm hover:bg-[#F8FAFE]"
-                                                        >
-                                                            <strong>{customer.name}</strong>
-                                                            <span className="ml-2 text-[#71819A]">
-                                                                {customer.phone}
-                                                            </span>
-                                                        </button>
-                                                    ))}
-                                            </div>
-                                        )}
-                                </div>
+                                <OrderCustomerPicker
+                                    selected={selectedCustomer}
+                                    onSelect={setSelectedCustomer}
+                                    onClear={() => setSelectedCustomer(null)}
+                                />
                                 {fulfillmentType === 'DELIVERY' ? (
                                     // Un pedido a domicilio tiene dirección, envío y entrega propios:
                                     // su modalidad no se cambia desde la edición.
