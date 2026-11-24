@@ -119,11 +119,13 @@ export async function readOrderEventStream({
     onOpen,
     onOrder,
     onStatus,
+    onStockAlert,
 }: {
     signal: AbortSignal
     onOpen: () => void
     onOrder: (data: string) => void
     onStatus?: (data: string) => void
+    onStockAlert?: (data: string) => void
 }) {
     const response = await fetch(getOrderEventsUrl(), {
         method: 'GET',
@@ -161,6 +163,7 @@ export async function readOrderEventStream({
                 const parsed = parseFrame(frame)
                 if (parsed?.eventName === 'new_order') onOrder(parsed.data)
                 else if (parsed?.eventName === 'order_status_updated') onStatus?.(parsed.data)
+                else if (parsed?.eventName === 'stock_alert') onStockAlert?.(parsed.data)
                 separator = /\r?\n\r?\n/.exec(buffer)
             }
         }
