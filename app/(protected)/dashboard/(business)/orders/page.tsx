@@ -67,6 +67,10 @@ import {
     LazyEditOrderModal,
     preloadEditOrderModal,
 } from '../../features/orders/LazyEditOrderModal'
+import {
+    LazyAssignOrderCustomerModal,
+    preloadAssignOrderCustomerModal,
+} from '../../features/orders/LazyAssignOrderCustomerModal'
 import { Confirm, OrderDeliveryPanel } from '../../features/orders/delivery/OrderDeliveryPanel'
 import {
     canCancelOrder,
@@ -240,6 +244,7 @@ export default function OrdersPage() {
     const [debouncedSearch, setDebouncedSearch] = useState('')
     const [selectedId, setSelectedId] = useState<string | null>(null)
     const [editingOrder, setEditingOrder] = useState<Order | null>(null)
+    const [assigningCustomerOrder, setAssigningCustomerOrder] = useState<Order | null>(null)
     const [newOrderOpen, setNewOrderOpen] = useState(false)
     const [mutationErrorOrderId, setMutationErrorOrderId] = useState<string | null>(null)
     const [limit] = useState(10)
@@ -645,6 +650,7 @@ export default function OrdersPage() {
                         onClose={() => setSelectedId(null)}
                         onStatusChange={changeStatus}
                         onEdit={setEditingOrder}
+                        onAssignCustomer={setAssigningCustomerOrder}
                         paymentCard={paymentCardQuery.data?.paymentCard ?? null}
                         businessName={business.data?.name ?? 'Restaurante'}
                         loyalty={orderLoyalty}
@@ -659,6 +665,16 @@ export default function OrdersPage() {
                         onClose={() => setEditingOrder(null)}
                         onSaved={(updated) => {
                             setEditingOrder(null)
+                            setSelectedId(updated.id)
+                        }}
+                    />
+                )}
+                {assigningCustomerOrder && (
+                    <LazyAssignOrderCustomerModal
+                        order={assigningCustomerOrder}
+                        onClose={() => setAssigningCustomerOrder(null)}
+                        onSaved={(updated) => {
+                            setAssigningCustomerOrder(null)
                             setSelectedId(updated.id)
                         }}
                     />
@@ -1036,6 +1052,7 @@ function OrderDetailModal({
     onClose,
     onStatusChange,
     onEdit,
+    onAssignCustomer,
     paymentCard,
     businessName,
     loyalty,
@@ -1050,6 +1067,7 @@ function OrderDetailModal({
     onClose: () => void
     onStatusChange: (orderId: string, status: OrderStatus) => void
     onEdit: (order: Order) => void
+    onAssignCustomer: (order: Order) => void
     paymentCard: PaymentCard | null
     businessName: string
     loyalty?: OrderLoyaltyProps
@@ -1142,6 +1160,21 @@ function OrderDetailModal({
                                     <p className="mt-1 break-words text-sm font-semibold leading-5 text-[#243556]">
                                         {displayCustomerName(order.customerName)}
                                     </p>
+                                    {!order.customerName &&
+                                        (order.status === 'PENDING' ||
+                                            order.status === 'PREPARING') && (
+                                            <button
+                                                type="button"
+                                                data-cy="order-detail-assign-customer"
+                                                onClick={() => onAssignCustomer(order)}
+                                                onPointerEnter={preloadAssignOrderCustomerModal}
+                                                onFocus={preloadAssignOrderCustomerModal}
+                                                onTouchStart={preloadAssignOrderCustomerModal}
+                                                className="mt-1 text-xs font-bold text-[#2451C5] underline-offset-2 hover:underline focus:outline-none focus-visible:underline"
+                                            >
+                                                Seleccionar cliente
+                                            </button>
+                                        )}
                                     {order.customerPhone && (
                                         <p className="mt-1 flex items-center gap-1.5 break-all text-xs leading-5 text-[#65738A]">
                                             <Phone
