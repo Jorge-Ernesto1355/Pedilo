@@ -1,7 +1,7 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
-import { Gift } from 'lucide-react'
+import { Gift, LoaderCircle } from 'lucide-react'
 import { getLoyaltyCard, listLoyaltyCards } from '@/app/components/loyalty/loyaltyOwnerApi'
 import { useLoyaltyProgram } from '../../customers/loyalty/useCustomerLoyalty'
 
@@ -36,6 +36,42 @@ export function NewOrderLoyaltyReward({
         staleTime: 15_000,
     })
     const available = lookupPhone ? reward.data : null
+    // La búsqueda son dos peticiones seguidas: mientras tarda se avisa para que el
+    // dueño no confunda "cargando" con "este cliente no tiene premio".
+    const searching = Boolean(lookupPhone) && (program.isPending || reward.isLoading)
+    if (searching) {
+        return (
+            <p
+                role="status"
+                data-cy="new-order-loyalty-loading"
+                className="flex min-h-11 items-center gap-2.5 rounded-xl border border-[#D7E1EF] bg-[#F7F9FC] px-3 py-2.5 text-sm font-semibold text-[#53647D]"
+            >
+                <LoaderCircle
+                    className="size-4 shrink-0 animate-spin text-[#2451C5] motion-reduce:animate-none"
+                    aria-hidden="true"
+                />
+                Buscando premio de lealtad…
+            </p>
+        )
+    }
+    if (program.active && lookupPhone && reward.isError) {
+        return (
+            <p
+                role="alert"
+                data-cy="new-order-loyalty-error"
+                className="flex min-h-11 flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-[#F3C2BD] bg-[#FFF3F1] px-3 py-2.5 text-sm text-[#B42318]"
+            >
+                No pudimos revisar el premio de lealtad.
+                <button
+                    type="button"
+                    onClick={() => void reward.refetch()}
+                    className="font-bold underline underline-offset-2"
+                >
+                    Reintentar
+                </button>
+            </p>
+        )
+    }
     if (!program.active || !available) return null
     const applied = rewardId === available.id
     return (

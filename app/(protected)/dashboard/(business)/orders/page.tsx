@@ -100,6 +100,7 @@ import {
     OrderLoyaltyChip,
     OrderLoyaltyDiscount,
 } from '../../features/orders/loyalty/OrderLoyaltyChip'
+import { OrderCustomerReward } from '../../features/orders/loyalty/OrderCustomerReward'
 
 type OrderLoyaltyProps = {
     program: LoyaltyProgram | undefined
@@ -1288,6 +1289,9 @@ function OrderDetailModal({
                                 format={(value) => formatMoney(value, currency)}
                             />
                         ) : null}
+                        {loyalty && (
+                            <OrderCustomerReward order={order} program={loyalty.program} />
+                        )}
                         {loyalty && (
                             <div data-cy="order-detail-loyalty" className="empty:hidden">
                                 <OrderLoyaltyChip
