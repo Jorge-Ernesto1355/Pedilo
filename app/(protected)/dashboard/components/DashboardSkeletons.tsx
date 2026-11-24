@@ -452,3 +452,34 @@ export function DiscountsPageSkeleton() {
         </main>
     )
 }
+
+export function InventorySkeleton() {
+    return (
+        <main
+            className="mx-auto max-w-[1440px] space-y-7 px-5 py-8 sm:px-8 lg:px-10 lg:py-10"
+            aria-busy="true"
+            aria-label="Cargando inventario"
+        >
+            <PageHeaderSkeleton description action />
+            <section className="flex flex-col gap-2 sm:flex-row">
+                {Array.from({ length: 4 }, (_, index) => (
+                    <div
+                        key={index}
+                        className="flex flex-1 items-center gap-2.5 rounded-xl border border-[#DCE5F3] bg-white px-3 py-2.5"
+                    >
+                        <div className="space-y-2">
+                            <Block className="h-3 w-24" />
+                            <Block className="h-6 w-12" />
+                        </div>
+                    </div>
+                ))}
+            </section>
+            <section className="rounded-2xl border border-[#DCE5F3] bg-white p-4 sm:p-6">
+                <Block className="h-10 w-full max-w-sm rounded-lg" />
+                <div className="mt-5">
+                    <TableSkeleton rows={6} columns={4} />
+                </div>
+            </section>
+        </main>
+    )
+}
