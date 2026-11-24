@@ -67,6 +67,8 @@ export default defineConfig({
         qrTestSlugA: process.env.CYPRESS_QR_TEST_SLUG_A,
         qrTestTokenB: process.env.CYPRESS_QR_TEST_TOKEN_B,
         qrTestSlugB: process.env.CYPRESS_QR_TEST_SLUG_B,
+        // Habilita los E2E de inventario que crean pedidos reales. Úsalo solo en bases desechables.
+        inventoryRealBackend: process.env.CYPRESS_INVENTORY_REAL_BACKEND === 'true',
         uiDelay: Number(process.env.CYPRESS_UI_DELAY ?? 0),
         pauseForInspection: process.env.CYPRESS_PAUSE_FOR_INSPECTION === 'true',
     },
