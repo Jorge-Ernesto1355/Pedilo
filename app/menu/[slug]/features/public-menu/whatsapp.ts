@@ -53,6 +53,21 @@ type OrderMessageInput = {
     lines: string[]
     total: string
     notes: string
+    /** Solo pedidos a domicilio. */
+    delivery?: {
+        address: string
+        neighborhood: string
+        reference?: string | null
+        latitude: number
+        longitude: number
+        paymentNote: string
+    }
+}
+
+const fulfillmentLabels: Record<OrderFulfillmentType, string> = {
+    DINE_IN: 'Comer aquí',
+    PICKUP: 'Para llevar / recoger',
+    DELIVERY: 'A domicilio',
 }
 
 export function createWhatsAppOrderMessage({
@@ -63,6 +78,7 @@ export function createWhatsAppOrderMessage({
     lines,
     total,
     notes,
+    delivery,
 }: OrderMessageInput) {
     return [
         `Hola, soy ${customerName}. Quiero hacer este pedido en ${businessName}:`,
@@ -71,9 +87,29 @@ export function createWhatsAppOrderMessage({
         '',
         `Cliente: ${customerName}`,
         `WhatsApp: ${customerPhone}`,
-        `Modalidad: ${fulfillmentType === 'DINE_IN' ? 'Comer aquí' : 'Para llevar / recoger'}`,
+        `Modalidad: ${fulfillmentLabels[fulfillmentType]}`,
+        ...(delivery
+            ? [
+                  `Dirección: ${delivery.address}`,
+                  `Colonia: ${delivery.neighborhood}`,
+                  ...(delivery.reference ? [`Referencia: ${delivery.reference}`] : []),
+                  `Ubicación: https://www.google.com/maps?q=${delivery.latitude},${delivery.longitude}`,
+                  `Pago: ${delivery.paymentNote}`,
+              ]
+            : []),
         ...(notes ? [`Notas: ${notes}`] : []),
     ].join('\n')
+}
+
+/** Texto obligatorio para pedidos a domicilio pagados por transferencia. */
+export function deliveryTransferNote(deliveryFee: number | null) {
+    return deliveryFee === null
+        ? 'Pagas la comida por transferencia y el envío en efectivo al repartidor'
+        : `Pagas la comida por transferencia y el envío ($${formatMoney(deliveryFee)}) en efectivo al repartidor`
+}
+
+export function formatMoney(value: number) {
+    return value.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 export function createTransferWhatsAppMessage({ businessName, customerName, total }: { businessName: string; customerName: string; total: number }) {

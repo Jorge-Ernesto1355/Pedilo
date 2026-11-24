@@ -2,7 +2,6 @@
 
 'use client'
 
-import QRCode from 'qrcode'
 import { Download, FileCode, QrCode } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Modal } from '@/app/components/ui/Modal'
@@ -18,15 +17,23 @@ export function QrCodeButton({ shareUrl, className = '' }: QrCodeButtonProps) {
     useEffect(() => {
         if (!open) return
         let cancelled = false
-        void Promise.all([
-            QRCode.toDataURL(shareUrl, { errorCorrectionLevel: 'M', margin: 2, width: 360 }),
-            QRCode.toString(shareUrl, {
-                type: 'svg',
-                errorCorrectionLevel: 'M',
-                margin: 2,
-                width: 360,
-            }),
-        ])
+        // qrcode solo se descarga al abrir el modal, no al entrar a la página.
+        void import('qrcode')
+            .then((QRCode) =>
+                Promise.all([
+                    QRCode.toDataURL(shareUrl, {
+                        errorCorrectionLevel: 'M',
+                        margin: 2,
+                        width: 360,
+                    }),
+                    QRCode.toString(shareUrl, {
+                        type: 'svg',
+                        errorCorrectionLevel: 'M',
+                        margin: 2,
+                        width: 360,
+                    }),
+                ]),
+            )
             .then(([png, svg]) => {
                 if (!cancelled) {
                     setPngDataUrl(png)

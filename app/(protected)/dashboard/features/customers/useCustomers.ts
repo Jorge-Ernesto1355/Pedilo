@@ -1,6 +1,7 @@
 'use client'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/store/authStore'
+import { keepPreviousInScope } from '@/src/lib/query/keepPreviousInScope'
 import {
     createCustomer,
     deleteCustomer,
@@ -11,12 +12,19 @@ import {
 } from '@/src/lib/api/orderApi'
 import type { CustomerPayload } from '@/src/lib/api/order-types'
 import { friendlyNotificationError, notify } from '@/src/lib/notifications/notify'
-export function useCustomers(params: { page: number; limit: number; search?: string }) {
+export function useCustomers(params: { page: number; limit: number; search?: string },
+    // keepPrevious: conserva la lista anterior mientras llega la nueva página o búsqueda.
+    // Solo para listas; en autocompletados mostraría resultados de otro término.
+    options?: { enabled?: boolean; keepPrevious?: boolean },
+) {
     const businessId = useAuthStore((state) => state.user?.businessId)
     return useQuery({
         queryKey: ['customers', businessId, params],
         queryFn: () => getCustomers(businessId as string, params),
-        enabled: Boolean(businessId),
+        enabled: Boolean(businessId) && (options?.enabled ?? true),
+        placeholderData: options?.keepPrevious
+            ? keepPreviousInScope(['customers', businessId])
+            : undefined,
         staleTime: 5 * 60 * 1000,
     })
 }

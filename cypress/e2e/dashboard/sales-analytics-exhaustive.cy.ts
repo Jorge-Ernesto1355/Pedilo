@@ -1,4 +1,5 @@
 import type { Interception } from 'cypress/types/net-stubbing'
+import { visitViaClientNavigation } from '../../support/clientNavigation'
 
 type Period = 'today' | '7d' | '30d' | 'thisMonth'
 type Status = 'PREPARING' | 'READY' | 'CANCELLED'
@@ -369,7 +370,7 @@ describe('Dashboard · auditoría exhaustiva de ventas, ticket y tendencia', () 
             expect(summarize(scenario.orders, 'previous').total).to.eq(scenario.previous.total)
         })
         installFixture()
-        cy.visit('/dashboard/sales')
+        visitViaClientNavigation('/dashboard/sales')
         assertPeriod('today', scenarios.today)
         ;(['7d', '30d', 'thisMonth'] as Period[]).forEach((period) => {
             selectPeriod(period)
@@ -383,7 +384,7 @@ describe('Dashboard · auditoría exhaustiva de ventas, ticket y tendencia', () 
 
     it('mantiene las series alineadas, ceros y tooltips comparativos', () => {
         installFixture()
-        cy.visit('/dashboard/sales')
+        visitViaClientNavigation('/dashboard/sales')
         cy.wait('@sales').then(({ response }) => {
             const body = response?.body
             expect(body.series.current).to.have.length(4)
@@ -423,7 +424,7 @@ describe('Dashboard · auditoría exhaustiva de ventas, ticket y tendencia', () 
 
     it('no mezcla resultados al cambiar rápidamente y conserva resultados al recargar', () => {
         installFixture({ delaySlowPeriod: true })
-        cy.visit('/dashboard/sales')
+        visitViaClientNavigation('/dashboard/sales')
         cy.wait('@sales')
         cy.wait('@ticket')
         cy.wait('@trend')
@@ -466,13 +467,16 @@ describe('Dashboard · auditoría exhaustiva de ventas, ticket y tendencia', () 
         })
         cy.contains(money(scenarios.thisMonth.current.total)).should('be.visible')
         cy.reload()
+        // El periodo no se persiste: tras recargar la página vuelve a "Hoy".
+        assertPeriod('today', scenarios.today)
+        selectPeriod('thisMonth')
         assertPeriod('thisMonth', scenarios.thisMonth)
     })
 
     it('mantiene estados de error y ausencia de ventas sin NaN ni Infinity', () => {
         const empty = makeScenario(0, 0, 0, 0)
         installFixture({ scenarioByPeriod: { ...scenarios, today: empty } })
-        cy.visit('/dashboard/sales')
+        visitViaClientNavigation('/dashboard/sales')
         cy.wait('@sales')
         cy.wait('@ticket')
         cy.contains('$0.00').should('be.visible')

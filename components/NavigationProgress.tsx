@@ -10,10 +10,8 @@ export function NavigationProgress() {
     const [lastPathname, setLastPathname] = useState(pathname)
     const timerRef = useRef<number | null>(null)
 
-    // A finished navigation always hides the bar. Without this, the stale
-    // `startedPathname` made it reappear (and never stop) the next time the user
-    // arrived at that same route without clicking a link (router.push, back button).
-    if (pathname !== lastPathname) {
+    // La navegación terminó: apagar la barra para que no reaparezca al volver a una ruta previa.
+    if (lastPathname !== pathname) {
         setLastPathname(pathname)
         setVisible(false)
         setStartedPathname(null)

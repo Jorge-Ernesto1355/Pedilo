@@ -1,4 +1,3 @@
-import QRCode from 'qrcode'
 
 const CARD_WIDTH = 1200
 const CUSTOM_CARD_HEIGHT = 1600
@@ -130,6 +129,8 @@ async function drawLogo(
 }
 
 async function createQrDataUrl(url: string, width: number) {
+    // Carga diferida: qrcode solo se necesita al generar la tarjeta.
+    const QRCode = await import('qrcode')
     return QRCode.toDataURL(url, {
         errorCorrectionLevel: 'H',
         margin: 5,

@@ -9,12 +9,13 @@ import { useStockAlertsStore } from '@/store/stockAlertsStore'
 import { parseStockAlertEvent } from '../../inventory/stockAlerts'
 import { inventoryKey } from '../../inventory/useInventory'
 import { getOrder } from '@/src/lib/api/orderApi'
-import type { Order } from '@/src/lib/api/order-types'
+import { ORDER_STATUSES, type Order } from '@/src/lib/api/order-types'
 import { reconcileOrderStatusInCache } from './orderStatusSync'
 import {
     getOrderSoundPreferenceKey,
     getReconnectDelay,
     OrderEventsHttpError,
+    parseDeliveryUpdatedEvent,
     parseNewOrderEvent,
     parseOrderStatusEvent,
     readOrderEventStream,
@@ -26,7 +27,7 @@ function isOrder(value: Order, id: string, businessId: string) {
         value.id === id &&
         (!value.businessId || value.businessId === businessId) &&
         Number.isFinite(value.orderNumber) &&
-        ['PENDING', 'PREPARING', 'READY', 'CANCELLED'].includes(value.status) &&
+        (ORDER_STATUSES as readonly string[]).includes(value.status) &&
         Array.isArray(value.items)
     )
 }
@@ -145,6 +146,17 @@ export function useOrderEvents() {
                 void queryClient.invalidateQueries({ queryKey: ['orders', activeBusinessId] })
         }
 
+        // La entrega cambió (la tomaron, la liberaron, se entregó…): se vuelve a leer el
+        // pedido para mostrar el repartidor y las acciones correctas en la comanda.
+        function processDelivery(raw: string) {
+            const event = parseDeliveryUpdatedEvent(raw, activeBusinessId)
+            if (!event) return
+            void queryClient.invalidateQueries({
+                queryKey: ['order', userId ?? 'anonymous', activeBusinessId, event.orderId],
+            })
+            void queryClient.invalidateQueries({ queryKey: ['orders', activeBusinessId] })
+        }
+
         function processStockAlert(raw: string) {
             const alert = parseStockAlertEvent(raw, activeBusinessId)
             if (!alert) return
@@ -179,6 +191,7 @@ export function useOrderEvents() {
                         },
                         onOrder: (data) => void processOrder(data),
                         onStatus: processStatus,
+                        onDelivery: processDelivery,
                         onStockAlert: processStockAlert,
                     })
                 } catch (error) {
@@ -217,8 +230,10 @@ export function useOrderEvents() {
         }
 
         const handleVisibility = () => {
-            if (document.visibilityState === 'visible')
-                void queryClient.invalidateQueries({ queryKey: ['orders', activeBusinessId] })
+            if (document.visibilityState !== 'visible') return
+            // While the stream is connected, events keep the cache current.
+            if (useOrderEventsStore.getState().connectionStatus === 'connected') return
+            void queryClient.invalidateQueries({ queryKey: ['orders', activeBusinessId] })
         }
         document.addEventListener('visibilitychange', handleVisibility)
         void connect()

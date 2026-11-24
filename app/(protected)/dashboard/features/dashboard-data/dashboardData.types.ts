@@ -157,7 +157,8 @@ export type AverageTicketResponse = {
     }
 }
 
-export type OrderStatus = 'pending' | 'preparing' | 'ready' | 'cancelled'
+export type OrderStatus =
+    'pending' | 'preparing' | 'ready' | 'out_for_delivery' | 'delivered' | 'cancelled'
 
 export type Order = {
     id: string

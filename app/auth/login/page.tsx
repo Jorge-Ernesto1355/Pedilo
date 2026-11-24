@@ -1,7 +1,7 @@
 'use client'
 
 import { FormEvent, Suspense, useState } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion } from 'motion/react'
 import Image from 'next/image'
 import { loginSchema } from '@/app/auth/lib/validation'
 import { networkAuthError, safeAuthError } from '@/app/auth/lib/client/error-message'

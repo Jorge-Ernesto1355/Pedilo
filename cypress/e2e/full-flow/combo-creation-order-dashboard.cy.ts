@@ -161,6 +161,10 @@ function createComboThroughUi() {
         name: 'Combo familiar completo',
         description: '',
         price: 299,
+        includedProducts: [
+            { productId: product('burger').id, quantity: 1 },
+            { productId: product('fries').id, quantity: 1 },
+        ],
         includedProductIds: [product('burger').id, product('fries').id],
         optionGroups: [
             { name: 'Acompañamiento', productIds: [product('wings').id, product('nuggets').id], minSelections: 1, maxSelections: 1 },
@@ -233,6 +237,14 @@ describe('Flujo completo de combo: creación, pedido y detalle', () => {
 
         cy.visit(`/${slug}`)
         cy.wait('@getPublicComboCatalog').its('response.body.menus.0.categories.0.products.0.name').should('eq', 'Combo familiar completo')
+        // Sin este stub la app abre una pestaña real de WhatsApp y la ventana de Cypress pierde el foco.
+        cy.window().then((win) => {
+            cy.stub(win, 'open').returns({
+                document: { title: '', body: { innerHTML: '' } },
+                location: { href: '' },
+                close: () => undefined,
+            })
+        })
         cy.contains('h3', 'Combo familiar completo')
             .closest('article')
             .contains('button', 'Seleccionar opciones')
@@ -248,15 +260,18 @@ describe('Flujo completo de combo: creación, pedido y detalle', () => {
         cy.get('#customer-name').type('Cliente combo completo')
         cy.get('#customer-phone').type('6695559001')
         cy.contains('[role="dialog"] button', 'Confirmar pedido').click()
-        cy.wait('@createComboOrderFullFlow').its('request.body.items').should('deep.equal', [{
-            productId: comboId,
-            quantity: 1,
-            optionIds: [],
-            comboChoiceIds: [
-                `choice-${product('wings').id}`,
-                `choice-${product('water').id}`,
-            ],
-        }])
+        cy.wait('@createComboOrderFullFlow').its('request.body.items').should('have.length', 1).then(([item]) => {
+            expect(item).to.deep.include({
+                productId: comboId,
+                quantity: 1,
+                optionIds: [],
+                comboChoiceIds: [
+                    `choice-${product('wings').id}`,
+                    `choice-${product('water').id}`,
+                ],
+            })
+            expect(item.expectedUnitPrice).to.be.a('number')
+        })
 
         cy.then(() => {
             cy.intercept('GET', '**/businesses/settings', { statusCode: 200, body: { currency: 'MXN', timezone: 'America/Mazatlan' } })

@@ -37,10 +37,23 @@ export function AverageTicketKpiCard({
     }
 
     if (isLoading || !data) {
+        // Misma estructura que la tarjeta cargada para evitar saltos de layout.
         return (
-            <AverageTicketCardShell>
+            <AverageTicketCardShell busy>
                 <TicketHeader />
-                <p className="mt-8 h-9 w-36 animate-pulse rounded-lg bg-[#EEF2F7]" />
+                <p className="mt-6 text-sm text-[#65738A]">Ticket promedio del periodo</p>
+                <span className="mt-1 block h-9 w-36 animate-pulse rounded-lg bg-[#EEF2F7]" />
+                <div className="mt-4 flex items-center gap-2 border-t border-[#EEF2F7] pt-4">
+                    <span className="size-7 shrink-0 animate-pulse rounded-lg bg-[#EEF2F7]" />
+                    <span className="h-5 w-44 animate-pulse rounded bg-[#EEF2F7]" />
+                </div>
+                <div className="mt-5 border-t border-[#EEF2F7] pt-4">
+                    <p className="text-xs font-semibold uppercase tracking-[.12em] text-[#8996A9]">
+                        Promedio histórico
+                    </p>
+                    <p className="mt-1 text-sm text-[#65738A]">De todo tu negocio</p>
+                    <span className="mt-1 block h-8 w-28 animate-pulse rounded-lg bg-[#EEF2F7]" />
+                </div>
             </AverageTicketCardShell>
         )
     }
@@ -164,9 +177,18 @@ function parseAmount(value: string | null | undefined) {
     return Number.isFinite(amount) ? amount : null
 }
 
-function AverageTicketCardShell({ children }: { children: ReactNode }) {
+function AverageTicketCardShell({
+    children,
+    busy = false,
+}: {
+    children: ReactNode
+    busy?: boolean
+}) {
     return (
-        <article className="relative h-full rounded-2xl border border-[#DCE5F3] bg-white p-5 shadow-[0_8px_22px_rgb(20_48_105_/_0.055)] sm:p-6">
+        <article
+            aria-busy={busy || undefined}
+            className="relative h-full rounded-2xl border border-[#DCE5F3] bg-white p-5 shadow-[0_8px_22px_rgb(20_48_105_/_0.055)] sm:p-6"
+        >
             {children}
         </article>
     )

@@ -1,6 +1,7 @@
 /* eslint-disable @next/next/no-img-element -- Combo image URLs are user-provided previews. */
 'use client'
 
+import { QtyNumber } from '@/app/components/ui/QtyNumber'
 import { useId, useMemo, useState } from 'react'
 import {
     Check,
@@ -362,12 +363,18 @@ export function ComboManagerModal({
     function selectImage(file: File | undefined) {
         if (!file) return
         if (!file.type.startsWith('image/')) {
-            setCreateError({ title: 'Imagen no válida', description: 'Selecciona un archivo de imagen válido.' })
+            setCreateError({
+                title: 'Imagen no válida',
+                description: 'Selecciona un archivo de imagen válido.',
+            })
             setComboDetailsError('Selecciona un archivo de imagen válido.')
             return
         }
         if (file.size > 5 * 1024 * 1024) {
-            setCreateError({ title: 'La imagen es demasiado grande', description: 'La imagen no puede superar 5 MB.' })
+            setCreateError({
+                title: 'La imagen es demasiado grande',
+                description: 'La imagen no puede superar 5 MB.',
+            })
             setComboDetailsError('La imagen no puede superar 5 MB.')
             return
         }
@@ -481,7 +488,10 @@ export function ComboManagerModal({
                     : imageUrl.trim()
                       ? { imageUrl: imageUrl.trim() }
                       : {}),
-                includedProducts: included.map((productId) => ({ productId, quantity: includedQuantities[productId] ?? 1 })),
+                includedProducts: included.map((productId) => ({
+                    productId,
+                    quantity: includedQuantities[productId] ?? 1,
+                })),
                 includedProductIds: included,
                 optionGroups: groups as ComboGroupInput[],
             },
@@ -538,6 +548,106 @@ export function ComboManagerModal({
                     : 'Primero define el combo que venderás; después indica qué incluye y qué podrá elegir el cliente.'
             }
             size="lg"
+            footer={
+                editing ? undefined : (
+                    <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
+                        <button
+                            type="button"
+                            className={quietButton}
+                            onClick={
+                                step
+                                    ? () => {
+                                          setCreateError(null)
+                                          setStep(step - 1)
+                                      }
+                                    : close
+                            }
+                            disabled={busy}
+                        >
+                            {step ? (
+                                <>
+                                    <ChevronLeft className="size-4" />
+                                    Anterior
+                                </>
+                            ) : (
+                                'Cancelar'
+                            )}
+                        </button>
+                        {step < 3 ? (
+                            <button
+                                type="button"
+                                className={primaryButton}
+                                onClick={() => {
+                                    const invalidImage =
+                                        imageUrl.trim() && !/^https?:\/\//i.test(imageUrl.trim())
+                                    if (
+                                        step === 0 &&
+                                        (!name.trim() ||
+                                            !isValidComboPrice(price) ||
+                                            !selectedCategoryId ||
+                                            invalidImage)
+                                    ) {
+                                        setCreateError({
+                                            title: 'Revisa los datos del combo',
+                                            description:
+                                                'Escribe un nombre, un precio válido mayor que cero con máximo dos decimales y selecciona una categoría. La imagen debe usar una URL http o https.',
+                                        })
+                                        return
+                                    }
+                                    if (
+                                        step === 2 &&
+                                        (newGroup.name.trim() || newGroup.productIds.length > 0)
+                                    ) {
+                                        setCreateError({
+                                            title: 'Completa el grupo de opciones',
+                                            description:
+                                                'Escribe un nombre y selecciona al menos dos productos. Si no quieres agregar el grupo, descarta el borrador.',
+                                        })
+                                        return
+                                    }
+                                    setCreateError(null)
+                                    setStep(step + 1)
+                                }}
+                                disabled={
+                                    (step === 0 &&
+                                        (!name.trim() ||
+                                            !isValidComboPrice(price) ||
+                                            !selectedCategoryId)) ||
+                                    (step === 1 && included.length === 0)
+                                }
+                            >
+                                <span>Continuar</span>
+                                <ChevronRight className="size-4" />
+                            </button>
+                        ) : (
+                            <button
+                                type="button"
+                                className={primaryButton}
+                                onClick={create}
+                                disabled={
+                                    busy ||
+                                    !name.trim() ||
+                                    !selectedCategoryId ||
+                                    !isValidComboPrice(price) ||
+                                    !included.length
+                                }
+                            >
+                                {actions.create.isPending ? (
+                                    <>
+                                        <LoaderCircle className="size-4 animate-spin" />
+                                        Creando combo…
+                                    </>
+                                ) : (
+                                    <>
+                                        <Check className="size-4" />
+                                        Crear combo
+                                    </>
+                                )}
+                            </button>
+                        )}
+                    </div>
+                )
+            }
         >
             {editing ? (
                 comboQuery.isLoading ? (
@@ -686,16 +796,40 @@ export function ComboManagerModal({
                                         />
                                     </label>
                                     <label className="block text-xs font-semibold text-[#43536E]">
-                                        Imagen del combo <span className="font-normal text-[#8996A9]">(opcional)</span>
+                                        Imagen del combo{' '}
+                                        <span className="font-normal text-[#8996A9]">
+                                            (opcional)
+                                        </span>
                                         <span className="mt-1 flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-[#BFCDE1] bg-[#FAFCFF] p-2.5 hover:border-[#2451C5]">
                                             <span className="grid size-12 shrink-0 place-items-center overflow-hidden rounded-lg bg-[#EAF0FF] text-[#2451C5]">
-                                                {imagePreview ? <img src={imagePreview} alt="Vista previa del combo" className="h-full w-full object-cover" /> : <ImagePlus className="size-5" />}
+                                                {imagePreview ? (
+                                                    <img
+                                                        src={imagePreview}
+                                                        alt="Vista previa del combo"
+                                                        className="h-full w-full object-cover"
+                                                    />
+                                                ) : (
+                                                    <ImagePlus className="size-5" />
+                                                )}
                                             </span>
                                             <span className="text-left">
-                                                <span className="block text-sm font-semibold text-[#243556]">{imagePreview ? 'Cambiar imagen' : 'Seleccionar imagen'}</span>
-                                                <span className="block text-xs font-normal text-[#8996A9]">JPG, PNG o WebP · máximo 5 MB</span>
+                                                <span className="block text-sm font-semibold text-[#243556]">
+                                                    {imagePreview
+                                                        ? 'Cambiar imagen'
+                                                        : 'Seleccionar imagen'}
+                                                </span>
+                                                <span className="block text-xs font-normal text-[#8996A9]">
+                                                    JPG, PNG o WebP · máximo 5 MB
+                                                </span>
                                             </span>
-                                            <input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={(event) => selectImage(event.target.files?.[0])} />
+                                            <input
+                                                type="file"
+                                                accept="image/png,image/jpeg,image/webp"
+                                                className="sr-only"
+                                                onChange={(event) =>
+                                                    selectImage(event.target.files?.[0])
+                                                }
+                                            />
                                         </span>
                                     </label>
                                     {comboDetailsError && (
@@ -751,83 +885,124 @@ export function ComboManagerModal({
                             >
                                 {currentCombo.includedProducts.map((item) => {
                                     const quantity = item.quantity ?? 1
-                                    return <div
-                                        key={item.id}
-                                        data-testid={`combo-included-product-${item.productId}`}
-                                        className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-[#F7F9FC] px-3 py-2"
-                                    >
-                                        <div>
-                                            <p className="text-sm font-semibold text-[#243556]">
-                                                {item.product.name}
-                                            </p>
-                                            <p className="text-xs text-[#8996A9]">
-                                                ${Number(item.product.price).toFixed(2)}
-                                            </p>
+                                    return (
+                                        <div
+                                            key={item.id}
+                                            data-testid={`combo-included-product-${item.productId}`}
+                                            className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-[#F7F9FC] px-3 py-2"
+                                        >
+                                            <div>
+                                                <p className="text-sm font-semibold text-[#243556]">
+                                                    {item.product.name}
+                                                </p>
+                                                <p className="text-xs text-[#8996A9]">
+                                                    ${Number(item.product.price).toFixed(2)}
+                                                </p>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    type="button"
+                                                    aria-label={`Disminuir cantidad de ${item.product.name}`}
+                                                    disabled={busy || quantity <= 1}
+                                                    onClick={() =>
+                                                        actions.updateIncludedQuantity.mutate(
+                                                            {
+                                                                comboId: combo!.id,
+                                                                includedId: item.id,
+                                                                quantity: quantity - 1,
+                                                            },
+                                                            {
+                                                                onError: (error) =>
+                                                                    notify.error({
+                                                                        title: 'No se pudo actualizar la cantidad',
+                                                                        description:
+                                                                            friendlyError(error),
+                                                                    }),
+                                                            },
+                                                        )
+                                                    }
+                                                    className="pedilo-squish grid size-8 place-items-center rounded-md border border-[#D7E1EF] text-[#53647D] disabled:opacity-40"
+                                                >
+                                                    −
+                                                </button>
+                                                <QtyNumber
+                                                    data-testid={`combo-edit-included-quantity-${item.productId}`}
+                                                    className={`min-w-6 text-center text-sm font-bold ${quantity >= 10 ? 'text-[#B42318]' : 'text-[#243556]'}`}
+                                                    value={quantity}
+                                                />
+                                                <button
+                                                    type="button"
+                                                    aria-label={`Aumentar cantidad de ${item.product.name}`}
+                                                    disabled={busy || quantity >= 10}
+                                                    onClick={() =>
+                                                        actions.updateIncludedQuantity.mutate(
+                                                            {
+                                                                comboId: combo!.id,
+                                                                includedId: item.id,
+                                                                quantity: quantity + 1,
+                                                            },
+                                                            {
+                                                                onError: (error) =>
+                                                                    notify.error({
+                                                                        title: 'No se pudo actualizar la cantidad',
+                                                                        description:
+                                                                            friendlyError(error),
+                                                                    }),
+                                                            },
+                                                        )
+                                                    }
+                                                    className={`pedilo-squish grid size-8 place-items-center rounded-md border text-sm font-bold ${quantity >= 10 ? 'cursor-not-allowed border-[#F3C2BD] text-[#B42318]' : 'border-[#D7E1EF] text-[#2451C5]'}`}
+                                                >
+                                                    +
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    aria-label={`Quitar ${item.product.name} de productos incluidos`}
+                                                    disabled={
+                                                        busy ||
+                                                        currentCombo.includedProducts.length <= 1
+                                                    }
+                                                    title={
+                                                        currentCombo.includedProducts.length <= 1
+                                                            ? 'El combo debe conservar al menos un producto incluido.'
+                                                            : undefined
+                                                    }
+                                                    onClick={() => {
+                                                        if (
+                                                            window.confirm(
+                                                                `¿Quitar “${item.product.name}” de los productos incluidos?`,
+                                                            )
+                                                        )
+                                                            actions.removeIncluded.mutate(
+                                                                {
+                                                                    comboId: combo!.id,
+                                                                    includedId: item.id,
+                                                                },
+                                                                {
+                                                                    onError: (error) =>
+                                                                        notify.error({
+                                                                            title: 'No se pudo quitar el producto',
+                                                                            description:
+                                                                                friendlyError(
+                                                                                    error,
+                                                                                ),
+                                                                        }),
+                                                                },
+                                                            )
+                                                    }}
+                                                    className="grid size-8 place-items-center rounded-md text-[#78869B] hover:bg-[#FDECEC] hover:text-[#B42318]"
+                                                >
+                                                    <X className="size-4" />
+                                                </button>
+                                            </div>
+                                            <div className="w-full">
+                                                <RecipeDisclosure
+                                                    target={{ kind: 'products', id: item.productId }}
+                                                    label={item.product.name}
+                                                />
+                                            </div>
                                         </div>
-                                        <div className="flex items-center gap-2">
-                                            <button
-                                                type="button"
-                                                aria-label={`Disminuir cantidad de ${item.product.name}`}
-                                                disabled={busy || quantity <= 1}
-                                                onClick={() => actions.updateIncludedQuantity.mutate(
-                                                    { comboId: combo!.id, includedId: item.id, quantity: quantity - 1 },
-                                                    { onError: (error) => notify.error({ title: 'No se pudo actualizar la cantidad', description: friendlyError(error) }) },
-                                                )}
-                                                className="grid size-8 place-items-center rounded-md border border-[#D7E1EF] text-[#53647D] disabled:opacity-40"
-                                            >−</button>
-                                            <span
-                                                data-testid={`combo-edit-included-quantity-${item.productId}`}
-                                                className={`min-w-6 text-center text-sm font-bold ${quantity >= 10 ? 'text-[#B42318]' : 'text-[#243556]'}`}
-                                            >{quantity}</span>
-                                            <button
-                                                type="button"
-                                                aria-label={`Aumentar cantidad de ${item.product.name}`}
-                                                disabled={busy || quantity >= 10}
-                                                onClick={() => actions.updateIncludedQuantity.mutate(
-                                                    { comboId: combo!.id, includedId: item.id, quantity: quantity + 1 },
-                                                    { onError: (error) => notify.error({ title: 'No se pudo actualizar la cantidad', description: friendlyError(error) }) },
-                                                )}
-                                                className={`grid size-8 place-items-center rounded-md border text-sm font-bold ${quantity >= 10 ? 'cursor-not-allowed border-[#F3C2BD] text-[#B42318]' : 'border-[#D7E1EF] text-[#2451C5]'}`}
-                                            >+</button>
-                                            <button
-                                            type="button"
-                                            aria-label={`Quitar ${item.product.name} de productos incluidos`}
-                                            disabled={busy || currentCombo.includedProducts.length <= 1}
-                                            title={
-                                                currentCombo.includedProducts.length <= 1
-                                                    ? 'El combo debe conservar al menos un producto incluido.'
-                                                    : undefined
-                                            }
-                                            onClick={() => {
-                                                if (
-                                                    window.confirm(
-                                                        `¿Quitar “${item.product.name}” de los productos incluidos?`,
-                                                    )
-                                                )
-                                                    actions.removeIncluded.mutate(
-                                                        { comboId: combo!.id, includedId: item.id },
-                                                        {
-                                                            onError: (error) =>
-                                                                notify.error({
-                                                                    title: 'No se pudo quitar el producto',
-                                                                    description:
-                                                                        friendlyError(error),
-                                                                }),
-                                                        },
-                                                    )
-                                            }}
-                                            className="grid size-8 place-items-center rounded-md text-[#78869B] hover:bg-[#FDECEC] hover:text-[#B42318]"
-                                            >
-                                                <X className="size-4" />
-                                            </button>
-                                        </div>
-                                        <div className="w-full">
-                                            <RecipeDisclosure
-                                                target={{ kind: 'products', id: item.productId }}
-                                                label={item.product.name}
-                                            />
-                                        </div>
-                                    </div>
+                                    )
                                 })}
                             </div>
                             {currentCombo.includedProducts.length === 0 && (
@@ -1452,14 +1627,31 @@ export function ComboManagerModal({
                                 <span className="mt-1 flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-[#BFCDE1] bg-[#FAFCFF] p-2.5 hover:border-[#2451C5]">
                                     <span className="grid size-12 shrink-0 place-items-center overflow-hidden rounded-lg bg-[#EAF0FF] text-[#2451C5]">
                                         {imagePreview || imageUrl ? (
-                                            <img src={imagePreview || imageUrl} alt="Vista previa del combo" className="h-full w-full object-cover" />
-                                        ) : <ImagePlus className="size-5" />}
+                                            <img
+                                                src={imagePreview || imageUrl}
+                                                alt="Vista previa del combo"
+                                                className="h-full w-full object-cover"
+                                            />
+                                        ) : (
+                                            <ImagePlus className="size-5" />
+                                        )}
                                     </span>
                                     <span className="text-left">
-                                        <span className="block text-sm font-semibold text-[#243556]">{imagePreview || imageUrl ? 'Cambiar imagen' : 'Seleccionar imagen'}</span>
-                                        <span className="block text-xs font-normal text-[#8996A9]">JPG, PNG o WebP · máximo 5 MB</span>
+                                        <span className="block text-sm font-semibold text-[#243556]">
+                                            {imagePreview || imageUrl
+                                                ? 'Cambiar imagen'
+                                                : 'Seleccionar imagen'}
+                                        </span>
+                                        <span className="block text-xs font-normal text-[#8996A9]">
+                                            JPG, PNG o WebP · máximo 5 MB
+                                        </span>
                                     </span>
-                                    <input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" onChange={(event) => selectImage(event.target.files?.[0])} />
+                                    <input
+                                        type="file"
+                                        accept="image/png,image/jpeg,image/webp"
+                                        className="sr-only"
+                                        onChange={(event) => selectImage(event.target.files?.[0])}
+                                    />
                                 </span>
                             </label>
                         </section>
@@ -1485,7 +1677,10 @@ export function ComboManagerModal({
                                         (id) => !included.includes(id),
                                     )}
                                     onToggle={(id) => {
-                                        if (!included.includes(id) && included.length >= COMBO_INCLUDED_PRODUCTS_MAX) {
+                                        if (
+                                            !included.includes(id) &&
+                                            included.length >= COMBO_INCLUDED_PRODUCTS_MAX
+                                        ) {
                                             setCreateError({
                                                 title: 'Llegaste al máximo de productos',
                                                 description: `Un combo puede incluir hasta ${COMBO_INCLUDED_PRODUCTS_MAX} productos obligatorios.`,
@@ -1496,7 +1691,8 @@ export function ComboManagerModal({
                                         toggle(included, id, (productIds) => {
                                             setIncluded(productIds)
                                             setIncludedQuantities((current) => {
-                                                if (productIds.includes(id)) return { ...current, [id]: current[id] ?? 1 }
+                                                if (productIds.includes(id))
+                                                    return { ...current, [id]: current[id] ?? 1 }
                                                 const next = { ...current }
                                                 delete next[id]
                                                 return next
@@ -1507,16 +1703,68 @@ export function ComboManagerModal({
                             </div>
                             {included.length > 0 && (
                                 <div className="mt-3 space-y-2 rounded-xl border border-[#DCE5F3] bg-[#FBFCFE] p-3">
-                                    <p className="text-xs font-bold uppercase tracking-[.08em] text-[#65738A]">Cantidad de cada producto</p>
+                                    <p className="text-xs font-bold uppercase tracking-[.08em] text-[#65738A]">
+                                        Cantidad de cada producto
+                                    </p>
                                     {included.map((id) => {
                                         const quantity = includedQuantities[id] ?? 1
                                         const atProductLimit = quantity >= 10
-                                        return <div key={id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-white px-3 py-2"><span className="min-w-0 truncate text-sm font-semibold text-[#243556]">{products.find((item) => item.id === id)?.name}</span><div className="flex items-center gap-2"><button type="button" aria-label={`Disminuir cantidad de ${products.find((item) => item.id === id)?.name ?? 'producto'}`} onClick={() => setIncludedQuantities((current) => ({ ...current, [id]: Math.max(1, quantity - 1) }))} className="grid size-8 place-items-center rounded-lg border border-[#D7E1EF] text-[#53647D]">−</button><span data-testid={`combo-included-quantity-${id}`} className={`min-w-6 text-center text-sm font-bold ${atProductLimit ? 'text-[#B42318]' : 'text-[#243556]'}`}>{quantity}</span><button type="button" aria-label={`Aumentar cantidad de ${products.find((item) => item.id === id)?.name ?? 'producto'}`} disabled={atProductLimit} onClick={() => setIncludedQuantities((current) => ({ ...current, [id]: Math.min(10, quantity + 1) }))} className={`grid size-8 place-items-center rounded-lg border text-sm font-bold ${atProductLimit ? 'cursor-not-allowed border-[#F3C2BD] text-[#B42318]' : 'border-[#D7E1EF] text-[#2451C5]'}`}>+</button></div><div className="w-full"><RecipeDisclosure target={{ kind: 'products', id }} label={products.find((item) => item.id === id)?.name ?? 'producto'} /></div></div>
+                                        return (
+                                            <div
+                                                key={id}
+                                                className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-white px-3 py-2"
+                                            >
+                                                <span className="min-w-0 truncate text-sm font-semibold text-[#243556]">
+                                                    {products.find((item) => item.id === id)?.name}
+                                                </span>
+                                                <div className="flex items-center gap-2">
+                                                    <button
+                                                        type="button"
+                                                        aria-label={`Disminuir cantidad de ${products.find((item) => item.id === id)?.name ?? 'producto'}`}
+                                                        onClick={() =>
+                                                            setIncludedQuantities((current) => ({
+                                                                ...current,
+                                                                [id]: Math.max(1, quantity - 1),
+                                                            }))
+                                                        }
+                                                        className="pedilo-squish grid size-8 place-items-center rounded-lg border border-[#D7E1EF] text-[#53647D]"
+                                                    >
+                                                        −
+                                                    </button>
+                                                    <QtyNumber
+                                                        data-testid={`combo-included-quantity-${id}`}
+                                                        className={`min-w-6 text-center text-sm font-bold ${atProductLimit ? 'text-[#B42318]' : 'text-[#243556]'}`}
+                                                        value={quantity}
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        aria-label={`Aumentar cantidad de ${products.find((item) => item.id === id)?.name ?? 'producto'}`}
+                                                        disabled={atProductLimit}
+                                                        onClick={() =>
+                                                            setIncludedQuantities((current) => ({
+                                                                ...current,
+                                                                [id]: Math.min(10, quantity + 1),
+                                                            }))
+                                                        }
+                                                        className={`pedilo-squish grid size-8 place-items-center rounded-lg border text-sm font-bold ${atProductLimit ? 'cursor-not-allowed border-[#F3C2BD] text-[#B42318]' : 'border-[#D7E1EF] text-[#2451C5]'}`}
+                                                    >
+                                                        +
+                                                    </button>
+                                                </div>
+                                                <div className="w-full">
+                                                    <RecipeDisclosure
+                                                        target={{ kind: 'products', id }}
+                                                        label={products.find((item) => item.id === id)?.name ?? 'producto'}
+                                                    />
+                                                </div>
+                                            </div>
+                                        )
                                     })}
                                 </div>
                             )}
                             <p className="text-right text-xs text-[#8996A9]">
-                                {included.length}/{COMBO_INCLUDED_PRODUCTS_MAX} productos seleccionados
+                                {included.length}/{COMBO_INCLUDED_PRODUCTS_MAX} productos
+                                seleccionados
                             </p>
                             {included.length >= COMBO_INCLUDED_PRODUCTS_MAX && (
                                 <p
@@ -1716,7 +1964,8 @@ export function ComboManagerModal({
                                     {included.length ? (
                                         included.map((id) => (
                                             <p key={id} className="mt-1 text-sm text-[#53617A]">
-                                                {includedQuantities[id] ?? 1}× {products.find((item) => item.id === id)?.name}
+                                                {includedQuantities[id] ?? 1}×{' '}
+                                                {products.find((item) => item.id === id)?.name}
                                             </p>
                                         ))
                                     ) : (
@@ -1802,102 +2051,6 @@ export function ComboManagerModal({
                             )}
                         </div>
                     )}
-                    <footer className="mt-5 flex flex-col-reverse gap-2 border-t border-[#E8EEF6] pt-4 sm:flex-row sm:justify-between">
-                        <button
-                            type="button"
-                            className={quietButton}
-                            onClick={
-                                step
-                                    ? () => {
-                                          setCreateError(null)
-                                          setStep(step - 1)
-                                      }
-                                    : close
-                            }
-                            disabled={busy}
-                        >
-                            {step ? (
-                                <>
-                                    <ChevronLeft className="size-4" />
-                                    Anterior
-                                </>
-                            ) : (
-                                'Cancelar'
-                            )}
-                        </button>
-                        {step < 3 ? (
-                            <button
-                                type="button"
-                                className={primaryButton}
-                                onClick={() => {
-                                    const invalidImage =
-                                        imageUrl.trim() && !/^https?:\/\//i.test(imageUrl.trim())
-                                    if (
-                                        step === 0 &&
-                                        (!name.trim() ||
-                                            !isValidComboPrice(price) ||
-                                            !selectedCategoryId ||
-                                            invalidImage)
-                                    ) {
-                                        setCreateError({
-                                            title: 'Revisa los datos del combo',
-                                            description:
-                                                'Escribe un nombre, un precio válido mayor que cero con máximo dos decimales y selecciona una categoría. La imagen debe usar una URL http o https.',
-                                        })
-                                        return
-                                    }
-                                    if (
-                                        step === 2 &&
-                                        (newGroup.name.trim() || newGroup.productIds.length > 0)
-                                    ) {
-                                        setCreateError({
-                                            title: 'Completa el grupo de opciones',
-                                            description:
-                                                'Escribe un nombre y selecciona al menos dos productos. Si no quieres agregar el grupo, descarta el borrador.',
-                                        })
-                                        return
-                                    }
-                                    setCreateError(null)
-                                    setStep(step + 1)
-                                }}
-                                disabled={
-                                    (step === 0 &&
-                                        (!name.trim() ||
-                                            !isValidComboPrice(price) ||
-                                            !selectedCategoryId)) ||
-                                    (step === 1 && included.length === 0)
-                                }
-                            >
-                                <span>Continuar</span>
-                                <ChevronRight className="size-4" />
-                            </button>
-                        ) : (
-                            <button
-                                type="button"
-                                className={primaryButton}
-                                onClick={create}
-                                disabled={
-                                    busy ||
-                                    !name.trim() ||
-                                    !selectedCategoryId ||
-                                    !isValidComboPrice(price) ||
-                                    !included.length
-                                }
-                            >
-                                {actions.create.isPending ? (
-                                    <>
-                                        <LoaderCircle className="size-4 animate-spin" />
-                                        Creando combo…
-                                    </>
-                                ) : (
-                                    <>
-                                        <Check className="size-4" />
-                                        Crear combo
-                                    </>
-                                )}
-                            </button>
-                        )}
-                    </footer>
                 </div>
             )}
         </Modal>

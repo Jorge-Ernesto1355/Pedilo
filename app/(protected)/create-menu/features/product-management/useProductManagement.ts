@@ -33,12 +33,17 @@ export function useProducts() {
     })
 }
 
+// Compartido con la precarga por intención de MenuManagementPanel (prefetchMenu).
+export const productsByCategoryQueryOptions = (categoryId: string) => ({
+    queryKey: productQueryKeys.byCategory(categoryId),
+    queryFn: () => getProductsByCategory(categoryId),
+    staleTime: 5 * 60 * 1000,
+})
+
 export function useProductsByCategory(categoryId: string) {
     return useQuery({
-        queryKey: productQueryKeys.byCategory(categoryId),
-        queryFn: () => getProductsByCategory(categoryId),
+        ...productsByCategoryQueryOptions(categoryId),
         enabled: Boolean(categoryId),
-        staleTime: 5 * 60 * 1000,
     })
 }
 

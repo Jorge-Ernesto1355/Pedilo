@@ -3,6 +3,7 @@
 import { createPortal } from 'react-dom'
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
+import type { ComponentProps } from 'react'
 import Image from 'next/image'
 import { useQueryClient } from '@tanstack/react-query'
 import {
@@ -19,7 +20,7 @@ import {
     VolumeX,
 } from 'lucide-react'
 import { notify } from '@/src/lib/notifications/notify'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { useAuthStore } from '@/store/authStore'
 import { useCurrentBusiness } from '@/app/(protected)/create-menu/features/business-profile/useCurrentBusiness'
 import posthog from 'posthog-js'
@@ -27,6 +28,31 @@ import { useOrderEventsStore } from '@/store/orderEventsStore'
 import { useOpenStockAlerts } from './inventory/useInventory'
 import { getOrderSoundPreferenceKey } from './features/orders/services/orderEvents'
 import { DashboardNavSkeleton } from '@/components/AppLoadingSkeleton'
+
+// Prefetch por intención: sin precargar al entrar en el viewport; al pasar el
+// cursor, enfocar o tocar, la ruta vuelve al prefetch por defecto (hasta su loading.tsx).
+function IntentLink({ onMouseEnter, onFocus, onTouchStart, ...props }: Omit<ComponentProps<typeof Link>, 'prefetch'>) {
+    const [intent, setIntent] = useState(false)
+
+    return (
+        <Link
+            {...props}
+            prefetch={intent ? null : false}
+            onMouseEnter={(event) => {
+                setIntent(true)
+                onMouseEnter?.(event)
+            }}
+            onFocus={(event) => {
+                setIntent(true)
+                onFocus?.(event)
+            }}
+            onTouchStart={(event) => {
+                setIntent(true)
+                onTouchStart?.(event)
+            }}
+        />
+    )
+}
 
 const links = [
     { href: '/dashboard', label: 'Resumen', icon: LayoutDashboard },
@@ -52,7 +78,6 @@ function getInitials(name: string) {
 
 export function DashboardNav() {
     const pathname = usePathname()
-    const router = useRouter()
     const queryClient = useQueryClient()
     const clearUser = useAuthStore((state) => state.clearUser)
     const businessId = useAuthStore((state) => state.user?.businessId)
@@ -144,8 +169,8 @@ export function DashboardNav() {
         }
     }
 
-    const business =
-        businessQuery.isSuccess && !businessQuery.isFetching ? businessQuery.data : null
+    // Keep showing the cached business while a refresh is in flight.
+    const business = businessQuery.data ?? null
     const businessName = typeof business?.name === 'string' ? business.name.trim() : ''
     const businessLogoUrl = typeof business?.logoUrl === 'string' ? business.logoUrl.trim() : ''
     const displayedBusinessName = businessName || 'Tu negocio'
@@ -158,6 +183,7 @@ export function DashboardNav() {
                 <div className="mx-auto flex h-[85px] max-w-[1440px] items-center justify-between px-4 sm:px-8 lg:px-10">
                     <Link
                         href="/dashboard"
+                        prefetch={false}
                         className="flex items-center gap-2.5 text-4xl font-black tracking-[-.06em] text-[#12234A]"
                     >
                         <Image
@@ -183,7 +209,7 @@ export function DashboardNav() {
                             const isOrders = link.href === '/dashboard/orders'
                             const isInventory = link.href === '/dashboard/inventory'
                             return (
-                                <Link
+                                <IntentLink
                                     key={link.href}
                                     href={link.href}
                                     aria-label={
@@ -193,7 +219,6 @@ export function DashboardNav() {
                                               ? `Inventario, ${stockAlertCount} alertas`
                                               : undefined
                                     }
-                                    onMouseEnter={() => router.prefetch(link.href)}
                                     className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition ${active ? 'bg-[#EAF0FF] text-[#1E40AF]' : 'text-[#65738A] hover:bg-[#F5F8FC] hover:text-[#1E40AF]'}`}
                                 >
                                     <Icon className="size-4" />
@@ -213,7 +238,7 @@ export function DashboardNav() {
                                             <span className="sr-only"> alertas de inventario</span>
                                         </span>
                                     )}
-                                </Link>
+                                </IntentLink>
                             )
                         })}
                     </nav>
@@ -242,6 +267,7 @@ export function DashboardNav() {
                         </span>
                         <Link
                             href="/create-menu"
+                            prefetch={false}
                             className="hidden items-center gap-1.5 rounded-lg border border-[#C9D7EA] px-3 py-2 text-xs font-semibold text-[#243556] transition hover:border-[#9EB3D8] hover:bg-[#F5F8FC] hover:text-[#1E40AF] sm:inline-flex"
                         >
                             <Menu className="size-3.5" />
@@ -290,6 +316,7 @@ export function DashboardNav() {
                                     >
                                         <Link
                                             href="/create-menu"
+                                            prefetch={false}
                                             role="menuitem"
                                             onClick={() => setAccountMenuOpen(false)}
                                             className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm font-semibold text-[#243556] transition hover:bg-[#F5F8FC] hover:text-[#1E40AF] sm:hidden"
@@ -319,6 +346,7 @@ export function DashboardNav() {
                                         </button>
                                         <Link
                                             href="/dashboard/account"
+                                            prefetch={false}
                                             role="menuitem"
                                             onClick={() => setAccountMenuOpen(false)}
                                             className="flex w-full items-center rounded-lg px-3 py-2.5 text-left text-sm font-semibold text-[#243556] transition hover:bg-[#F5F8FC] hover:text-[#1E40AF]"
@@ -356,17 +384,16 @@ export function DashboardNav() {
                         const isInventory = link.href === '/dashboard/inventory'
 
                         return (
-                            <Link
+                            <IntentLink
                                 key={link.href}
                                 href={link.href}
                                 aria-label={
-                                    isOrders && unseenCount > 0
-                                        ? `Pedidos, ${unseenCount} nuevas órdenes`
-                                        : isInventory && stockAlertCount > 0
-                                          ? `Inventario, ${stockAlertCount} alertas`
-                                          : undefined
-                                }
-                                onMouseEnter={() => router.prefetch(link.href)}
+                                        isOrders && unseenCount > 0
+                                            ? `Pedidos, ${unseenCount} nuevas órdenes`
+                                            : isInventory && stockAlertCount > 0
+                                              ? `Inventario, ${stockAlertCount} alertas`
+                                              : undefined
+                                    }
                                 aria-current={active ? 'page' : undefined}
                                 className={`flex min-w-0 flex-col items-center justify-center rounded-lg text-[9px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1E40AF] focus-visible:ring-offset-2 ${isOrders ? '-translate-y-1 gap-0.5' : 'gap-0.5'} ${active ? 'text-[#1E40AF]' : 'text-[#8996A9] hover:text-[#1E40AF]'}`}
                             >
@@ -394,7 +421,7 @@ export function DashboardNav() {
                                 <span className={`truncate px-0.5 ${isOrders ? 'font-bold' : ''}`}>
                                     {link.label}
                                 </span>
-                            </Link>
+                            </IntentLink>
                         )
                     })}
                 </div>

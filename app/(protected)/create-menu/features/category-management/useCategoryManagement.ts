@@ -20,12 +20,20 @@ import {
     updateMenuStatus,
 } from './menuApi'
 import type { CategoryInput, MenuCreationInput, MenuUpdateInput } from './menu.types'
+import { productsByCategoryQueryOptions } from '../product-management/useProductManagement'
 
 export const menuQueryKeys = {
     all: ['menus'] as const,
     list: (businessId: string) => ['menus', 'list', businessId] as const,
     detail: (menuId: string) => ['menus', 'detail', menuId] as const,
 }
+
+const menuDetailQueryOptions = (menuId: string) => ({
+    queryKey: menuQueryKeys.detail(menuId),
+    queryFn: () => getMenu(menuId),
+    staleTime: 15 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+})
 
 export function useCategoryManagement() {
     const businessId = useAuthStore((state) => state.user?.businessId)
@@ -37,16 +45,36 @@ export function useCategoryManagement() {
         queryKey: menuQueryKeys.list(businessId ?? 'none'),
         queryFn: getMenus,
         enabled: Boolean(businessId),
-        staleTime: 5 * 60 * 1000,
+        staleTime: 15 * 60 * 1000,
+        gcTime: 30 * 60 * 1000,
+        refetchOnMount: false,
+        refetchOnWindowFocus: false,
+        refetchOnReconnect: false,
     })
     const menuQuery = useQuery({
-        queryKey: selectedMenuId
-            ? menuQueryKeys.detail(selectedMenuId)
-            : ['menus', 'detail', 'none'],
-        queryFn: () => getMenu(selectedMenuId as string),
+        ...menuDetailQueryOptions(selectedMenuId ?? 'none'),
         enabled: Boolean(selectedMenuId),
-        staleTime: 5 * 60 * 1000,
+        refetchOnMount: false,
+        refetchOnWindowFocus: false,
+        refetchOnReconnect: false,
     })
+
+    /**
+     * Precarga por intención (cursor encima, foco o toque) el detalle del menú y los
+     * productos de sus categorías. Al hacer clic ya no hay que esperar la cascada
+     * menú → categorías → productos. Respeta la caché: si los datos están frescos no se
+     * vuelve a pedir nada. Los errores se ignoran: el clic los reintenta y los muestra.
+     */
+    function prefetchMenu(menuId: string) {
+        void queryClient
+            .fetchQuery(menuDetailQueryOptions(menuId))
+            .then((menu) => {
+                menu.categories?.forEach((category) => {
+                    void queryClient.prefetchQuery(productsByCategoryQueryOptions(category.id))
+                })
+            })
+            .catch(() => undefined)
+    }
 
     function invalidateMenus() {
         void queryClient.invalidateQueries({ queryKey: menuQueryKeys.all })
@@ -169,6 +197,7 @@ export function useCategoryManagement() {
         selectedMenu,
         selectedMenuId,
         selectMenu: setSelectedMenuId,
+        prefetchMenu,
         menusQuery,
         menuQuery,
         isOpen,

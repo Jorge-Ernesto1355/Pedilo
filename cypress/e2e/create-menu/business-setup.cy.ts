@@ -43,17 +43,18 @@ function registerFreshOwner(email: string, password: string) {
     inspect('Sesión iniciada; create-menu cargado')
 }
 
-function stubEmptyBusiness() {
-    cy.intercept('GET', '**/api/v1/businesses/mine', {
-        statusCode: 200,
-        body: { business: null },
-    }).as('getBusiness')
+// El negocio ya no se pide desde el navegador: el layout protegido lo precarga en el
+// servidor. Un dueño recién registrado no tiene negocio, así que el estado inicial real
+// es "sin negocio". El formulario sustituye a su skeleton solo cuando el negocio está
+// confirmado, lo que ocurre después de hidratar: esperar a #businessName evita hacer
+// clic antes de que React esté listo (esos clics se pierden).
+function waitForProfileForm() {
+    cy.get('#businessName', { timeout: 15_000 }).should('be.visible')
 }
 
 function visitCreateMenu() {
-    stubEmptyBusiness()
     cy.visit('/create-menu')
-    cy.wait('@getBusiness')
+    waitForProfileForm()
     cy.contains('h1', 'Cuéntanos sobre tu negocio.').should('be.visible')
     inspect('Formulario de negocio visible')
 }
@@ -135,6 +136,18 @@ describe('Crear menú · perfil del restaurante', () => {
         visitCreateMenu()
     })
 
+    // Los tests que crean un negocio real usan su propio dueño: el de la suite debe
+    // seguir sin negocio para el resto de tests. (El negocio lo precarga el servidor,
+    // así que ya no se puede simular con un mock del navegador.)
+    function switchToFreshOwner(label: string) {
+        const suffix = `${label}-${uniqueSuffix()}`
+        const email = registerEmail.includes('@')
+            ? registerEmail.replace('@', `+${suffix}@`)
+            : `cypress-business-${suffix}@example.test`
+        cy.session(email, () => registerFreshOwner(email, registerPassword), {})
+        visitCreateMenu()
+    }
+
     it('muestra todos los campos del perfil, horario y recursos opcionales', () => {
         cy.get('#businessName').should('be.visible')
         cy.get('#slug').should('be.visible')
@@ -149,8 +162,12 @@ describe('Crear menú · perfil del restaurante', () => {
     })
 
     it('muestra el bot después de crear el primer negocio sin WhatsApp', () => {
-        const createdBusiness = businessResponse()
-        let businessCreated = false
+        switchToFreshOwner('bot')
+        const suffix = uniqueSuffix()
+        const createdBusiness = businessResponse({
+            name: `Tacos Bot ${suffix}`,
+            slug: `tacos-bot-${suffix}`.slice(0, 30),
+        })
         let settingsRequests = 0
         const emptySettings = {
             id: 'settings-first-business',
@@ -162,12 +179,6 @@ describe('Crear menú · perfil del restaurante', () => {
             timezone: 'America/Mazatlan',
         }
 
-        cy.intercept('GET', '**/api/v1/businesses/mine', (request) => {
-            request.reply({
-                statusCode: 200,
-                body: { business: businessCreated ? createdBusiness : null },
-            })
-        }).as('businessState')
         cy.intercept('GET', '**/api/v1/businesses/mine/menus', {
             statusCode: 200,
             body: { menus: [] },
@@ -176,13 +187,9 @@ describe('Crear menú · perfil del restaurante', () => {
             settingsRequests += 1
             request.reply({ statusCode: 200, body: emptySettings })
         }).as('firstBusinessSettings')
-        cy.intercept('POST', '**/api/v1/businesses', (request) => {
-            businessCreated = true
-            request.reply({ statusCode: 201, body: { business: createdBusiness } })
-        }).as('createFirstBusiness')
+        // Creación real: tras guardar, la página se refresca con el negocio del backend.
+        cy.intercept('POST', '**/api/v1/businesses').as('createFirstBusiness')
 
-        cy.reload()
-        cy.wait('@businessState')
         cy.contains(
             'Para recibir pedidos, primero crea tu negocio y después registra tu número de WhatsApp.',
         ).should('be.visible')
@@ -196,11 +203,13 @@ describe('Crear menú · perfil del restaurante', () => {
             description: createdBusiness.description,
         })
         cy.contains('button', 'Guardar cambios').click()
-        cy.wait('@createFirstBusiness').its('request.method').should('eq', 'POST')
-        cy.wait('@businessState')
+        cy.wait('@createFirstBusiness').its('response.statusCode').should('be.oneOf', [200, 201])
         cy.wait('@firstBusinessSettings')
         cy.then(() => expect(settingsRequests).to.be.greaterThan(0))
 
+        // Desde que los ajustes se cargan bajo demanda (cdb52c9), el campo aparece al
+        // pulsar "Configurar WhatsApp".
+        cy.contains('button', 'Configurar WhatsApp').click()
         cy.get('#business-whatsapp').should('be.visible').and('have.value', '')
         cy.get('aside[aria-label="Asistente de configuración"] [role="status"]', {
             timeout: 5_000,
@@ -213,62 +222,49 @@ describe('Crear menú · perfil del restaurante', () => {
     })
 
     it('después de refrescar carga el negocio existente y lo guarda como edición', () => {
-        const existingBusiness = businessResponse({
-            name: 'NEGOCIO-TEST-123',
-            slug: 'negocio-test-123',
-            description: 'Dato persistido para verificar la recuperación tras refresh.',
-            ubication: 'Zona de prueba, Culiacán',
-            logoUrl: 'https://cdn.example.test/negocio-test-logo.png',
-            coverUrl: 'https://cdn.example.test/negocio-test-cover.jpg',
-        })
+        switchToFreshOwner('existente')
+        const suffix = uniqueSuffix()
+        const name = `NEGOCIO-TEST-${suffix}`
+        const slug = `negocio-test-${suffix}`.slice(0, 30)
         let createRequests = 0
 
-        cy.intercept('GET', '**/api/v1/businesses/mine', {
-            statusCode: 200,
-            body: { business: existingBusiness },
-        }).as('getExistingBusiness')
-        cy.reload()
-        cy.wait('@getExistingBusiness')
+        // Negocio real en el backend (el servidor lo precarga; un mock ya no aplica).
+        // Las vistas previas de logo y portada no se cubren aquí: requerirían subir
+        // imágenes reales al almacenamiento.
+        cy.intercept('POST', '**/api/v1/businesses').as('createExistingBusiness')
+        fillBusinessProfile({
+            name,
+            slug,
+            location: 'Zona de prueba, Culiacán',
+            description: 'Dato persistido para verificar la recuperación tras refresh.',
+        })
+        cy.contains('button', 'Guardar cambios').click()
+        cy.wait('@createExistingBusiness')
+            .its('response.statusCode')
+            .should('be.oneOf', [200, 201])
+        cy.contains('Cambios guardados').should('be.visible')
 
-        cy.get('#businessName', { timeout: 15_000 }).should('have.value', 'NEGOCIO-TEST-123')
-        cy.get('#slug').should('have.value', 'negocio-test-123')
+        cy.reload()
+        waitForProfileForm()
+        cy.get('#businessName').should('have.value', name)
+        cy.get('#slug').should('have.value', slug)
         cy.get('#location').should('have.value', 'Zona de prueba, Culiacán')
         cy.get('#description').should(
             'have.value',
             'Dato persistido para verificar la recuperación tras refresh.',
         )
-        cy.get('img[alt="Vista previa del logo"]').should(
-            'have.attr',
-            'src',
-            'https://cdn.example.test/negocio-test-logo.png',
-        )
-        cy.get('img[alt="Vista previa de la portada"]').should(
-            'have.attr',
-            'src',
-            'https://cdn.example.test/negocio-test-cover.jpg',
-        )
-        cy.get('button[aria-label="Abrir menú de NEGOCIO-TEST-123"]')
+        cy.get(`button[aria-label="Abrir menú de ${name}"]`)
             .should('be.visible')
-            .and('contain', 'NEGOCIO-TEST-123')
-        cy.get('button[aria-label="Abrir menú de NEGOCIO-TEST-123"] span[aria-hidden="true"]')
-            .should('have.css', 'background-image')
-            .and('include', 'negocio-test-logo.png')
+            .and('contain', name)
         cy.get('input[type="file"]#business-logo').should('exist')
         cy.get('input[type="file"]#business-cover').should('exist')
         cy.get('#businessName').should('not.have.value', 'La Esquina')
-        cy.get('#description').should(
-            'not.have.value',
-            'Hamburguesas, wings y papas hechas para compartir.',
-        )
 
         cy.intercept('POST', '**/api/v1/businesses', (request) => {
             createRequests += 1
             request.continue()
         }).as('unexpectedCreate')
-        cy.intercept('PATCH', '**/api/v1/businesses/business-cypress-1', {
-            statusCode: 200,
-            body: { business: existingBusiness },
-        }).as('updateExistingBusiness')
+        cy.intercept('PATCH', '**/api/v1/businesses/*').as('updateExistingBusiness')
 
         cy.get('#description').clear().type('Descripción editada desde el negocio recuperado.')
         cy.contains('button', 'Guardar cambios').click()
@@ -277,12 +273,9 @@ describe('Crear menú · perfil del restaurante', () => {
     })
 
     it('después de refrescar muestra crear negocio solo cuando el backend confirma que no existe', () => {
-        cy.intercept('GET', '**/api/v1/businesses/mine', {
-            statusCode: 200,
-            body: { business: null },
-        }).as('confirmNoBusiness')
+        // El dueño de la suite no tiene negocio en el backend: el servidor lo confirma.
         cy.reload()
-        cy.wait('@confirmNoBusiness')
+        waitForProfileForm()
 
         cy.get('#businessName', { timeout: 15_000 }).should('have.value', 'La Esquina')
         cy.contains('button', 'Guardar cambios').should('be.visible')

@@ -217,8 +217,8 @@ describe('Crear pedido desde el catálogo público', () => {
                 cy.contains('Extras: Aguacate').should('be.visible')
                 cy.contains('Salsa extra: Salsa verde').should('be.visible')
                 cy.contains('Agua fresca').should('be.visible')
-                cy.contains('$119 c/u').should('be.visible')
-                cy.contains('$35 c/u').should('be.visible')
+                cy.contains('$119.00 c/u').should('be.visible')
+                cy.contains('$35.00 c/u').should('be.visible')
 
                 cy.get(`button[aria-label="Agregar una unidad de Agua fresca"]`).click()
                 cy.contains('button', 'Confirmar pedido')
@@ -246,14 +246,17 @@ describe('Crear pedido desde el catálogo público', () => {
         cy.wait('@createPublicOrder').then(({ request }) => {
             expect(request.body).to.deep.equal({
                 customer: { name: 'Jorge Pérez', phone: '6691234567' },
+                fulfillmentType: 'DINE_IN',
                 items: [
                     {
                         productId: tacoId,
                         quantity: 1,
+                        expectedUnitPrice: 119,
                         optionIds: [aguacateId, salsaId],
                     },
                 ],
                 notes: 'Sin cebolla',
+                expectedSubtotal: 119,
             })
         })
 

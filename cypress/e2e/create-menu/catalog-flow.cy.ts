@@ -476,7 +476,7 @@ describe('Catálogo · menú, categoría, productos y opciones', () => {
         cy.then(() => expect(counters.menu ?? 0).to.eq(0))
     })
 
-    it('limita a 100 caracteres las descripciones de menú, categoría y producto', () => {
+    it('respeta los límites de descripción: menú 200, categoría 200 y producto 100', () => {
         const state = createState()
         const counters: CreationCounters = {}
 
@@ -487,13 +487,13 @@ describe('Catálogo · menú, categoría, productos y opciones', () => {
         cy.contains('button', 'Crear menú').first().click()
         cy.get('#menu-name').type('Menú con descripciones cortas')
         cy.get('#menu-description')
-            .should('have.attr', 'maxlength', '100')
-            .type('M'.repeat(101))
-            .should('have.value', 'M'.repeat(100))
+            .should('have.attr', 'maxlength', '200')
+            .type('M'.repeat(201))
+            .should('have.value', 'M'.repeat(200))
         cy.get('[role="dialog"] button[type="submit"]').click()
         cy.wait('@createMenu')
         cy.then(() => {
-            expect(state.menu?.description).to.have.length(100)
+            expect(state.menu?.description).to.have.length(200)
             expect(counters.menu).to.eq(1)
         })
 
@@ -502,13 +502,13 @@ describe('Catálogo · menú, categoría, productos y opciones', () => {
         cy.contains('button', 'Agregar').click()
         cy.get('input[placeholder="Nombre de categoría"]').type('Categoría breve')
         cy.get('textarea[placeholder="Descripción (opcional)"]')
-            .should('have.attr', 'maxlength', '100')
-            .type('C'.repeat(101))
-            .should('have.value', 'C'.repeat(100))
+            .should('have.attr', 'maxlength', '200')
+            .type('C'.repeat(201))
+            .should('have.value', 'C'.repeat(200))
         cy.contains('button', 'Guardar categoría').click()
         cy.wait('@createCategory')
         cy.then(() => {
-            expect(state.category?.description).to.have.length(100)
+            expect(state.category?.description).to.have.length(200)
             expect(counters.category).to.eq(1)
         })
 

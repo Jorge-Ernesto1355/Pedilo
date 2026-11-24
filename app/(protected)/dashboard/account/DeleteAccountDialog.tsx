@@ -1,6 +1,6 @@
 'use client'
 
-import { motion, useReducedMotion } from 'framer-motion'
+import { motion, useReducedMotion } from 'motion/react'
 import { AlertTriangle, CheckCircle2, Database, LoaderCircle, Users } from 'lucide-react'
 import { Modal } from '@/app/components/ui/Modal'
 

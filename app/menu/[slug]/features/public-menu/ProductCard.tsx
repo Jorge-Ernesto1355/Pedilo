@@ -1,9 +1,8 @@
-/* eslint-disable @next/next/no-img-element -- Product media comes from the public API and is not configured for next/image. */
-
 'use client'
 
 import { Plus, SlidersHorizontal, Utensils } from 'lucide-react'
 import { useState } from 'react'
+import { ProgressiveImage } from '@/app/(protected)/create-menu/features/business-profile/ProgressiveImage'
 import type { PublicProduct } from './publicCatalog.types'
 import { hasAvailableOptions } from './optionGroupValidation'
 
@@ -25,18 +24,22 @@ export function ProductCard({
     }
 
     return (
-        <article data-cy="public-product-card" data-product-id={product.id} className="flex w-full gap-4 border-b border-[#E8EEF6] py-5 text-left last:border-b-0 last:pb-0 first:pt-0 sm:gap-5">
+        <article
+            data-cy="public-product-card"
+            data-product-id={product.id}
+            className="flex w-full gap-4 border-b border-[#E8EEF6] py-5 text-left last:border-b-0 last:pb-0 first:pt-0 sm:gap-5"
+        >
             <div
                 data-product-image={product.id}
-                className="grid size-24 shrink-0 place-items-center overflow-hidden rounded-xl bg-[#EEF3FF] text-[#2451C5] sm:size-28"
+                className="relative grid size-24 shrink-0 place-items-center overflow-hidden rounded-xl bg-[#EEF3FF] text-[#2451C5] sm:size-28"
             >
                 {product.imageUrl ? (
-                    <img
+                    <ProgressiveImage
                         width={112}
                         height={112}
                         src={product.imageUrl}
                         alt=""
-                        loading="lazy"
+                        sizes="112px"
                         className="h-full w-full object-cover"
                     />
                 ) : (
@@ -53,9 +56,21 @@ export function ProductCard({
                         <h3 className="font-display text-base tracking-[-.025em] text-[#12234A]">
                             {product.name}
                         </h3>
-                        {product.type === 'COMBO' && <span className="mt-1 inline-block text-xs font-semibold text-[#65738A]">Combo</span>}
+                        {product.type === 'COMBO' && (
+                            <span className="mt-1 inline-block text-xs font-semibold text-[#65738A]">
+                                Combo
+                            </span>
+                        )}
                         {product.includedProducts && product.includedProducts.length > 0 && (
-                            <p className="mt-1 text-xs leading-5 text-[#65738A]">Incluye: {product.includedProducts.map((item) => `${item.quantity && item.quantity > 1 ? `${item.quantity}× ` : ''}${item.product.name}`).join(', ')}</p>
+                            <p className="mt-1 text-xs leading-5 text-[#65738A]">
+                                Incluye:{' '}
+                                {product.includedProducts
+                                    .map(
+                                        (item) =>
+                                            `${item.quantity && item.quantity > 1 ? `${item.quantity}× ` : ''}${item.product.name}`,
+                                    )
+                                    .join(', ')}
+                            </p>
                         )}
                         {hasOptions && (
                             <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-[#2451C5]">
@@ -69,7 +84,33 @@ export function ProductCard({
                             </p>
                         )}
                     </button>
-                    <div className="shrink-0 text-right"><p className={`text-lg font-bold ${product.discount ? 'text-[#16803D]' : 'text-[#1E40AF]'}`}>${(product.priceFinal ?? product.price_final ?? product.price).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</p>{product.discount && <><p className="text-xs text-[#8996A9] line-through">${(product.priceOriginal ?? product.price_original ?? product.price).toLocaleString('es-MX', { minimumFractionDigits: 2 })}</p><span className="text-[10px] font-bold text-[#16803D]">{product.discount.label}</span></>}</div>
+                    <div className="shrink-0 text-right">
+                        <p
+                            className={`text-lg font-bold ${product.discount ? 'text-[#16803D]' : 'text-[#1E40AF]'}`}
+                        >
+                            $
+                            {(
+                                product.priceFinal ??
+                                product.price_final ??
+                                product.price
+                            ).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                        </p>
+                        {product.discount && (
+                            <>
+                                <p className="text-xs text-[#8996A9] line-through">
+                                    $
+                                    {(
+                                        product.priceOriginal ??
+                                        product.price_original ??
+                                        product.price
+                                    ).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                                </p>
+                                <span className="text-[10px] font-bold text-[#16803D]">
+                                    {product.discount.label}
+                                </span>
+                            </>
+                        )}
+                    </div>
                 </div>
                 <button
                     type="button"

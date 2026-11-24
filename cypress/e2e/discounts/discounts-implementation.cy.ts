@@ -217,8 +217,10 @@ describe('Descuentos · implementación en menú público', () => {
 
         createDiscount('PRODUCTS', ['Hamburguesa Cypress'], ['product-burger-implementation-e2e'], { type: 'PERCENT', value: 5 }, (discount) => createdDiscounts.unshift(discount))
         cy.wait('@trackedDiscounts')
+        openDiscountDialog()
         createDiscount('CATEGORIES', ['Comidas Cypress'], ['category-food-implementation-e2e'], { type: 'PERCENT', value: 10 }, (discount) => createdDiscounts.unshift(discount))
         cy.wait('@trackedDiscounts')
+        openDiscountDialog()
         createDiscount('MENU', ['Menú completo Cypress'], ['menu-implementation-e2e'], { type: 'PERCENT', value: 15 }, (discount) => createdDiscounts.unshift(discount))
         cy.wait('@trackedDiscounts')
 

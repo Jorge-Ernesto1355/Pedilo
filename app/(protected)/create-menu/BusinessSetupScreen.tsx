@@ -34,6 +34,9 @@ import { BusinessPreviewSkeleton, CreateMenuPageSkeleton } from './components/Cr
 import Link from 'next/link'
 import { CreateMenuErrorState } from './components/CreateMenuStates'
 import { DeferredPaymentCard } from './features/payment-card/DeferredPaymentCard'
+import { DeferredDeliverySettings } from './features/delivery-settings/DeferredDeliverySettings'
+import { DeferredLoyaltySettings } from './features/loyalty/DeferredLoyaltySettings'
+import { useQueryClient } from '@tanstack/react-query'
 import { DiscountsPanel } from './features/discounts/DiscountsPanel'
 import { GlobalOptionGroupsPanel } from './features/option-management/GlobalOptionGroupsPanel'
 import {
@@ -140,6 +143,7 @@ export default function BusinessSetupScreen({
     const saveProfile = useSaveBusinessProfile()
     const location = useBusinessLocation(profile.coordinates ?? null)
     const businessQuery = useCurrentBusiness()
+    const queryClient = useQueryClient()
     const businessConfirmed = businessQuery.isSuccess && !businessQuery.isFetching
     const hydratedBusinessId = useRef<string | null>(null)
     const { getValues, reset } = form
@@ -226,6 +230,14 @@ export default function BusinessSetupScreen({
         location.saveLocation(coordinates)
     }
 
+    // "Envío a domicilio" guarda la misma ubicación del negocio: se sincroniza el perfil
+    // (sin marcarlo como modificado) para que un guardado posterior no la sobrescriba.
+    function handleDeliveryOriginSaved(coordinates: LocationCoordinates) {
+        form.setValue('coordinates', coordinates)
+        location.saveLocation(coordinates)
+        void queryClient.invalidateQueries({ queryKey: ['business', 'mine'] })
+    }
+
     function handleLocationSelect(locationText: string, coordinates: LocationCoordinates) {
         form.setValue('location', locationText, { shouldDirty: true, shouldValidate: true })
         handleLocationSave(coordinates)
@@ -296,7 +308,10 @@ export default function BusinessSetupScreen({
         )
     }
 
-    if (businessQuery.isLoading || categories.menusQuery.isLoading) {
+    // Solo el negocio decide si se puede mostrar el formulario (crear o editar). Los
+    // menús ya no bloquean la página: MenuManagementPanel muestra su propio skeleton
+    // mientras llegan, y el perfil y la vista previa se pueden usar desde el inicio.
+    if (businessQuery.isLoading) {
         return <CreateMenuPageSkeleton />
     }
 
@@ -442,14 +457,23 @@ export default function BusinessSetupScreen({
                                 isBusinessReady={businessConfirmed}
                                 isNewBusiness={isNewBusinessCreated}
                             />
-                            <DeferredPaymentCard business={businessQuery.data ?? undefined} />
-                            <DiscountsPanel
-                                businessId={businessQuery.data?.id}
-                                menus={categories.menus}
-                                menusLoading={categories.menusQuery.isLoading}
-                                menusError={categories.menusQuery.isError}
-                                onRetryMenus={() => void categories.menusQuery.refetch()}
-                            />
+                            {businessQuery.data && (
+                                <>
+                                    <DeferredPaymentCard business={businessQuery.data} />
+                                    <DeferredLoyaltySettings business={businessQuery.data} />
+                                    <DeferredDeliverySettings
+                                        locationText={profile.location}
+                                        onOriginSaved={handleDeliveryOriginSaved}
+                                    />
+                                    <DiscountsPanel
+                                        businessId={businessQuery.data.id}
+                                        menus={categories.menus}
+                                        menusLoading={categories.menusQuery.isLoading}
+                                        menusError={categories.menusQuery.isError}
+                                        onRetryMenus={() => void categories.menusQuery.refetch()}
+                                    />
+                                </>
+                            )}
                         </div>
                     </div>
                 </div>

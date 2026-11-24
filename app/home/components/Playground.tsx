@@ -2,8 +2,9 @@
 
 'use client'
 
+import { QtyNumber } from '@/app/components/ui/QtyNumber'
 import { useEffect, useMemo, useState } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion } from 'motion/react'
 import {
     ArrowLeft,
     ArrowRight,
@@ -54,9 +55,9 @@ function ProductPhoto({ product }: { product: Product }) {
 function QuantityControl({ quantity, onDecrease, onIncrease }: { quantity: number; onDecrease: () => void; onIncrease: () => void }) {
     return (
         <div className="inline-flex items-center gap-1 rounded-lg border border-[#DCE4F2] bg-white p-1" aria-label={`Cantidad: ${quantity}`}>
-            <button type="button" onClick={onDecrease} aria-label="Disminuir cantidad" className="grid size-7 place-items-center rounded-md text-[#53617A] transition hover:bg-[#EEF3FF] hover:text-[#1E40AF]"><Minus className="size-3.5" /></button>
-            <span className="min-w-5 text-center text-xs font-bold text-[#172554]">{quantity}</span>
-            <button type="button" onClick={onIncrease} aria-label="Aumentar cantidad" className="grid size-7 place-items-center rounded-md bg-[#1E40AF] text-white transition hover:bg-[#19368F]"><Plus className="size-3.5" /></button>
+            <button type="button" onClick={onDecrease} aria-label="Disminuir cantidad" className="pedilo-squish grid size-7 place-items-center rounded-md text-[#53617A] transition hover:bg-[#EEF3FF] hover:text-[#1E40AF]"><Minus className="size-3.5" /></button>
+            <QtyNumber className="min-w-5 text-center text-xs font-bold text-[#172554]" value={quantity} />
+            <button type="button" onClick={onIncrease} aria-label="Aumentar cantidad" className="pedilo-squish grid size-7 place-items-center rounded-md bg-[#1E40AF] text-white transition hover:bg-[#19368F]"><Plus className="size-3.5" /></button>
         </div>
     )
 }

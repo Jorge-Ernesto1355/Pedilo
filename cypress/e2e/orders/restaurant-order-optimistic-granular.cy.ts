@@ -105,7 +105,7 @@ function openAndFillOrder() {
             cy.contains('button', 'Agregar al carrito').click()
             cy.get('button[aria-label="Agregar una unidad de Hamburguesa optimista"]').click()
             cy.contains('button', 'Continuar').click()
-            cy.get('input[autocomplete="name"]').type('Cliente optimista')
+            cy.get('input[role="combobox"][aria-controls="customer-suggestions"]').type('Cliente optimista')
             cy.get('input[autocomplete="tel"]').type('6681234567')
             cy.get('#restaurant-order-notes').type('Sin cebolla y con salsa aparte')
         })

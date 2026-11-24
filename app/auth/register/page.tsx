@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, type FormEvent } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence } from 'motion/react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { registerSchema } from '@/app/auth/lib/validation'

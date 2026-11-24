@@ -1,5 +1,9 @@
 'use client'
 
+// El CSS de Leaflet vive aquí (no en el layout raíz): este componente se carga con
+// dynamic(), así que solo se descarga cuando se abre el selector de ubicación.
+import 'leaflet/dist/leaflet.css'
+import 'leaflet-defaulticon-compatibility/dist/leaflet-defaulticon-compatibility.css'
 import 'leaflet-defaulticon-compatibility'
 import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from 'react-leaflet'
 import type { LatLngExpression, LeafletMouseEvent } from 'leaflet'

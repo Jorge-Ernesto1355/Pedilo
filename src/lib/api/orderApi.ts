@@ -3,6 +3,7 @@ import { apiClient } from './client'
 import { publicApiClient } from './publicClient'
 import type {
     CreateOrderPayload,
+    OrderDispatch,
     CreateRestaurantOrderPayload,
     Customer,
     CustomerPayload,
@@ -86,6 +87,45 @@ export function updateOrderStatus(orderId: string, status: OrderStatus) {
             credentials,
         ),
     ).then((body) => body.order)
+}
+/** "Buscar repartidor" (o "compartir de nuevo": token nuevo, el link anterior deja de servir). */
+export function createDeliveryOffer(orderId: string) {
+    return request(() =>
+        apiClient.post<{ delivery: Pick<OrderDispatch, 'status'>; offerToken: string }>(
+            `/businesses/orders/${orderId}/delivery`,
+            {},
+            credentials,
+        ),
+    )
+}
+/** Quita la entrega al repartidor que la tomó y la vuelve a publicar con un token nuevo. */
+export function releaseDelivery(orderId: string) {
+    return request(() =>
+        apiClient.post<{ delivery: Pick<OrderDispatch, 'status'>; offerToken: string }>(
+            `/businesses/orders/${orderId}/delivery/release`,
+            {},
+            credentials,
+        ),
+    )
+}
+/** "Entregado al repartidor": la entrega pasa a recogida y el pedido a "En camino". */
+export function handOffDelivery(orderId: string) {
+    return request(() =>
+        apiClient.post<{ order: { status: OrderStatus; statusRevision: number } }>(
+            `/businesses/orders/${orderId}/delivery/handoff`,
+            {},
+            credentials,
+        ),
+    )
+}
+export function confirmOrderTransfer(orderId: string) {
+    return request(() =>
+        apiClient.patch<{ transferConfirmedAt: string }>(
+            `/businesses/orders/${orderId}/transfer-received`,
+            {},
+            credentials,
+        ),
+    )
 }
 export function updateOrder(orderId: string, payload: UpdateOrderPayload) {
     return request(() =>

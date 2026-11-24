@@ -55,10 +55,25 @@ export function SalesKpiCard({
     }
 
     if (isLoading || !data) {
+        // Misma estructura que la tarjeta cargada: las etiquetas se ven de inmediato,
+        // solo las cifras esperan, y la tarjeta no cambia de alto al llegar los datos.
         return (
-            <SalesCardShell>
+            <SalesCardShell busy>
                 <SalesCardHeader />
-                <p className="mt-8 h-12 w-44 animate-pulse rounded-lg bg-[#DCE5F3]" />
+                <p className="mt-7 text-sm font-medium text-[#65738A]">Ganancias del periodo</p>
+                <span className="mt-1 block h-10 w-52 animate-pulse rounded-lg bg-[#DCE5F3] sm:h-12" />
+                <div className="mt-6 flex items-center gap-2 border-t border-[#DCE5F3] pt-5">
+                    <span className="size-8 shrink-0 animate-pulse rounded-lg bg-[#EEF2F7]" />
+                    <span className="h-8 w-48 animate-pulse rounded-lg bg-[#EEF2F7]" />
+                </div>
+                <HistoricalSalesSummary
+                    data={historicalData}
+                    currency={currency}
+                    isLoading={historicalIsLoading}
+                    isError={historicalIsError}
+                    isRetrying={historicalIsRetrying}
+                    onRetry={onHistoricalRetry}
+                />
             </SalesCardShell>
         )
     }
@@ -189,7 +204,11 @@ function HistoricalSalesSummary({
                     <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-white text-[#315FE8] shadow-[0_3px_8px_rgb(36_81_197_/_0.08)]">
                         <History className="size-4" aria-hidden="true" />
                     </span>
-                    <span className="h-4 w-28 animate-pulse rounded bg-[#D5E1F2]" />
+                    {/* Dos líneas como el estado cargado (título + pedidos) para no mover el layout. */}
+                    <span className="min-w-0">
+                        <span className="block h-4 w-28 animate-pulse rounded bg-[#D5E1F2]" />
+                        <span className="mt-0.5 block h-[16.5px] w-36 animate-pulse rounded bg-[#E3EBF7]" />
+                    </span>
                     <span className="ml-auto h-5 w-24 animate-pulse rounded bg-[#D5E1F2]" />
                 </div>
             ) : (
@@ -212,9 +231,12 @@ function HistoricalSalesSummary({
     )
 }
 
-function SalesCardShell({ children }: { children: ReactNode }) {
+function SalesCardShell({ children, busy = false }: { children: ReactNode; busy?: boolean }) {
     return (
-        <div className="h-full rounded-2xl border border-[#DCE5F3] bg-white p-6 shadow-[0_8px_22px_rgb(20_48_105_/_0.055)] sm:p-7">
+        <div
+            aria-busy={busy || undefined}
+            className="h-full rounded-2xl border border-[#DCE5F3] bg-white p-6 shadow-[0_8px_22px_rgb(20_48_105_/_0.055)] sm:p-7"
+        >
             {children}
         </div>
     )

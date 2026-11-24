@@ -22,6 +22,8 @@ export function MenuHeader({ business }: { business: PublicBusiness }) {
                         src={business.coverUrl}
                         placeholderSrc={business.coverBlurUrl}
                         alt={`Portada de ${business.name}`}
+                        priority
+                        sizes="(min-width: 1024px) 1024px, 100vw"
                         className="h-full w-full object-cover"
                     />
                 ) : (
@@ -31,12 +33,13 @@ export function MenuHeader({ business }: { business: PublicBusiness }) {
             </div>
             <div className="px-5 pb-6 sm:px-7 sm:pb-8">
                 <div className="relative z-10">
-                    <div className="-mt-10 grid size-20 place-items-center overflow-hidden rounded-full border-4 border-white bg-[#E8EEFF] text-[#2451C5] shadow-md sm:size-24">
+                    <div className="relative -mt-10 grid size-20 place-items-center overflow-hidden rounded-full border-4 border-white bg-[#E8EEFF] text-[#2451C5] shadow-md sm:size-24">
                         {business.logoUrl ? (
                             <ProgressiveImage
                                 src={business.logoUrl}
                                 placeholderSrc={business.logoBlurUrl}
                                 alt={`Logo de ${business.name}`}
+                                sizes="96px"
                                 className="h-full w-full object-cover"
                             />
                         ) : (

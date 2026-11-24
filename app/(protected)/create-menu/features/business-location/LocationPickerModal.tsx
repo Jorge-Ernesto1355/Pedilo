@@ -28,6 +28,8 @@ type LocationPickerModalProps = {
     coordinates: LocationCoordinates | null
     onClose: () => void
     onSave: (coordinates: LocationCoordinates) => void
+    /** Texto junto a los botones. Por defecto el del perfil del negocio. */
+    saveHint?: string
 }
 
 type LocationForm = { latitude: string; longitude: string }
@@ -58,6 +60,7 @@ export function LocationPickerModal({
     coordinates,
     onClose,
     onSave,
+    saveHint = 'El pin final se guardará con este perfil.',
 }: LocationPickerModalProps) {
     const initial = coordinates ?? defaultCoordinates
     const [draft, setDraft] = useState<LocationCoordinates>(initial)
@@ -139,7 +142,7 @@ export function LocationPickerModal({
                 <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
                     <p className="mr-auto flex items-center gap-1.5 text-xs text-[#8996A9]">
                         <LocateFixed className="size-3.5" />
-                        El pin final se guardará con este perfil.
+                        {saveHint}
                     </p>
                     <button
                         type="button"

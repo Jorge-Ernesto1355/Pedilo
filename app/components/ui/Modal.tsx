@@ -1,6 +1,6 @@
 'use client'
 
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion } from 'motion/react'
 import { X } from 'lucide-react'
 import { useEffect, useId, useRef, type ReactNode } from 'react'
 
@@ -77,7 +77,7 @@ export function Modal({
         <AnimatePresence>
             {open && (
                 <motion.div
-                    className="fixed inset-0 z-[200] flex items-end justify-center overflow-y-auto bg-[#0B1730]/35 p-0 pb-[calc(64px+env(safe-area-inset-bottom))] backdrop-blur-[3px] sm:items-center sm:p-6"
+                    className="fixed inset-0 z-[200] flex items-end justify-center overflow-y-auto bg-[#0B1730]/35 p-0 pb-[var(--mobile-nav-h)] backdrop-blur-[3px] sm:items-center sm:p-6 sm:pb-[calc(var(--mobile-nav-h)+1.5rem)]"
                     role="presentation"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -93,7 +93,7 @@ export function Modal({
                         aria-labelledby={titleId}
                         aria-describedby={description ? descriptionId : undefined}
                         data-testid={testId}
-                        className={`flex max-h-[calc(100svh-64px-env(safe-area-inset-bottom)-0.5rem)] w-full min-h-0 flex-col overflow-hidden rounded-t-[24px] border border-[#DCE5F3] bg-white shadow-[0_28px_90px_-34px_rgba(13,36,87,.4)] sm:max-h-[calc(100svh-3rem)] sm:rounded-[24px] ${size === 'xl' ? 'max-w-5xl' : size === 'lg' ? 'max-w-2xl' : 'max-w-md'}`}
+                        className={`flex max-h-[calc(100svh-var(--mobile-nav-h)-0.5rem)] w-full min-h-0 flex-col overflow-hidden rounded-t-[24px] border border-[#DCE5F3] bg-white shadow-[0_28px_90px_-34px_rgba(13,36,87,.4)] sm:max-h-[calc(100svh-var(--mobile-nav-h)-3rem)] sm:rounded-[24px] ${size === 'xl' ? 'max-w-5xl' : size === 'lg' ? 'max-w-2xl' : 'max-w-md'}`}
                         initial={{ opacity: 0, y: 20, scale: 0.98 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 12, scale: 0.98 }}

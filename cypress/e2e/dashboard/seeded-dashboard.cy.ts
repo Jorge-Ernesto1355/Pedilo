@@ -1,3 +1,8 @@
+import { visitViaClientNavigation } from '../../support/clientNavigation'
+import { revealDashboardModules } from '../../support/deferredModules'
+// Las cifras de "Hoy" llegan del servidor en una carga completa; para inspeccionar la
+// respuesta del backend se entra a la página por navegación interna.
+
 type Period = 'today' | '7d' | '30d' | 'thisMonth'
 
 type SeedManifest = {
@@ -103,7 +108,7 @@ describe('Dashboard · datos históricos sembrados', () => {
 
     it('recalcula ventas, ticket y tendencia por periodo', () => {
         installDashboardSpies()
-        cy.visit('/dashboard/sales')
+        visitViaClientNavigation('/dashboard/sales')
         loadManifest().then((manifest) => {
             assertSalesPeriod('today', manifest)
             ;(['7d', '30d', 'thisMonth'] as Period[]).forEach((period) => {
@@ -116,7 +121,7 @@ describe('Dashboard · datos históricos sembrados', () => {
     it('excluye cancelados de ventas y conserva los estados en pedidos', () => {
         cy.intercept('GET', '**/api/v1/dashboard/sales*').as('dashboardSales')
         cy.intercept('GET', '**/businesses/*/orders*').as('orders')
-        cy.visit('/dashboard')
+        visitViaClientNavigation('/dashboard')
         loadManifest().then((manifest) => {
             cy.wait('@dashboardSales').then(({ response }) => {
                 const expected = manifest.expected.today
@@ -126,14 +131,15 @@ describe('Dashboard · datos históricos sembrados', () => {
                     manifest.orders.filter((order) => order.status === 'CANCELLED').length,
                 ).to.be.greaterThan(0)
             })
-            cy.wait('@orders').then(({ response }) => {
-                expect(response?.statusCode).to.be.oneOf([200, 304])
-                expect(response?.body.orders).to.be.an('array')
-            })
+        })
+        // "Pedidos recientes" es un módulo diferido: pide las órdenes al entrar al viewport.
+        revealDashboardModules()
+        cy.wait('@orders').then(({ response }) => {
+            expect(response?.statusCode).to.be.oneOf([200, 304])
+            expect(response?.body.orders).to.be.an('array')
         })
         cy.contains('h2', 'Cómo te fue').should('be.visible')
         cy.contains('h2', 'Lo más vendido').should('be.visible')
-        cy.contains('h2', 'Cómo va tu negocio').should('be.visible')
         cy.contains('h2', 'Pedidos recientes').should('be.visible')
     })
 

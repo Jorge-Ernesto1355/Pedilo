@@ -6,14 +6,17 @@ export function CategoryTabs({
     categories,
     activeCategory,
     onChange,
+    stickyOnMobile = true,
 }: {
     categories: PublicCategory[]
     activeCategory: string
     onChange: (categoryId: string) => void
+    /** false: la barra queda en su sitio al hacer scroll en pantallas chicas (sigue fija desde sm). */
+    stickyOnMobile?: boolean
 }) {
     return (
         <nav
-            className="sticky top-3 z-20 -mx-1 overflow-x-auto rounded-xl border border-[#DCE5F3] bg-white/95 p-1 shadow-[0_8px_22px_rgb(20_48_105_/_0.08)] backdrop-blur"
+            className={`${stickyOnMobile ? 'sticky top-3 z-20' : 'sm:sticky sm:top-3 sm:z-20'} -mx-1 overflow-x-auto rounded-xl border border-[#DCE5F3] bg-white/95 p-1 shadow-[0_8px_22px_rgb(20_48_105_/_0.08)] backdrop-blur`}
             aria-label="Categorías del menú"
         >
             <div className="flex min-w-max gap-1">

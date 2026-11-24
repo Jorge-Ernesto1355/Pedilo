@@ -14,6 +14,8 @@ const statusCopy: Record<Order['status'], { label: string; color: string }> = {
     ready: { label: '¡Lista!', color: 'bg-[#39A86B]' },
     pending: { label: 'Pendiente', color: 'bg-[#D59A21]' },
     preparing: { label: 'En preparación', color: 'bg-[#315FE8]' },
+    out_for_delivery: { label: 'En camino', color: 'bg-[#1497A1]' },
+    delivered: { label: 'Entregada', color: 'bg-[#23794A]' },
     cancelled: { label: 'Cancelada', color: 'bg-[#C94B4B]' },
 }
 

@@ -1,3 +1,5 @@
+// Datos usados por los mocks de ajustes y Google Reviews. El negocio en sí ya no se
+// mockea: el servidor lo precarga (layout protegido) y la cuenta seed tiene uno real.
 const business = {
     id: 'business-actions-e2e',
     name: 'Restaurante de prueba',
@@ -22,10 +24,6 @@ function installBusinessMocks() {
         address: null,
         timezone: 'America/Mazatlan',
     }
-    cy.intercept('GET', '**/api/v1/businesses/mine', {
-        statusCode: 200,
-        body: { business },
-    })
     cy.intercept('GET', '**/api/v1/businesses/mine/menus', {
         statusCode: 200,
         body: { menus: [] },
@@ -65,7 +63,10 @@ describe('Crear menú · acciones de negocio', () => {
         })
         installBusinessMocks()
         cy.visit('/create-menu')
-        cy.wait('@businessSettings')
+        // La página llega renderizada desde el servidor: hay que esperar a que React
+        // hidrate antes de hacer clic (un clic previo a la hidratación se pierde). El
+        // formulario se rellena con el negocio en un efecto, después de hidratar.
+        cy.get('#businessName').should('not.have.value', '')
     })
 
     it('muestra las tres acciones y conserva la configuración general sin WhatsApp', () => {
@@ -74,8 +75,12 @@ describe('Crear menú · acciones de negocio', () => {
             cy.contains('h3', 'Google Reviews').should('be.visible')
             cy.contains('h3', 'WhatsApp').should('be.visible')
         })
+        // "Nueva orden" se oculta hasta que el negocio tiene WhatsApp, así que los
+        // ajustes se leen una vez al cargar; el modal reutiliza esa caché.
+        cy.wait('@businessSettings')
         cy.contains('button', 'Configurar').click()
         cy.get('[role="dialog"]').should('be.visible')
+        cy.get('@businessSettings.all').should('have.length', 1)
         cy.get('#settings-currency').should('be.visible')
         cy.get('#settings-phone').should('be.visible')
         cy.get('#settings-timezone').should('be.visible')
@@ -99,6 +104,8 @@ describe('Crear menú · acciones de negocio', () => {
         const welcomeMessage =
             '¡Hola! 👋 Antes de recibir pedidos, necesitas registrar tu número de WhatsApp para que podamos enviártelos.'
 
+        cy.contains('button', 'Configurar WhatsApp').click()
+        cy.wait('@businessSettings')
         cy.get('aside[aria-label="Asistente de configuración"] [role="status"]', {
             timeout: 5_000,
         })
@@ -125,6 +132,8 @@ describe('Crear menú · acciones de negocio', () => {
 
     it('valida antes del PATCH y persiste los 10 dígitos que espera el backend', () => {
         cy.get('#whatsapp-card').should('be.visible')
+        cy.contains('button', 'Configurar WhatsApp').click()
+        cy.wait('@businessSettings')
         cy.get('#business-whatsapp', { timeout: 15_000 }).should('be.visible')
         // Freeze the onboarding/success timers only after settings have rendered.
         cy.clock().as('businessActionsClock')
@@ -184,6 +193,7 @@ describe('Crear menú · acciones de negocio', () => {
             },
         }).as('persistedBusinessSettings')
         cy.reload()
+        cy.contains('button', 'Configurar WhatsApp').click()
         cy.wait('@persistedBusinessSettings')
             .its('response.body.whatsapp')
             .should('eq', '6981119319')

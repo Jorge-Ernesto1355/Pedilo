@@ -523,7 +523,7 @@ describe('Descuentos personales para clientes', () => {
                 fulfillmentType: 'DINE_IN',
             })
             expect(request.body.items).to.deep.equal([
-                { productId: publicProductId, quantity: 1, optionIds: [] },
+                { productId: publicProductId, quantity: 1, expectedUnitPrice: 240, optionIds: [] },
             ])
             expect(request.body.expectedSubtotal).to.equal(240)
             expect(request.body).not.to.have.any.keys('discountId', 'discountAmount', 'total')
@@ -560,7 +560,7 @@ describe('Descuentos personales para clientes', () => {
             const whatsappMessage =
                 new URL(whatsappPopup.location.href).searchParams.get('text') ?? ''
             expect(whatsappPopup.location.href).to.contain('https://wa.me/526681234567?text=')
-            expect(whatsappMessage).to.contain('Cupón canjeado: −$50.00')
+            expect(whatsappMessage).to.contain('Descuento personal: −$50.00')
             expect(whatsappMessage).to.contain('Total: $190.00')
         })
 
@@ -656,7 +656,7 @@ describe('Descuentos personales para clientes', () => {
                 fulfillmentType: 'DINE_IN',
             })
             expect(request.body.items).to.deep.equal([
-                { productId: publicProductId, quantity: 1, optionIds: [] },
+                { productId: publicProductId, quantity: 1, expectedUnitPrice: 240, optionIds: [] },
             ])
             expect(request.body.expectedSubtotal).to.equal(240)
             request.reply({
@@ -703,7 +703,7 @@ describe('Descuentos personales para clientes', () => {
         cy.wait('@createPercentageDiscountOrder')
         cy.then(() => {
             const message = new URL(whatsappPopup.location.href).searchParams.get('text') ?? ''
-            expect(message).to.contain('Cupón canjeado: −$36.00')
+            expect(message).to.contain('Descuento personal: −$36.00')
             expect(message).to.contain('Total: $204.00')
         })
     })
@@ -724,7 +724,7 @@ describe('Descuentos personales para clientes', () => {
         })
         cy.get('[role="dialog"][aria-labelledby="order-title"]').contains('button', 'Confirmar pedido').click()
         cy.wait('@previewInvalidationDiscount')
-        cy.get('[data-testid="discount-invalidated"]').should('contain', 'Cupón invalidado').and('contain', 'ya no será válido')
+        cy.get('[data-testid="discount-invalidated"]').should('contain', 'Cupón invalidado').and('contain', 'ya no está disponible')
         cy.get('[role="dialog"][aria-labelledby="order-title"]').should('not.contain', 'Tu descuento').and('contain', '$240.00')
         cy.get('[data-testid="discount-invalidated-confirmation"]').should('contain', '¿Quieres continuar sin el cupón?')
     })

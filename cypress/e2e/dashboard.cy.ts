@@ -1,3 +1,8 @@
+import { visitViaClientNavigation } from '../support/clientNavigation'
+import { revealDashboardModules } from '../support/deferredModules'
+// Las cifras de "Hoy" llegan del servidor en una carga completa; para inspeccionar la
+// respuesta del backend se entra a la página por navegación interna.
+
 type SeedManifest = {
     expected: {
         today: { total: number; orders: number }
@@ -21,7 +26,7 @@ describe('Dashboard · escenario E2E persistente', () => {
             delete request.headers['if-modified-since']
             request.headers['cache-control'] = 'no-cache'
         }).as('getDashboardSales')
-        cy.visit('/dashboard')
+        visitViaClientNavigation('/dashboard')
         cy.readFile<SeedManifest>('test-results/dashboard-seed-manifest.json').then((manifest) => {
             cy.wait('@getDashboardSales').then(({ response }) => {
                 expect(response?.statusCode).to.be.oneOf([200, 304])
@@ -30,9 +35,9 @@ describe('Dashboard · escenario E2E persistente', () => {
             })
         })
         cy.get('[aria-label="Resumen del negocio"]').should('be.visible')
+        revealDashboardModules()
         cy.contains('h2', 'Cómo te fue').should('be.visible')
         cy.contains('h2', 'Lo más vendido').should('be.visible')
-        cy.contains('h2', 'Cómo va tu negocio').should('be.visible')
         cy.contains('h2', 'Pedidos recientes').should('be.visible')
     })
 
@@ -55,7 +60,7 @@ describe('Dashboard · escenario E2E persistente', () => {
                     request.headers['cache-control'] = 'no-cache'
                 }).as(`getDashboardSales-${value}`)
         })
-        cy.visit('/dashboard/sales')
+        visitViaClientNavigation('/dashboard/sales')
         cy.wait('@getDashboardSales-today').its('response.statusCode').should('be.oneOf', [200, 304])
         cy.get('[aria-label="Métricas de ventas"]').should('be.visible')
         cy.get('[aria-label^="Gráfica de ventas"]').should('be.visible')
@@ -64,16 +69,26 @@ describe('Dashboard · escenario E2E persistente', () => {
             cy.get(`[aria-label="Periodo de ventas"] button[data-value="${value}"]`)
                 .should('contain', label)
                 .click()
-            cy.wait(`@getDashboardSales-${value}`).then(({ request }) => {
-                expect(new URL(request.url).searchParams.get('period')).to.eq(value)
-            })
+            if (value === 'today') {
+                // "Hoy" ya se cargó al entrar: volver a él se sirve desde caché, sin nueva petición.
+                cy.get(`[aria-label="Periodo de ventas"] button[data-value="${value}"]`).should('have.attr', 'aria-checked', 'true')
+            } else {
+                cy.wait(`@getDashboardSales-${value}`).then(({ request }) => {
+                    expect(new URL(request.url).searchParams.get('period')).to.eq(value)
+                })
+            }
             cy.get('[aria-label="Métricas de ventas"]').should('be.visible')
         })
         cy.get('@unexpectedOrderCreation.all').should('have.length', 0)
     })
 
     it('muestra las órdenes sembradas y conserva sus estados', () => {
-        cy.intercept('GET', '**/businesses/*/orders*').as('getDashboardOrders')
+        // La página también pide contadores por estado (limit=1): solo la lista lleva el total completo.
+        cy.intercept('GET', '**/businesses/*/orders*', (request) => {
+            if (new URL(request.url).searchParams.get('limit') !== '1') {
+                request.alias = 'getDashboardOrders'
+            }
+        })
         cy.visit('/dashboard/orders')
         cy.readFile<SeedManifest>('test-results/dashboard-seed-manifest.json').then((manifest) => {
             cy.wait('@getDashboardOrders').then(({ response }) => {

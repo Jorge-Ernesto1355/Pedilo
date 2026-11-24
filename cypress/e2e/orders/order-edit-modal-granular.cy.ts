@@ -238,7 +238,7 @@ describe('Edición de órdenes · cobertura granular Cypress', () => {
         cy.visit('/dashboard/orders')
         cy.wait('@ordersList')
         cy.contains('article', '#812').find('button').contains('#812').click()
-        cy.get('[aria-labelledby="order-detail-title"]').should('contain', 'Cargando detalle…')
+        cy.get('[aria-label="Cargando detalle de la orden"]').should('be.visible')
         cy.wait('@orderDetail')
         cy.get('[aria-labelledby="order-detail-title"]').contains('Editar orden').click()
         cy.get('[data-cy="edit-order-modal"]').should('be.visible')

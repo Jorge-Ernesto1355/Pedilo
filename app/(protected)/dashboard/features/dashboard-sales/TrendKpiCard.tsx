@@ -1,12 +1,14 @@
 'use client'
 
 import { CircleHelp, TrendingDown, TrendingUp } from 'lucide-react'
-import { useState } from 'react'
-import { Line, LineChart, ResponsiveContainer, Tooltip } from 'recharts'
+import { lazy, Suspense, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { TrendDashboardResponse, TrendPoint } from '../dashboard-data/dashboardData.types'
 import { DashboardCardError } from '../../components/DashboardCardError'
-import { formatMoney } from '../dashboard-data/formatters'
+import type { MiniTrendPoint } from './MiniTrendLineChart'
+
+// recharts se descarga aparte: la tarjeta (y la página) se pintan sin esperarlo.
+const LazyMiniTrendLineChart = lazy(() => import('./MiniTrendLineChart'))
 
 export function TrendKpiCard({
     data,
@@ -39,9 +41,19 @@ export function TrendKpiCard({
     }
 
     if (isLoading || !data) {
+        // Misma estructura que la tarjeta cargada para no mover el layout al llegar.
         return (
-            <TrendCardShell>
-                <p className="mt-8 h-9 w-28 animate-pulse rounded-lg bg-[#EEF2F7]" />
+            <TrendCardShell busy>
+                <div className="flex items-start justify-between gap-4">
+                    <span className="size-10 animate-pulse rounded-xl bg-[#EEF2F7]" />
+                </div>
+                <p className="mt-6 text-sm text-[#65738A]">Tendencia</p>
+                <span className="mt-1 block h-9 w-28 animate-pulse rounded-lg bg-[#EEF2F7]" />
+                <span className="mt-2 block h-4 w-36 animate-pulse rounded bg-[#F3F6FA]" />
+                <div className="mt-4 border-t border-[#EEF2F7] pt-3">
+                    <span className="mb-2 block h-[15px] w-28 animate-pulse rounded bg-[#F3F6FA]" />
+                    <span className="block h-14 w-full animate-pulse rounded-lg bg-[#F3F6FA]" />
+                </div>
             </TrendCardShell>
         )
     }
@@ -123,7 +135,7 @@ function MiniTrendChart({
     const previous = data.series.previous
     const length = Math.max(current.length, previous.length)
 
-    const points = Array.from({ length }, (_, index) => ({
+    const points: MiniTrendPoint[] = Array.from({ length }, (_, index) => ({
         label: current[index]?.label ?? previous[index]?.label ?? `Intervalo ${index + 1}`,
         current: toNumber(current[index]?.sales) ?? 0,
         previous: toNumber(previous[index]?.sales) ?? 0,
@@ -151,76 +163,14 @@ function MiniTrendChart({
                 </span>
             </div>
             <div className="h-14 w-full min-w-0">
-                <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={points} margin={{ top: 3, right: 2, bottom: 1, left: 2 }}>
-                        <Tooltip
-                            cursor={{ stroke: '#DCE5F3', strokeDasharray: '3 3' }}
-                            content={<MiniTrendTooltip currency={currency} />}
-                        />
-                        <Line
-                            type="monotone"
-                            dataKey="current"
-                            stroke="#2451C5"
-                            strokeWidth={2}
-                            dot={false}
-                            activeDot={{ r: 3, fill: '#fff', stroke: '#2451C5', strokeWidth: 2 }}
-                        />
-                        <Line
-                            type="monotone"
-                            dataKey="previous"
-                            stroke="#A7B7CF"
-                            strokeWidth={1.5}
-                            strokeDasharray="4 3"
-                            dot={false}
-                            activeDot={{ r: 3, fill: '#fff', stroke: '#8996A9', strokeWidth: 2 }}
-                        />
-                    </LineChart>
-                </ResponsiveContainer>
+                <Suspense
+                    fallback={
+                        <div className="h-full w-full animate-pulse rounded-lg bg-[#F3F6FA]" />
+                    }
+                >
+                    <LazyMiniTrendLineChart points={points} currency={currency} />
+                </Suspense>
             </div>
-        </div>
-    )
-}
-
-function MiniTrendTooltip({
-    active,
-    payload,
-    currency,
-}: {
-    active?: boolean
-    currency: string
-    payload?: Array<{
-        payload?: {
-            label?: string
-            current?: number
-            previous?: number
-            currentOrders?: number
-            previousOrders?: number
-            difference?: number | string | null
-            percentage?: number | null
-        }
-    }>
-}) {
-    if (!active || !payload?.length || !payload[0]?.payload) return null
-    const point = payload[0].payload
-
-    const previous = point.previous ?? 0
-    const difference = point.difference ?? (point.current ?? 0) - previous
-
-    return (
-        <div className="rounded-lg border border-[#DCE5F3] bg-white px-2 py-1.5 text-[10px] text-[#12234A] shadow-sm">
-            <p className="font-semibold text-[#65738A]">{point.label}</p>
-            <p>Actual: {formatMoney(point.current ?? 0, currency)}</p>
-            <p>Anterior: {formatMoney(previous, currency)}</p>
-            <p>Diferencia: {formatMoney(Number(difference) || 0, currency)}</p>
-            <p>
-                Pedidos: {point.currentOrders ?? 0} / {point.previousOrders ?? 0}
-            </p>
-            {point.percentage !== null && point.percentage !== undefined && previous !== 0 ? (
-                <p>
-                    Variación: {point.percentage > 0 ? '+' : ''}
-                    {point.percentage}%
-                </p>
-            ) : null}
         </div>
     )
 }
@@ -235,9 +185,12 @@ function orderCount(point: TrendPoint | undefined) {
     return point.orderCount
 }
 
-function TrendCardShell({ children }: { children: ReactNode }) {
+function TrendCardShell({ children, busy = false }: { children: ReactNode; busy?: boolean }) {
     return (
-        <article className="relative h-full rounded-2xl border border-[#DCE5F3] bg-white p-5 shadow-[0_8px_22px_rgb(20_48_105_/_0.055)] sm:p-6">
+        <article
+            aria-busy={busy || undefined}
+            className="relative h-full rounded-2xl border border-[#DCE5F3] bg-white p-5 shadow-[0_8px_22px_rgb(20_48_105_/_0.055)] sm:p-6"
+        >
             {children}
         </article>
     )

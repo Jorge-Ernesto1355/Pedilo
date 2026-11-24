@@ -21,6 +21,7 @@
         "test:e2e:open:prod": "CYPRESS_BASE_URL=https://pedilo.mx cypress open --e2e",
         "test:e2e:create-menu:open": "cypress open --e2e --browser electron --spec 'cypress/e2e/create-menu/business-setup.cy.ts'",
         "test:e2e:create-menu:headed": "cypress run --headed --browser electron --spec 'cypress/e2e/create-menu/business-setup.cy.ts'",
+        "e2e:seed:dashboard": "node scripts/seed-dashboard-orders.mjs",
         "e2e:seed": "node scripts/seed-e2e.mjs"
     },
     "dependencies": {
@@ -40,12 +41,11 @@
         "bot-avatars": "^0.2.2",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
-        "framer-motion": "^13.2.0",
         "leaflet": "^1.9.4",
         "leaflet-defaulticon-compatibility": "^0.1.2",
         "libphonenumber-js": "^1.13.15",
         "lucide-react": "^1.41.0",
-        "motion": "^14.1.0",
+        "motion": "^12.34.0",
         "next": "16.3.4",
         "posthog-js": "^1.438.21",
         "posthog-node": "^5.57.1",

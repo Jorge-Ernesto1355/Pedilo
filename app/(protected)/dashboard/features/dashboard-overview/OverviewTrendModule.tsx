@@ -21,7 +21,12 @@ export default function OverviewTrendModule({ period, currency }: { period: Sale
             {trend.isPending ? (
                 <div className="mt-5 h-56 animate-pulse rounded-xl bg-[#F3F6FA]" role="status" aria-label="Cargando gráfica de ventas" />
             ) : trend.data ? (
-                <SalesChart data={trend.data} currency={currency} />
+                <div
+                    aria-busy={trend.isPlaceholderData}
+                    className={`transition-opacity duration-200 ${trend.isPlaceholderData ? 'opacity-60' : ''}`}
+                >
+                    <SalesChart data={trend.data} currency={currency} />
+                </div>
             ) : (
                 <DashboardCardError title="Ventas no disponibles" description="No pudimos cargar la gráfica de este periodo." onRetry={() => void trend.refetch()} />
             )}

@@ -25,8 +25,8 @@ export function CustomerDetailPanel({ customer, onClose }: { customer: Customer;
     const counts = (key: DiscountTab) => allDiscounts.filter((discount) => classified(discount.status) === key).length
 
     return (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-[#10224A]/25 p-4">
-            <section role="dialog" aria-label="Detalle del cliente" className="max-h-[min(900px,calc(100svh-2rem))] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white p-5 shadow-xl sm:p-7">
+        <div className="fixed inset-0 z-50 grid place-items-center bg-[#10224A]/25 p-4 pb-[calc(var(--mobile-nav-h)+1rem)]">
+            <section role="dialog" aria-label="Detalle del cliente" className="max-h-[min(900px,calc(100svh-var(--mobile-nav-h)-2rem))] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white p-5 shadow-xl sm:p-7">
                 <header className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
                         <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#8996A9]">Cliente</p>

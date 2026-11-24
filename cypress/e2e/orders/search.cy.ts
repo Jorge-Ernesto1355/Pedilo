@@ -221,7 +221,7 @@ describe('Búsqueda de órdenes', () => {
         assertVisibleOrderNumbers(['1024', '1025'])
 
         cy.get('button[aria-label="Limpiar búsqueda"]').click()
-        cy.wait('@allOrders')
+        // La lista sin filtro ya está en caché (staleTime 30 s): no hay nueva petición.
         searchInput().should('have.value', '')
         cy.get('article').should('have.length', 3)
 
@@ -290,7 +290,7 @@ describe('Búsqueda de órdenes', () => {
 
             assertTouchTargets('button[aria-label="Limpiar búsqueda"]')
             cy.get('button[aria-label="Limpiar búsqueda"]').click()
-            cy.wait('@allOrders')
+            cy.get('article').should('have.length', 3)
             cy.contains('button', /^Todos/).should('be.visible')
             assertPageFitsViewport()
         })

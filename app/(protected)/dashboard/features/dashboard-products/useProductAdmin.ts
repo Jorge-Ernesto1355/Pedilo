@@ -9,7 +9,7 @@ import {
     getProductStats,
     getProductSummary,
     getProductsPaged,
-} from '../../products/services/productService'
+} from '../../(business)/products/services/productService'
 import type {
     ProductAnalyticsParams,
     ProductListParams,

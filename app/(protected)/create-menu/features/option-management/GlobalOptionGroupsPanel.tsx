@@ -1,7 +1,8 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
-import { ChevronDown, Plus, RefreshCw, Save, Trash2 } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { ChevronDown, LoaderCircle, Plus, RefreshCw, Trash2 } from 'lucide-react'
+import { Checkbox } from '@/app/components/ui/Checkbox'
 import { apiClient } from '@/src/lib/api/client'
 import { getUserFriendlyError } from '@/src/lib/errors/user-friendly-error'
 import { notify } from '@/src/lib/notifications/notify'
@@ -25,6 +26,9 @@ import {
 import { useApplyRecipes } from '@/app/(protected)/dashboard/inventory/useApplyRecipes'
 import { useIngredients } from '@/app/(protected)/dashboard/inventory/useInventory'
 import { RecipeDisclosure } from '@/app/(protected)/dashboard/inventory/components/RecipeDisclosure'
+
+// Tope de grupos globales por negocio.
+const MAX_GROUPS = 10
 
 type Product = { id: string; name: string }
 type ProductPage = { products?: Product[]; pagination?: { total?: number }; total?: number }
@@ -135,22 +139,23 @@ function OptionRow({
                 </label>
                 <label className="text-[11px] font-bold text-[#65738A]">
                     Costo adicional
-                <input
-                    type="text"
-                    inputMode="numeric"
-                    value={costText}
-                    onChange={(event) => {
-                        const value = event.target.value
-                        if (value !== '' && (!/^\d+$/.test(value) || Number(value) > 10_000)) return
-                        setCostText(value)
-                        if (value !== '') onChange(index, { price: Number(value) })
-                    }}
-                    onBlur={() => {
-                        if (costText === '') {
-                            setCostText('0')
-                            onChange(index, { price: 0 })
-                        }
-                    }}
+                    <input
+                        type="text"
+                        inputMode="numeric"
+                        value={costText}
+                        onChange={(event) => {
+                            const value = event.target.value
+                            if (value !== '' && (!/^\d+$/.test(value) || Number(value) > 10_000))
+                                return
+                            setCostText(value)
+                            if (value !== '') onChange(index, { price: Number(value) })
+                        }}
+                        onBlur={() => {
+                            if (costText === '') {
+                                setCostText('0')
+                                onChange(index, { price: 0 })
+                            }
+                        }}
                         className={inputClass}
                         placeholder="0"
                         aria-label={`Costo de ${option.name}`}
@@ -190,8 +195,16 @@ export function GlobalOptionGroupsPanel({ businessId }: { businessId?: string })
     const [detailError, setDetailError] = useState<string | null>(null)
     const [loading, setLoading] = useState(false)
     const [saving, setSaving] = useState(false)
+    const [creating, setCreating] = useState(false)
+    // Cambio de página de productos: se conserva lo mostrado y se atenúa hasta que llegue la nueva.
+    const [pageLoading, setPageLoading] = useState(false)
+    // Grupo recién creado: se anima su entrada una vez y se lleva a la vista si quedó fuera.
+    const [createdId, setCreatedId] = useState<string>()
+    const createdRef = useRef<HTMLButtonElement | null>(null)
     const [error, setError] = useState<string>()
     const [showMissingNameErrors, setShowMissingNameErrors] = useState(false)
+    // Identifica la última selección de grupo: una respuesta tardía de otra no debe pisarla.
+    const detailRequest = useRef(0)
     const [recipeErrors, setRecipeErrors] = useState<Record<number, RecipeLineErrors>>({})
     const ingredients = useIngredients({ search: '', status: 'ALL' })
     const applyRecipes = useApplyRecipes()
@@ -209,6 +222,7 @@ export function GlobalOptionGroupsPanel({ businessId }: { businessId?: string })
         if (!businessId) return
         setLoading(true)
         setError(undefined)
+        detailRequest.current += 1
         try {
             const nextGroups = await listGlobalOptionGroups()
             const safeGroups = Array.isArray(nextGroups) ? nextGroups : []
@@ -226,12 +240,21 @@ export function GlobalOptionGroupsPanel({ businessId }: { businessId?: string })
         }
     }, [businessId])
     useEffect(() => {
+        if (!createdId) return
+        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        createdRef.current?.scrollIntoView({
+            block: 'nearest',
+            behavior: reduceMotion ? 'auto' : 'smooth',
+        })
+    }, [createdId])
+    useEffect(() => {
         const timer = window.setTimeout(() => void load(), 0)
         return () => window.clearTimeout(timer)
     }, [load])
     async function changeProductPage(page: number) {
         const pageCount = Math.max(1, Math.ceil(productTotal / 10))
-        if (!businessId || page < 1 || page > pageCount) return
+        if (!businessId || page < 1 || page > pageCount || pageLoading) return
+        setPageLoading(true)
         try {
             const response = await loadProducts(businessId, page)
             setProducts(response.products)
@@ -239,10 +262,13 @@ export function GlobalOptionGroupsPanel({ businessId }: { businessId?: string })
             setProductPage(page)
         } catch (pageError) {
             setError(getUserFriendlyError(pageError).description)
+        } finally {
+            setPageLoading(false)
         }
     }
     async function selectGroup(groupId: string) {
         if (!businessId) return
+        const requestId = ++detailRequest.current
         setSelectedId(groupId)
         setDetailLoading(true)
         setDetailError(null)
@@ -251,19 +277,29 @@ export function GlobalOptionGroupsPanel({ businessId }: { businessId?: string })
                 getGlobalOptionGroup(groupId),
                 loadProducts(businessId, 1),
             ])
-            setSelected(group)
+            if (requestId !== detailRequest.current) return
+            setSelected({
+                ...group,
+                options: group.options ?? [],
+                productIds: group.productIds ?? [],
+            })
             setProducts(productResponse.products)
             setProductPage(1)
             setProductTotal(productResponse.total)
         } catch (detailError) {
+            if (requestId !== detailRequest.current) return
             setSelected(null)
             setDetailError(getUserFriendlyError(detailError).description)
         } finally {
-            setDetailLoading(false)
+            if (requestId === detailRequest.current) setDetailLoading(false)
         }
     }
     async function create() {
-        setSaving(true)
+        if (groups.length >= MAX_GROUPS) {
+            setError(`Puedes tener como máximo ${MAX_GROUPS} grupos de opciones globales.`)
+            return
+        }
+        setCreating(true)
         setError(undefined)
         try {
             const group = await createGlobalOptionGroup({
@@ -275,10 +311,11 @@ export function GlobalOptionGroupsPanel({ businessId }: { businessId?: string })
                 options: [],
             })
             setGroups((current) => [...current, group])
+            setCreatedId(group.id)
         } catch (createError) {
             setError(getUserFriendlyError(createError).description)
         } finally {
-            setSaving(false)
+            setCreating(false)
         }
     }
     async function saveGroup() {
@@ -304,15 +341,20 @@ export function GlobalOptionGroupsPanel({ businessId }: { businessId?: string })
         }
         setSaving(true)
         setError(undefined)
+        // El guardado son tres llamadas y cada una sube la versión en el servidor. Si una falla
+        // a medias, el reintento debe partir de la última versión que el servidor confirmó.
+        let confirmedVersion = selected.version
         try {
-            await updateGlobalOptionGroup(selected.id, {
+            const patched = await updateGlobalOptionGroup(selected.id, {
                 name: selected.name,
                 isRequired: selected.isRequired,
                 minSelections: selected.minSelections,
                 maxSelections: selected.maxSelections,
                 expectedVersion: selected.version,
             })
+            confirmedVersion = patched.version ?? confirmedVersion
             const updated = await replaceGlobalGroupOptions(selected.id, selected.options)
+            confirmedVersion = updated.version ?? confirmedVersion
             const group = await assignGlobalGroupProducts(
                 updated.id,
                 selected.productIds,
@@ -334,17 +376,30 @@ export function GlobalOptionGroupsPanel({ businessId }: { businessId?: string })
                 )
             setGroups((current) => current.map((item) => (item.id === group.id ? group : item)))
             setSelected(group)
-            notify.success({ title: 'Grupo guardado', description: 'Las opciones y los productos asignados se actualizaron.' })
+            notify.success({
+                title: 'Grupo guardado',
+                description: 'Las opciones y los productos asignados se actualizaron.',
+            })
             await selectGroup(group.id)
         } catch (saveError) {
+            if (confirmedVersion !== selected.version) updateSelected({ version: confirmedVersion })
             setError(getUserFriendlyError(saveError).description)
         } finally {
             setSaving(false)
         }
     }
+    async function archiveSelected() {
+        if (!selected || !confirm('¿Archivar este grupo global?')) return
+        setError(undefined)
+        try {
+            await archiveGlobalOptionGroup(selected.id)
+            await load()
+        } catch (archiveError) {
+            setError(getUserFriendlyError(archiveError).description)
+        }
+    }
     function updateSelected(patch: Partial<GlobalOptionGroup>) {
-        if (selected)
-            setSelected((current) => (current ? { ...current, ...patch } : current))
+        if (selected) setSelected((current) => (current ? { ...current, ...patch } : current))
     }
     function updateOption(index: number, patch: Partial<GlobalOption>) {
         if (patch.name?.trim()) setShowMissingNameErrors(false)
@@ -374,6 +429,7 @@ export function GlobalOptionGroupsPanel({ businessId }: { businessId?: string })
         })
     }
     if (!businessId) return null
+    const atGroupLimit = groups.length >= MAX_GROUPS
     const pageCount = Math.max(1, Math.ceil(productTotal / 10))
     return (
         <section
@@ -395,7 +451,13 @@ export function GlobalOptionGroupsPanel({ businessId }: { businessId?: string })
                         Administra extras y variantes una sola vez y asígnalos a varios productos.
                     </p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex items-center gap-2">
+                    <span
+                        data-cy="global-groups-counter"
+                        className={`rounded-full px-2 py-1 text-[11px] font-bold ${atGroupLimit ? 'bg-[#FFF0F0] text-[#B42318]' : 'bg-[#EEF3FF] text-[#2451C5]'}`}
+                    >
+                        {groups.length}/{MAX_GROUPS}
+                    </span>
                     <button
                         type="button"
                         onClick={() => void load()}
@@ -407,13 +469,32 @@ export function GlobalOptionGroupsPanel({ businessId }: { businessId?: string })
                     <button
                         type="button"
                         onClick={() => void create()}
-                        disabled={saving}
-                        className="inline-flex items-center gap-1.5 rounded-xl bg-[#2451C5] px-3.5 py-2.5 text-sm font-bold text-white"
+                        disabled={saving || creating || atGroupLimit}
+                        aria-busy={creating}
+                        aria-describedby={atGroupLimit ? 'global-groups-limit' : undefined}
+                        className={`inline-flex items-center gap-1.5 rounded-xl bg-[#2451C5] px-3.5 py-2.5 text-sm font-bold text-white transition-opacity disabled:cursor-not-allowed ${atGroupLimit ? 'disabled:opacity-50' : ''}`}
                     >
-                        <Plus className="size-4" /> Crear grupo
+                        {creating ? (
+                            <LoaderCircle
+                                className="size-4 animate-spin motion-reduce:animate-none"
+                                aria-hidden="true"
+                            />
+                        ) : (
+                            <Plus className="size-4" aria-hidden="true" />
+                        )}{' '}
+                        Crear grupo
                     </button>
                 </div>
             </div>
+            {atGroupLimit && !loading && (
+                <p
+                    id="global-groups-limit"
+                    data-cy="global-groups-limit"
+                    className="mt-3 text-xs font-semibold text-[#B42318]"
+                >
+                    Llegaste al límite de {MAX_GROUPS} grupos. Archiva uno para crear otro.
+                </p>
+            )}
             {error && (
                 <div
                     role="alert"
@@ -435,28 +516,62 @@ export function GlobalOptionGroupsPanel({ businessId }: { businessId?: string })
                     Todavía no hay grupos globales. Crea el primero para reutilizar sus opciones.
                 </div>
             ) : (
-                <div className="mt-5 grid gap-4 lg:grid-cols-[220px_1fr]">
-                    <div className="space-y-2">
+                <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-[220px_1fr]">
+                    <div className="min-w-0 space-y-2">
                         {groups.map((group) => (
                             <button
                                 key={group.id}
+                                ref={createdId === group.id ? createdRef : undefined}
                                 type="button"
                                 onClick={() => void selectGroup(group.id)}
-                                className={`flex w-full items-center justify-between rounded-xl border px-3 py-3 text-left text-sm font-bold ${selectedId === group.id ? 'border-[#7392E6] bg-[#F4F7FF] text-[#163A9B]' : 'border-[#E3E9F1] text-[#243556]'}`}
+                                onAnimationEnd={() => {
+                                    if (createdId === group.id) setCreatedId(undefined)
+                                }}
+                                className={`group flex w-full items-center justify-between rounded-xl border px-3 py-3 text-left text-sm font-bold transition-[transform,box-shadow,border-color,background-color] duration-200 ease-out hover:shadow-[0_8px_18px_-12px_rgb(36_81_197_/_0.5)] motion-safe:hover:-translate-y-px motion-safe:active:translate-y-0 motion-safe:active:scale-[0.985] active:shadow-none ${createdId === group.id ? 'pedilo-item-enter' : ''} ${selectedId === group.id ? 'border-[#7392E6] bg-[#F4F7FF] text-[#163A9B]' : 'border-[#E3E9F1] text-[#243556] hover:border-[#B9CDFD] hover:bg-[#F8FAFE]'}`}
                             >
                                 <span className="truncate">{group.name}</span>
-                                <ChevronDown className="size-4 shrink-0" />
+                                <ChevronDown
+                                    className={`size-4 shrink-0 transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${selectedId === group.id ? 'rotate-180 text-[#2451C5]' : 'text-[#8996A9] motion-safe:group-hover:translate-y-0.5 group-hover:text-[#2451C5]'}`}
+                                    aria-hidden="true"
+                                />
                             </button>
                         ))}
                     </div>
                     {detailLoading ? (
-                        <div aria-label="Cargando grupo global" className="rounded-2xl border border-[#E3E9F1] bg-[#FBFCFE] p-4">
+                        <div
+                            aria-label="Cargando grupo global"
+                            className="rounded-2xl border border-[#E3E9F1] bg-[#FBFCFE] p-4"
+                        >
                             <div className="h-6 w-40 animate-pulse rounded bg-[#E6EDF7]" />
-                            <div className="mt-5 space-y-3"><div className="h-11 animate-pulse rounded-xl bg-[#EEF3FF]" /><div className="h-28 animate-pulse rounded-xl bg-[#EEF3FF]" /><div className="h-36 animate-pulse rounded-xl bg-[#EEF3FF]" /></div>
+                            <div className="mt-5 space-y-3">
+                                <div className="h-11 animate-pulse rounded-xl bg-[#EEF3FF]" />
+                                <div className="h-28 animate-pulse rounded-xl bg-[#EEF3FF]" />
+                                <div className="h-36 animate-pulse rounded-xl bg-[#EEF3FF]" />
+                            </div>
                         </div>
                     ) : detailError ? (
-                        <div role="alert" className="grid min-h-[360px] place-items-center rounded-2xl border border-[#F2C7C7] bg-[#FFF9F9] p-6 text-center sm:p-10">
-                            <div className="max-w-xs"><div className="mx-auto grid size-12 place-items-center rounded-2xl bg-[#FDECEC] text-[#B42318]"><RefreshCw className="size-5" /></div><h3 className="mt-4 font-display text-xl text-[#243556]">No pudimos cargar este grupo</h3><p className="mt-2 text-sm leading-6 text-[#65738A]">{detailError}</p><button type="button" onClick={() => selectedId && void selectGroup(selectedId)} className="mt-5 rounded-xl border border-[#E3B0B0] bg-white px-3.5 py-2 text-sm font-bold text-[#B42318]">Reintentar</button></div>
+                        <div
+                            role="alert"
+                            className="grid min-h-[360px] place-items-center rounded-2xl border border-[#F2C7C7] bg-[#FFF9F9] p-6 text-center sm:p-10"
+                        >
+                            <div className="max-w-xs">
+                                <div className="mx-auto grid size-12 place-items-center rounded-2xl bg-[#FDECEC] text-[#B42318]">
+                                    <RefreshCw className="size-5" />
+                                </div>
+                                <h3 className="mt-4 font-display text-xl text-[#243556]">
+                                    No pudimos cargar este grupo
+                                </h3>
+                                <p className="mt-2 text-sm leading-6 text-[#65738A]">
+                                    {detailError}
+                                </p>
+                                <button
+                                    type="button"
+                                    onClick={() => selectedId && void selectGroup(selectedId)}
+                                    className="mt-5 rounded-xl border border-[#E3B0B0] bg-white px-3.5 py-2 text-sm font-bold text-[#B42318]"
+                                >
+                                    Reintentar
+                                </button>
+                            </div>
                         </div>
                     ) : selected ? (
                         <div className="rounded-2xl border border-[#E3E9F1] bg-[#FBFCFE] p-4">
@@ -475,9 +590,8 @@ export function GlobalOptionGroupsPanel({ businessId }: { businessId?: string })
                                         {selected.name.length}/40
                                     </span>
                                 </label>
-                                <label className="flex items-center gap-2 pt-5 text-sm font-semibold text-[#243556]">
-                                    <input
-                                        type="checkbox"
+                                <label className="mt-5 flex h-11 cursor-pointer items-center gap-2.5 self-start rounded-xl border border-[#DCE5F3] bg-white px-3 text-sm font-semibold text-[#243556] transition-colors hover:border-[#B9CDFD] has-[input:checked]:border-[#B9CDFD] has-[input:checked]:bg-[#F4F7FF] has-[input:checked]:text-[#163A9B]">
+                                    <Checkbox
                                         checked={selected.isRequired}
                                         onChange={(event) =>
                                             updateSelected({
@@ -497,12 +611,14 @@ export function GlobalOptionGroupsPanel({ businessId }: { businessId?: string })
                                         <p className="text-xs font-bold uppercase tracking-[.12em] text-[#65738A]">
                                             Opciones
                                         </p>
-                                    <p className="mt-1 text-xs leading-5 text-[#8996A9]">
-                                        Cada opción tiene su propio nombre, mínimo, máximo y costo
-                                        adicional.
-                                    </p>
+                                        <p className="mt-1 text-xs leading-5 text-[#8996A9]">
+                                            Cada opción tiene su propio nombre, mínimo, máximo y
+                                            costo adicional.
+                                        </p>
                                     </div>
-                                    <span className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-bold ${selected.options.length >= 10 ? 'bg-[#FFF0F0] text-[#B42318]' : 'bg-[#EEF3FF] text-[#2451C5]'}`}>
+                                    <span
+                                        className={`shrink-0 rounded-full px-2 py-1 text-[11px] font-bold ${selected.options.length >= 10 ? 'bg-[#FFF0F0] text-[#B42318]' : 'bg-[#EEF3FF] text-[#2451C5]'}`}
+                                    >
                                         {selected.options.length}/10
                                     </span>
                                 </div>
@@ -543,14 +659,16 @@ export function GlobalOptionGroupsPanel({ businessId }: { businessId?: string })
                                         productos
                                     </span>
                                 </div>
-                                <div className="mt-2 grid max-h-40 gap-2 overflow-y-auto sm:grid-cols-2">
+                                <div
+                                    aria-busy={pageLoading}
+                                    className={`mt-2 grid max-h-72 min-h-40 content-start gap-2 overflow-y-auto transition-opacity duration-200 sm:grid-cols-2 ${pageLoading ? 'pointer-events-none opacity-45' : ''}`}
+                                >
                                     {products.map((product) => (
                                         <label
                                             key={product.id}
-                                            className="flex items-center gap-2 text-sm text-[#243556]"
+                                            className="flex min-h-10 min-w-0 cursor-pointer items-center gap-2.5 rounded-lg border border-[#E3E9F1] bg-white px-2.5 py-1.5 text-sm text-[#243556] transition-colors hover:border-[#B9CDFD] has-[input:checked]:border-[#B9CDFD] has-[input:checked]:bg-[#F4F7FF] has-[input:checked]:font-semibold has-[input:checked]:text-[#163A9B]"
                                         >
-                                            <input
-                                                type="checkbox"
+                                            <Checkbox
                                                 checked={selected.productIds.includes(product.id)}
                                                 onChange={(event) =>
                                                     updateSelected({
@@ -569,7 +687,7 @@ export function GlobalOptionGroupsPanel({ businessId }: { businessId?: string })
                                 <div className="mt-3 flex items-center justify-between gap-3">
                                     <button
                                         type="button"
-                                        disabled={productPage <= 1}
+                                        disabled={productPage <= 1 || pageLoading}
                                         onClick={() => void changeProductPage(productPage - 1)}
                                         className="rounded-lg border border-[#DCE5F3] px-3 py-1.5 text-xs font-bold text-[#2451C5] disabled:opacity-40"
                                     >
@@ -580,7 +698,7 @@ export function GlobalOptionGroupsPanel({ businessId }: { businessId?: string })
                                     </span>
                                     <button
                                         type="button"
-                                        disabled={productPage >= pageCount}
+                                        disabled={productPage >= pageCount || pageLoading}
                                         onClick={() => void changeProductPage(productPage + 1)}
                                         className="rounded-lg border border-[#DCE5F3] px-3 py-1.5 text-xs font-bold text-[#2451C5] disabled:opacity-40"
                                     >
@@ -591,29 +709,38 @@ export function GlobalOptionGroupsPanel({ businessId }: { businessId?: string })
                             <div className="mt-5 flex items-center justify-between">
                                 <button
                                     type="button"
-                                    onClick={async () => {
-                                        if (confirm('¿Archivar este grupo global?')) {
-                                            await archiveGlobalOptionGroup(selected.id)
-                                            await load()
-                                        }
-                                    }}
-                                    className="text-sm font-bold text-[#B42318]"
+                                    onClick={() => void archiveSelected()}
+                                    className="rounded-lg px-2 py-1 text-xs font-semibold text-[#9A6A66] transition-colors hover:bg-[#FBF1F0] hover:text-[#B42318]"
                                 >
                                     Archivar grupo
                                 </button>
                                 <button
                                     type="button"
-                                    disabled={saving}
+                                    disabled={saving || creating}
                                     onClick={() => void saveGroup()}
-                                    className="inline-flex items-center gap-2 rounded-xl bg-[#2451C5] px-4 py-2.5 text-sm font-bold text-white"
+                                    className="inline-flex items-center rounded-lg bg-[#2451C5] px-3 py-1.5 text-xs font-bold text-white"
                                 >
-                                    <Save className="size-4" /> {saving ? 'Guardando…' : 'Guardar cambios'}
+                                    {saving ? 'Guardando…' : 'Guardar cambios'}
                                 </button>
                             </div>
                         </div>
                     ) : (
                         <div className="grid min-h-[360px] place-items-center rounded-2xl border border-dashed border-[#C7D5E9] bg-[#FBFCFE] p-6 text-center sm:p-10">
-                            <div className="max-w-xs"><div className="mx-auto grid size-12 place-items-center rounded-2xl bg-[#EAF0FF] text-[#2451C5]"><ChevronDown className="size-5" /></div><h3 className="mt-4 font-display text-xl text-[#243556]">Elige un grupo para editarlo</h3><p className="mt-2 text-sm leading-6 text-[#65738A]">Selecciona un grupo de la lista para cargar sus opciones y los productos que lo utilizan.</p><p className="mt-4 text-xs font-semibold text-[#8996A9]">Hasta entonces no cargaremos su configuración.</p></div>
+                            <div className="max-w-xs">
+                                <div className="mx-auto grid size-12 place-items-center rounded-2xl bg-[#EAF0FF] text-[#2451C5]">
+                                    <ChevronDown className="size-5" />
+                                </div>
+                                <h3 className="mt-4 font-display text-xl text-[#243556]">
+                                    Elige un grupo para editarlo
+                                </h3>
+                                <p className="mt-2 text-sm leading-6 text-[#65738A]">
+                                    Selecciona un grupo de la lista para cargar sus opciones y los
+                                    productos que lo utilizan.
+                                </p>
+                                <p className="mt-4 text-xs font-semibold text-[#8996A9]">
+                                    Hasta entonces no cargaremos su configuración.
+                                </p>
+                            </div>
                         </div>
                     )}
                 </div>
