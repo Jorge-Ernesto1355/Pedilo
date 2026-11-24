@@ -17,6 +17,9 @@ import { Modal } from '@/app/components/ui/Modal'
 import { ApiError } from '@/app/auth/lib/client/api-error'
 import { notify } from '@/src/lib/notifications/notify'
 import { getUserFriendlyError } from '@/src/lib/errors/user-friendly-error'
+import { RecipeDisclosure } from '@/app/(protected)/dashboard/inventory/components/RecipeDisclosure'
+import { RecipeEditor } from '@/app/(protected)/dashboard/inventory/components/RecipeEditor'
+import { ComboGlobalOptions, setGlobalGroupAssignment } from './ComboGlobalOptions'
 import type { Menu } from '../category-management/menu.types'
 import type { Product } from './product.types'
 import { useProducts } from './useProductManagement'
@@ -288,6 +291,8 @@ export function ComboManagerModal({
     const [included, setIncluded] = useState<string[]>([])
     const [includedQuantities, setIncludedQuantities] = useState<Record<string, number>>({})
     const [groups, setGroups] = useState<DraftGroup[]>([])
+    const [globalGroupIds, setGlobalGroupIds] = useState<string[]>([])
+    const [recipeChoiceKey, setRecipeChoiceKey] = useState<string | null>(null)
     const [newGroup, setNewGroup] = useState<DraftGroup>({ name: '', productIds: [] })
     const [newChoice, setNewChoice] = useState<Record<string, string>>({})
     const [editingGroup, setEditingGroup] = useState<{ id: string; name: string } | null>(null)
@@ -342,6 +347,8 @@ export function ComboManagerModal({
         setGroups([])
         setNewGroup({ name: '', productIds: [] })
         setNewChoice({})
+        setGlobalGroupIds([])
+        setRecipeChoiceKey(null)
         setEditingGroup(null)
         setAddIncludedId('')
         setShowIncludedPicker(false)
@@ -479,7 +486,22 @@ export function ComboManagerModal({
                 optionGroups: groups as ComboGroupInput[],
             },
             {
-                onSuccess: () => {
+                onSuccess: (created) => {
+                    const globalIds = globalGroupIds
+                    setGlobalGroupIds([])
+                    if (globalIds.length > 0)
+                        void Promise.allSettled(
+                            globalIds.map((groupId) =>
+                                setGlobalGroupAssignment(groupId, created.id, true),
+                            ),
+                        ).then((results) => {
+                            if (results.some((result) => result.status === 'rejected'))
+                                notify.error({
+                                    title: 'Combo creado, pero no todas sus opciones globales',
+                                    description:
+                                        'Actívalas desde “Administrar combo” en la sección Opciones globales.',
+                                })
+                        })
                     setCreateError(null)
                     setStep(0)
                     setName('')
@@ -732,7 +754,7 @@ export function ComboManagerModal({
                                     return <div
                                         key={item.id}
                                         data-testid={`combo-included-product-${item.productId}`}
-                                        className="flex items-center justify-between gap-3 rounded-lg bg-[#F7F9FC] px-3 py-2"
+                                        className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-[#F7F9FC] px-3 py-2"
                                     >
                                         <div>
                                             <p className="text-sm font-semibold text-[#243556]">
@@ -798,6 +820,12 @@ export function ComboManagerModal({
                                             >
                                                 <X className="size-4" />
                                             </button>
+                                        </div>
+                                        <div className="w-full">
+                                            <RecipeDisclosure
+                                                target={{ kind: 'products', id: item.productId }}
+                                                label={item.product.name}
+                                            />
                                         </div>
                                     </div>
                                 })}
@@ -1027,6 +1055,24 @@ export function ComboManagerModal({
                                                     {choice.product.name}
                                                     <button
                                                         type="button"
+                                                        aria-expanded={
+                                                            recipeChoiceKey ===
+                                                            `${group.id}:${choice.productId}`
+                                                        }
+                                                        onClick={() =>
+                                                            setRecipeChoiceKey((current) =>
+                                                                current ===
+                                                                `${group.id}:${choice.productId}`
+                                                                    ? null
+                                                                    : `${group.id}:${choice.productId}`,
+                                                            )
+                                                        }
+                                                        className="font-bold text-[#1E40AF] underline-offset-2 hover:underline"
+                                                    >
+                                                        Ingredientes
+                                                    </button>
+                                                    <button
+                                                        type="button"
                                                         aria-label={`Quitar ${choice.product.name} de ${group.name}`}
                                                         disabled={
                                                             busy || group.products.length <= 2
@@ -1062,6 +1108,27 @@ export function ComboManagerModal({
                                                 </span>
                                             ))}
                                         </div>
+                                        {group.products.map(
+                                            (choice) =>
+                                                recipeChoiceKey ===
+                                                    `${group.id}:${choice.productId}` && (
+                                                    <div
+                                                        key={choice.id}
+                                                        className="mt-3 rounded-lg bg-[#F8FAFD] p-3"
+                                                    >
+                                                        <p className="mb-2 text-xs font-bold text-[#493D2C]">
+                                                            Ingredientes de {choice.product.name}
+                                                        </p>
+                                                        <RecipeEditor
+                                                            target={{
+                                                                kind: 'products',
+                                                                id: choice.productId,
+                                                            }}
+                                                            label={choice.product.name}
+                                                        />
+                                                    </div>
+                                                ),
+                                        )}
                                         <button
                                             type="button"
                                             className={`${quietButton} mt-3`}
@@ -1286,6 +1353,7 @@ export function ComboManagerModal({
                                 </p>
                             </form>
                         </section>
+                        <ComboGlobalOptions comboId={currentCombo.id} />
                     </div>
                 )
             ) : (
@@ -1443,7 +1511,7 @@ export function ComboManagerModal({
                                     {included.map((id) => {
                                         const quantity = includedQuantities[id] ?? 1
                                         const atProductLimit = quantity >= 10
-                                        return <div key={id} className="flex items-center justify-between gap-3 rounded-lg bg-white px-3 py-2"><span className="min-w-0 truncate text-sm font-semibold text-[#243556]">{products.find((item) => item.id === id)?.name}</span><div className="flex items-center gap-2"><button type="button" aria-label={`Disminuir cantidad de ${products.find((item) => item.id === id)?.name ?? 'producto'}`} onClick={() => setIncludedQuantities((current) => ({ ...current, [id]: Math.max(1, quantity - 1) }))} className="grid size-8 place-items-center rounded-lg border border-[#D7E1EF] text-[#53647D]">−</button><span data-testid={`combo-included-quantity-${id}`} className={`min-w-6 text-center text-sm font-bold ${atProductLimit ? 'text-[#B42318]' : 'text-[#243556]'}`}>{quantity}</span><button type="button" aria-label={`Aumentar cantidad de ${products.find((item) => item.id === id)?.name ?? 'producto'}`} disabled={atProductLimit} onClick={() => setIncludedQuantities((current) => ({ ...current, [id]: Math.min(10, quantity + 1) }))} className={`grid size-8 place-items-center rounded-lg border text-sm font-bold ${atProductLimit ? 'cursor-not-allowed border-[#F3C2BD] text-[#B42318]' : 'border-[#D7E1EF] text-[#2451C5]'}`}>+</button></div></div>
+                                        return <div key={id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-white px-3 py-2"><span className="min-w-0 truncate text-sm font-semibold text-[#243556]">{products.find((item) => item.id === id)?.name}</span><div className="flex items-center gap-2"><button type="button" aria-label={`Disminuir cantidad de ${products.find((item) => item.id === id)?.name ?? 'producto'}`} onClick={() => setIncludedQuantities((current) => ({ ...current, [id]: Math.max(1, quantity - 1) }))} className="grid size-8 place-items-center rounded-lg border border-[#D7E1EF] text-[#53647D]">−</button><span data-testid={`combo-included-quantity-${id}`} className={`min-w-6 text-center text-sm font-bold ${atProductLimit ? 'text-[#B42318]' : 'text-[#243556]'}`}>{quantity}</span><button type="button" aria-label={`Aumentar cantidad de ${products.find((item) => item.id === id)?.name ?? 'producto'}`} disabled={atProductLimit} onClick={() => setIncludedQuantities((current) => ({ ...current, [id]: Math.min(10, quantity + 1) }))} className={`grid size-8 place-items-center rounded-lg border text-sm font-bold ${atProductLimit ? 'cursor-not-allowed border-[#F3C2BD] text-[#B42318]' : 'border-[#D7E1EF] text-[#2451C5]'}`}>+</button></div><div className="w-full"><RecipeDisclosure target={{ kind: 'products', id }} label={products.find((item) => item.id === id)?.name ?? 'producto'} /></div></div>
                                     })}
                                 </div>
                             )}
@@ -1611,6 +1679,12 @@ export function ComboManagerModal({
                                     </p>
                                 )}
                             </div>
+                            <div className="mt-4">
+                                <ComboGlobalOptions
+                                    selectedIds={globalGroupIds}
+                                    onChange={setGlobalGroupIds}
+                                />
+                            </div>
                         </section>
                     )}
                     {step === 3 && (
@@ -1681,6 +1755,16 @@ export function ComboManagerModal({
                                             Sin grupos de opciones.
                                         </p>
                                     )}
+                                </div>
+                                <div className="mt-4 border-t border-[#E8EEF6] pt-3">
+                                    <p className="text-xs font-bold text-[#786D5F]">
+                                        Opciones globales
+                                    </p>
+                                    <p className="mt-1 text-xs text-[#8996A9]">
+                                        {globalGroupIds.length
+                                            ? `${globalGroupIds.length} ${globalGroupIds.length === 1 ? 'grupo seleccionado' : 'grupos seleccionados'}.`
+                                            : 'Sin opciones globales.'}
+                                    </p>
                                 </div>
                             </div>
                             <p className="mt-3 text-xs leading-5 text-[#65738A]">

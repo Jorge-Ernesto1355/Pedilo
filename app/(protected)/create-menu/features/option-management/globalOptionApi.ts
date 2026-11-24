@@ -3,7 +3,10 @@ import { normalizeApiError } from '@/app/auth/lib/client/api-error'
 import { normalizeOptionGroup } from './option.types'
 import type { OptionGroup } from './option.types'
 
-export type GlobalOption = { id?: string; name: string; price: number; minSelections: number; maxSelections: number; isAvailable: boolean }
+import type { RecipeLine } from '@/app/(protected)/dashboard/inventory/components/RecipeLinesEditor'
+
+/** `draftRecipe` is client-only: ingredients typed for an option that is not saved yet. */
+export type GlobalOption = { id?: string; name: string; price: number; minSelections: number; maxSelections: number; isAvailable: boolean; draftRecipe?: RecipeLine[] }
 export type GlobalOptionGroup = { id: string; name: string; isRequired: boolean; minSelections: number; maxSelections: number; isActive: boolean; version: number; productsCount: number; productIds: string[]; options: GlobalOption[] }
 export type GlobalOptionGroupSummary = Omit<GlobalOptionGroup, 'productIds' | 'options'>
 const credentials = { withCredentials: true }
@@ -58,6 +61,14 @@ export async function getGlobalOptionGroupsForProduct(productId: string): Promis
 export async function getGlobalOptionGroup(id: string) { return request(() => apiClient.get<{ group: GlobalOptionGroup }>(`/businesses/global-option-groups/${id}`, credentials)).then((r) => r.group) }
 export async function createGlobalOptionGroup(input: Omit<GlobalOptionGroup, 'id' | 'version' | 'productsCount' | 'productIds'>) { return request(() => apiClient.post<{ group: GlobalOptionGroup }>('/businesses/global-option-groups', input, credentials)).then((r) => r.group) }
 export async function updateGlobalOptionGroup(id: string, input: Partial<Pick<GlobalOptionGroup, 'name' | 'isRequired' | 'minSelections' | 'maxSelections' | 'isActive'>> & { expectedVersion?: number }) { return request(() => apiClient.patch<{ group: GlobalOptionGroup }>(`/businesses/global-option-groups/${id}`, input, credentials)).then((r) => r.group) }
-export async function replaceGlobalGroupOptions(id: string, options: GlobalOption[]) { return request(() => apiClient.put<{ group: GlobalOptionGroup }>(`/businesses/global-option-groups/${id}/options`, { options }, credentials)).then((r) => r.group) }
+export async function replaceGlobalGroupOptions(id: string, options: GlobalOption[]) {
+    // Never send client-only fields to the API.
+    const payload = options.map((option) => {
+        const { draftRecipe, ...rest } = option
+        void draftRecipe
+        return rest
+    })
+    return request(() => apiClient.put<{ group: GlobalOptionGroup }>(`/businesses/global-option-groups/${id}/options`, { options: payload }, credentials)).then((r) => r.group)
+}
 export async function assignGlobalGroupProducts(id: string, productIds: string[], expectedVersion?: number) { return request(() => apiClient.put<{ group: GlobalOptionGroup }>(`/businesses/global-option-groups/${id}/products`, { productIds, expectedVersion }, credentials)).then((r) => r.group) }
 export async function archiveGlobalOptionGroup(id: string) { return request(() => apiClient.delete(`/businesses/global-option-groups/${id}`, credentials)) }

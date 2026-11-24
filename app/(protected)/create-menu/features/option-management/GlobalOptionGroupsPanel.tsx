@@ -17,6 +17,14 @@ import {
     type GlobalOptionGroup,
     type GlobalOptionGroupSummary,
 } from './globalOptionApi'
+import { RecipeDraftDisclosure } from '@/app/(protected)/dashboard/inventory/components/RecipeDraftDisclosure'
+import {
+    parseRecipeLines,
+    type RecipeLineErrors,
+} from '@/app/(protected)/dashboard/inventory/components/RecipeLinesEditor'
+import { useApplyRecipes } from '@/app/(protected)/dashboard/inventory/useApplyRecipes'
+import { useIngredients } from '@/app/(protected)/dashboard/inventory/useInventory'
+import { RecipeDisclosure } from '@/app/(protected)/dashboard/inventory/components/RecipeDisclosure'
 
 type Product = { id: string; name: string }
 type ProductPage = { products?: Product[]; pagination?: { total?: number }; total?: number }
@@ -50,7 +58,9 @@ function OptionRow({
     onChange,
     onRemove,
     showMissingNameError,
+    recipeErrors,
 }: {
+    recipeErrors?: RecipeLineErrors
     option: GlobalOption
     index: number
     onChange: (index: number, patch: Partial<GlobalOption>) => void
@@ -153,6 +163,18 @@ function OptionRow({
             {error && (error !== 'Escribe el nombre de la opción.' || showMissingNameError) && (
                 <p className="mt-2 text-xs text-[#B42318]">{error}</p>
             )}
+            {option.id ? (
+                <RecipeDisclosure
+                    target={{ kind: 'global-options', id: option.id }}
+                    label={option.name}
+                />
+            ) : (
+                <RecipeDraftDisclosure
+                    lines={option.draftRecipe ?? []}
+                    errors={recipeErrors}
+                    onChange={(draftRecipe) => onChange(index, { draftRecipe })}
+                />
+            )}
         </div>
     )
 }
@@ -170,6 +192,9 @@ export function GlobalOptionGroupsPanel({ businessId }: { businessId?: string })
     const [saving, setSaving] = useState(false)
     const [error, setError] = useState<string>()
     const [showMissingNameErrors, setShowMissingNameErrors] = useState(false)
+    const [recipeErrors, setRecipeErrors] = useState<Record<number, RecipeLineErrors>>({})
+    const ingredients = useIngredients({ search: '', status: 'ALL' })
+    const applyRecipes = useApplyRecipes()
     const loadProducts = useCallback(async (id: string, page: number) => {
         const response = await apiClient.get<ProductPage>(
             `/businesses/${id}/products?page=${page}&limit=10`,
@@ -263,6 +288,20 @@ export function GlobalOptionGroupsPanel({ businessId }: { businessId?: string })
             setError(invalidOption)
             return
         }
+        // Validate the ingredients typed for options that do not exist yet.
+        const parsedRecipes = new Map<number, { ingredientId: string; quantity: number }[]>()
+        const nextRecipeErrors: Record<number, RecipeLineErrors> = {}
+        selected.options.forEach((option, index) => {
+            if (option.id || !option.draftRecipe?.length) return
+            const parsed = parseRecipeLines(option.draftRecipe, ingredients.data?.ingredients ?? [])
+            if (parsed.ok) parsedRecipes.set(index, parsed.lines)
+            else nextRecipeErrors[index] = parsed.errors
+        })
+        setRecipeErrors(nextRecipeErrors)
+        if (Object.keys(nextRecipeErrors).length > 0) {
+            setError('Revisa las cantidades de los ingredientes de las opciones nuevas.')
+            return
+        }
         setSaving(true)
         setError(undefined)
         try {
@@ -279,6 +318,20 @@ export function GlobalOptionGroupsPanel({ businessId }: { businessId?: string })
                 selected.productIds,
                 updated.version,
             )
+            if (parsedRecipes.size > 0)
+                await applyRecipes(
+                    [...parsedRecipes].flatMap(([index, lines]) => {
+                        // Saved options keep the order they were sent in; fall back to the name.
+                        const sent = selected.options[index]
+                        const saved =
+                            updated.options.length === selected.options.length
+                                ? updated.options[index]
+                                : updated.options.find((item) => item.name === sent.name)
+                        return saved?.id
+                            ? [{ target: { kind: 'global-options' as const, id: saved.id }, lines }]
+                            : []
+                    }),
+                )
             setGroups((current) => current.map((item) => (item.id === group.id ? group : item)))
             setSelected(group)
             notify.success({ title: 'Grupo guardado', description: 'Las opciones y los productos asignados se actualizaron.' })
@@ -460,6 +513,7 @@ export function GlobalOptionGroupsPanel({ businessId }: { businessId?: string })
                                         index={index}
                                         onChange={updateOption}
                                         showMissingNameError={showMissingNameErrors}
+                                        recipeErrors={recipeErrors[index]}
                                         onRemove={() =>
                                             updateSelected({
                                                 options: selected.options.filter(

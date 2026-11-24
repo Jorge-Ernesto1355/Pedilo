@@ -1,5 +1,14 @@
 'use client'
 
+import { RecipeEditor } from '@/app/(protected)/dashboard/inventory/components/RecipeEditor'
+import { RecipeDraftDisclosure } from '@/app/(protected)/dashboard/inventory/components/RecipeDraftDisclosure'
+import {
+    parseRecipeLines,
+    type RecipeLine,
+    type RecipeLineErrors,
+} from '@/app/(protected)/dashboard/inventory/components/RecipeLinesEditor'
+import { useApplyRecipes } from '@/app/(protected)/dashboard/inventory/useApplyRecipes'
+import { useIngredients } from '@/app/(protected)/dashboard/inventory/useInventory'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { CircleHelp, GripVertical, LoaderCircle, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
@@ -8,6 +17,7 @@ import { z } from 'zod'
 import { Modal } from '@/app/components/ui/Modal'
 import { friendlyNotificationError, notify } from '@/src/lib/notifications/notify'
 import { useOptionGroups, useOptionManagement, useOptions } from './useOptionManagement'
+import { getOptions } from './optionApi'
 import { normalizeProductOption, type OptionGroup, type ProductOption } from './option.types'
 
 const inputClass =
@@ -74,9 +84,12 @@ export function OptionModal({
     open: boolean
     option?: ProductOption | null
     onClose: () => void
-    onDone: (values: OptionValues) => void
+    onDone: (values: OptionValues, recipe: { ingredientId: string; quantity: number }[]) => void
     isSaving?: boolean
 }) {
+    const ingredients = useIngredients({ search: '', status: 'ALL' })
+    const [recipeDraft, setRecipeDraft] = useState<RecipeLine[]>([])
+    const [recipeErrors, setRecipeErrors] = useState<RecipeLineErrors>({})
     const {
         register,
         handleSubmit,
@@ -87,14 +100,25 @@ export function OptionModal({
         defaultValues: { name: '', price: '', minSelections: '', maxSelections: '' },
     })
     useEffect(() => {
-        if (open)
+        if (open) {
             reset({
                 name: option?.name ?? '',
                 price: option ? String(option.price) : '',
                 minSelections: option ? String(option.minSelections ?? 0) : '',
                 maxSelections: option ? String(option.maxSelections ?? 1) : '',
             })
+            // The modal stays mounted, so the draft recipe must start clean on every open.
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            setRecipeDraft([])
+            setRecipeErrors({})
+        }
     }, [open, option, reset])
+    const submitOption = (values: OptionValues) => {
+        if (option) return onDone(values, [])
+        const recipe = parseRecipeLines(recipeDraft, ingredients.data?.ingredients ?? [])
+        if (!recipe.ok) return setRecipeErrors(recipe.errors)
+        onDone(values, recipe.lines)
+    }
     return (
         <Modal
             open={open}
@@ -125,7 +149,7 @@ export function OptionModal({
             }
         >
             <div>
-                <form id="option-form" onSubmit={handleSubmit(onDone)} className="space-y-4">
+                <form id="option-form" onSubmit={handleSubmit(submitOption)} className="space-y-4">
                     <div>
                         <label className="mb-1.5 block text-sm font-semibold text-[#243556]">
                             Nombre <span className="text-[#B42318]">*</span>
@@ -204,6 +228,21 @@ export function OptionModal({
                             Costo adicional por cada unidad. Escribe 0 si no tiene costo.
                         </p>
                     </div>
+                    {option ? (
+                        <p className="text-xs text-[#8996A9]">
+                            Para cambiar sus ingredientes usa “Ingredientes” en la tarjeta de la
+                            opción.
+                        </p>
+                    ) : (
+                        <RecipeDraftDisclosure
+                            lines={recipeDraft}
+                            errors={recipeErrors}
+                            onChange={(next) => {
+                                setRecipeErrors({})
+                                setRecipeDraft(next)
+                            }}
+                        />
+                    )}
                 </form>
             </div>
         </Modal>
@@ -222,9 +261,21 @@ export function GroupModal({
     productId: string
     group?: OptionGroup | null
     onClose: () => void
-    onDone: (group: OptionGroup, productId: string, isEdit: boolean) => void
+    onDone: (
+        group: OptionGroup,
+        productId: string,
+        isEdit: boolean,
+        recipes: Record<string, { ingredientId: string; quantity: number }[]>,
+    ) => void
     isSaving?: boolean
 }) {
+    const ingredients = useIngredients({ search: '', status: 'ALL' })
+    // Recipes of the options drafted in this modal, keyed by lowercase option name.
+    const [draftRecipes, setDraftRecipes] = useState<
+        Record<string, { ingredientId: string; quantity: number }[]>
+    >({})
+    const [newRecipe, setNewRecipe] = useState<RecipeLine[]>([])
+    const [newRecipeErrors, setNewRecipeErrors] = useState<RecipeLineErrors>({})
     const existingOptionsQuery = useOptions(group?.id ?? null)
     const {
         register,
@@ -258,6 +309,10 @@ export function GroupModal({
     // The modal is kept mounted by the shared Modal component so reset is required on each open.
     useEffect(() => {
         if (open) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            setDraftRecipes({})
+            setNewRecipe([])
+            setNewRecipeErrors({})
             reset({
                 name: group?.name ?? '',
                 isRequired: group?.isRequired ?? false,
@@ -267,7 +322,6 @@ export function GroupModal({
                 optionMaxSelections: '',
             })
             // The modal is reused for different groups and needs a clean local draft.
-            // eslint-disable-next-line react-hooks/set-state-in-effect
             if (!group || group.options?.length) {
                 setDraftOptions(
                     group?.options?.map(
@@ -325,6 +379,14 @@ export function GroupModal({
             setError('optionName', { message: 'Esta opción ya fue agregada.' })
             return
         }
+        const recipe = parseRecipeLines(newRecipe, ingredients.data?.ingredients ?? [])
+        if (!recipe.ok) {
+            setNewRecipeErrors(recipe.errors)
+            return
+        }
+        setDraftRecipes((current) => ({ ...current, [trimmed.toLowerCase()]: recipe.lines }))
+        setNewRecipe([])
+        setNewRecipeErrors({})
         setDraftOptions((current) => [
             ...current,
             {
@@ -361,6 +423,7 @@ export function GroupModal({
             },
             productId,
             Boolean(group),
+            draftRecipes,
         )
     return (
         <Modal
@@ -513,6 +576,15 @@ export function GroupModal({
                                 de esta opción. Ejemplo: mínimo 0 y máximo 2 permite elegir hasta
                                 dos unidades.
                             </p>
+                            <RecipeDraftDisclosure
+                                lines={newRecipe}
+                                errors={newRecipeErrors}
+                                onChange={(next) => {
+                                    setNewRecipeErrors({})
+                                    setNewRecipe(next)
+                                }}
+                                label="Ingredientes de esta opción (opcional)"
+                            />
                             <div className="mt-3 space-y-2">
                                 {draftOptions.map((option) => (
                                     <div
@@ -524,6 +596,9 @@ export function GroupModal({
                                             <span className="text-[#65738A]">
                                                 +${option.price.toFixed(2)} · {option.minSelections}
                                                 –{option.maxSelections}
+                                                {(draftRecipes[option.name.toLowerCase()]?.length ??
+                                                    0) > 0 &&
+                                                    ` · ${draftRecipes[option.name.toLowerCase()].length} ingredientes`}
                                             </span>
                                         </span>
                                         <button
@@ -563,6 +638,8 @@ export function OptionGroupCard({
     const mutations = useOptionManagement()
     const [option, setOption] = useState<ProductOption | null | undefined>(undefined)
     const [draggedOptionId, setDraggedOptionId] = useState<string | null>(null)
+    const [recipeOptionId, setRecipeOptionId] = useState<string | null>(null)
+    const applyRecipes = useApplyRecipes()
     const optionMutationPending =
         mutations.createOpt.isPending ||
         mutations.updateOpt.isPending ||
@@ -587,7 +664,10 @@ export function OptionGroupCard({
             { onError: mutationError },
         )
     }
-    const saveOption = (values: OptionValues) => {
+    const saveOption = (
+        values: OptionValues,
+        recipe: { ingredientId: string; quantity: number }[],
+    ) => {
         if (mutations.createOpt.isPending || mutations.updateOpt.isPending) return
         const input = {
             name: values.name.trim(),
@@ -603,7 +683,15 @@ export function OptionGroupCard({
         else
             mutations.createOpt.mutate(
                 { optionGroupId: group.id, productId, input: { ...input, isAvailable: true } },
-                { onSuccess: () => setOption(undefined), onError: mutationError },
+                {
+                    onSuccess: (created) => {
+                        setOption(undefined)
+                        void applyRecipes([
+                            { target: { kind: 'product-options', id: created.id }, lines: recipe },
+                        ])
+                    },
+                    onError: mutationError,
+                },
             )
     }
     return (
@@ -677,8 +765,8 @@ export function OptionGroupCard({
                 ) : (
                     <div className="space-y-1.5">
                         {options.map((item) => (
+                            <div key={item.id}>
                             <div
-                                key={item.id}
                                 draggable
                                 onDragStart={() => setDraggedOptionId(item.id)}
                                 onDragOver={(event) => event.preventDefault()}
@@ -714,6 +802,18 @@ export function OptionGroupCard({
                                 </button>
                                 <button
                                     type="button"
+                                    onClick={() =>
+                                        setRecipeOptionId((current) =>
+                                            current === item.id ? null : item.id,
+                                        )
+                                    }
+                                    aria-expanded={recipeOptionId === item.id}
+                                    className="text-xs text-[#1E40AF]"
+                                >
+                                    Ingredientes
+                                </button>
+                                <button
+                                    type="button"
                                     onClick={() => setOption(item)}
                                     disabled={optionMutationPending}
                                     aria-label="Editar opción"
@@ -738,6 +838,15 @@ export function OptionGroupCard({
                                 >
                                     <Trash2 className="size-3.5 text-[#B42318]" />
                                 </button>
+                            </div>
+                            {recipeOptionId === item.id && (
+                                <div className="ml-6 mt-2 rounded-lg bg-[#F8FAFD] p-3">
+                                    <RecipeEditor
+                                        target={{ kind: 'product-options', id: item.id }}
+                                        label={item.name}
+                                    />
+                                </div>
+                            )}
                             </div>
                         ))}
                     </div>
@@ -776,7 +885,13 @@ export function OptionGroupsEditor({
     const [draggedId, setDraggedId] = useState<string | null>(null)
     const [showExample, setShowExample] = useState(false)
     const groups = query.data?.length ? query.data : (initialGroups ?? [])
-    const saveGroup = (group: OptionGroup, id: string, isEdit: boolean) => {
+    const applyRecipes = useApplyRecipes()
+    const saveGroup = (
+        group: OptionGroup,
+        id: string,
+        isEdit: boolean,
+        recipes: Record<string, { ingredientId: string; quantity: number }[]>,
+    ) => {
         if (mutations.createGroup.isPending || mutations.updateGroup.isPending) return
         if (isEdit)
             mutations.updateGroup.mutate(
@@ -810,7 +925,23 @@ export function OptionGroupsEditor({
                             ) ?? [],
                     },
                 },
-                { onSuccess: () => setGroupModal(undefined), onError: mutationError },
+                {
+                    onSuccess: async (created) => {
+                        setGroupModal(undefined)
+                        if (Object.keys(recipes).length === 0) return
+                        // The response may omit options; fall back to listing them.
+                        const options = created.options?.length
+                            ? created.options
+                            : await getOptions(created.id).catch(() => [])
+                        void applyRecipes(
+                            options.map((option) => ({
+                                target: { kind: 'product-options' as const, id: option.id },
+                                lines: recipes[option.name.trim().toLowerCase()] ?? [],
+                            })),
+                        )
+                    },
+                    onError: mutationError,
+                },
             )
     }
     const reorder = (targetId: string) => {
