@@ -10,6 +10,7 @@ import { ChevronDown, ChevronUp, GripVertical, LoaderCircle, Pencil, Plus, Refre
 import { friendlyNotificationError, notify } from '@/src/lib/notifications/notify'
 import { Modal } from '@/app/components/ui/Modal'
 import { ApiError } from '@/app/auth/lib/client/api-error'
+import { useInventoryMutations } from '@/app/(protected)/dashboard/inventory/useInventory'
 import type { Menu, MenuCategory } from './menu.types'
 import type { useCategoryManagement } from './useCategoryManagement'
 import { AddProductModalSkeleton } from '../product-management/AddProductModalSkeleton'
@@ -115,6 +116,7 @@ function CategoryProducts({
     productManagement: ProductManagement
 }) {
     const productsQuery = useProductsByCategory(category.id)
+    const inventory = useInventoryMutations()
     const [productModalOpen, setProductModalOpen] = useState(false)
     const [comboModalOpen, setComboModalOpen] = useState(false)
     const [productTypeModalOpen, setProductTypeModalOpen] = useState(false)
@@ -127,7 +129,11 @@ function CategoryProducts({
 
     if (productsQuery.isLoading) return <CategoryProductsSkeleton />
 
-    function saveProduct(values: ProductFormValues, setError: UseFormSetError<ProductFormValues>) {
+    function saveProduct(
+        values: ProductFormValues,
+        setError: UseFormSetError<ProductFormValues>,
+        recipe: { ingredientId: string; quantity: number }[],
+    ) {
         if (productManagement.createProduct.isPending || productManagement.updateProduct.isPending)
             return
         const onError = (error: unknown) => {
@@ -175,7 +181,24 @@ function CategoryProducts({
         } else {
             productManagement.createProduct.mutate(
                 { categoryId: category.id, input: values },
-                { onSuccess: (product) => setEditingProduct(product), onError },
+                {
+                    onSuccess: (product) => {
+                        setEditingProduct(product)
+                        if (recipe.length === 0) return
+                        inventory.recipe.mutate(
+                            { target: { kind: 'products', id: product.id }, lines: recipe },
+                            {
+                                onError: () =>
+                                    notify.error({
+                                        title: 'Producto creado, pero no su receta',
+                                        description:
+                                            'Agrega los ingredientes desde “Ingredientes” en este mismo producto.',
+                                    }),
+                            },
+                        )
+                    },
+                    onError,
+                },
             )
         }
     }
@@ -977,15 +1000,21 @@ export function MenuManagementPanel({ management }: { management: MenuManagement
                                                                 type="button"
                                                                 aria-label={`${collapsedCategoryIds.has(category.id) ? 'Mostrar' : 'Minimizar'} productos de ${category.name}`}
                                                                 aria-expanded={
-                                                                    !collapsedCategoryIds.has(category.id)
+                                                                    !collapsedCategoryIds.has(
+                                                                        category.id,
+                                                                    )
                                                                 }
                                                                 aria-controls={`category-products-${category.id}`}
                                                                 onClick={() =>
-                                                                    toggleCategoryProducts(category.id)
+                                                                    toggleCategoryProducts(
+                                                                        category.id,
+                                                                    )
                                                                 }
                                                                 className="grid size-7 place-items-center rounded text-[#65738A] hover:bg-[#EEF3FF] hover:text-[#1E40AF]"
                                                             >
-                                                                {collapsedCategoryIds.has(category.id) ? (
+                                                                {collapsedCategoryIds.has(
+                                                                    category.id,
+                                                                ) ? (
                                                                     <ChevronDown className="size-3.5" />
                                                                 ) : (
                                                                     <ChevronUp className="size-3.5" />
@@ -1060,23 +1089,33 @@ export function MenuManagementPanel({ management }: { management: MenuManagement
                                                                         ? false
                                                                         : { height: 0, opacity: 0 }
                                                                 }
-                                                                animate={{ height: 'auto', opacity: 1 }}
+                                                                animate={{
+                                                                    height: 'auto',
+                                                                    opacity: 1,
+                                                                }}
                                                                 exit={
                                                                     reducedMotion
                                                                         ? undefined
                                                                         : { height: 0, opacity: 0 }
                                                                 }
                                                                 transition={{
-                                                                    duration: reducedMotion ? 0 : 0.2,
+                                                                    duration: reducedMotion
+                                                                        ? 0
+                                                                        : 0.2,
                                                                     ease: [0.22, 1, 0.36, 1],
                                                                 }}
                                                                 className="overflow-hidden"
                                                             >
                                                                 <CategoryProducts
                                                                     category={category}
-                                                                    categories={selectedMenu.categories ?? []}
+                                                                    categories={
+                                                                        selectedMenu.categories ??
+                                                                        []
+                                                                    }
                                                                     menus={menus}
-                                                                    productManagement={productManagement}
+                                                                    productManagement={
+                                                                        productManagement
+                                                                    }
                                                                 />
                                                             </motion.div>
                                                         )}

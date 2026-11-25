@@ -9,6 +9,7 @@ import { RedirectedUrls } from '@/src/lib/RedirectUrls'
 import React from 'react'
 import { OrderEventsRuntime } from './dashboard/features/orders/OrderEventsRuntime'
 import { GlobalNewOrderButton } from './GlobalNewOrderButton'
+import { StockAlertsRuntime } from './dashboard/inventory/StockAlertsRuntime'
 
 function toInitialBusiness(
     result: Awaited<ReturnType<typeof getCurrentBusiness>>,
@@ -37,6 +38,7 @@ export default async function ProtectedLayout({ children }: { children: ReactNod
         <AuthHydration user={user} initialBusiness={toInitialBusiness(currentBusiness)}>
             <div className="has-mobile-nav">
                 <OrderEventsRuntime />
+                <StockAlertsRuntime />
                 <GlobalNewOrderButton />
                 <div className="dashboard-shell min-h-screen">
                     <DashboardNav />
