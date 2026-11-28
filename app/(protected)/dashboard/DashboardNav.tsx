@@ -8,6 +8,7 @@ import Image from 'next/image'
 import { useQueryClient } from '@tanstack/react-query'
 import {
     BarChart3,
+    Boxes,
     ChevronDown,
     LayoutDashboard,
     Menu,
@@ -24,6 +25,7 @@ import { useAuthStore } from '@/store/authStore'
 import { useCurrentBusiness } from '@/app/(protected)/create-menu/features/business-profile/useCurrentBusiness'
 import posthog from 'posthog-js'
 import { useOrderEventsStore } from '@/store/orderEventsStore'
+import { useOpenStockAlerts } from './inventory/useInventory'
 import { getOrderSoundPreferenceKey } from './features/orders/services/orderEvents'
 import { DashboardNavSkeleton } from '@/components/AppLoadingSkeleton'
 
@@ -58,6 +60,7 @@ const links = [
     { href: '/dashboard/orders', label: 'Pedidos', icon: ShoppingBag },
     { href: '/dashboard/customers', label: 'Clientes', icon: Users },
     { href: '/dashboard/products', label: 'Productos', icon: Package },
+    { href: '/dashboard/inventory', label: 'Inventario', icon: Boxes },
     { href: '/dashboard/discounts', label: 'Descuentos', icon: Percent },
 ]
 
@@ -83,6 +86,7 @@ export function DashboardNav() {
     const soundEnabled = useOrderEventsStore((state) => state.soundEnabled)
     const setSoundEnabled = useOrderEventsStore((state) => state.setSoundEnabled)
     const connectionStatus = useOrderEventsStore((state) => state.connectionStatus)
+    const stockAlertCount = useOpenStockAlerts().data?.length ?? 0
     const businessQuery = useCurrentBusiness()
     const [accountMenuOpen, setAccountMenuOpen] = useState(false)
     const [isLoggingOut, setIsLoggingOut] = useState(false)
@@ -203,11 +207,18 @@ export function DashboardNav() {
                                     ? pathname === link.href
                                     : pathname.startsWith(link.href)
                             const isOrders = link.href === '/dashboard/orders'
+                            const isInventory = link.href === '/dashboard/inventory'
                             return (
                                 <IntentLink
                                     key={link.href}
                                     href={link.href}
-                                    aria-label={isOrders && unseenCount > 0 ? `Pedidos, ${unseenCount} nuevas órdenes` : undefined}
+                                    aria-label={
+                                        isOrders && unseenCount > 0
+                                            ? `Pedidos, ${unseenCount} nuevas órdenes`
+                                            : isInventory && stockAlertCount > 0
+                                              ? `Inventario, ${stockAlertCount} alertas`
+                                              : undefined
+                                    }
                                     className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition ${active ? 'bg-[#EAF0FF] text-[#1E40AF]' : 'text-[#65738A] hover:bg-[#F5F8FC] hover:text-[#1E40AF]'}`}
                                 >
                                     <Icon className="size-4" />
@@ -216,6 +227,15 @@ export function DashboardNav() {
                                         <span className="rounded-full bg-[#C94040] px-1.5 py-0.5 text-[10px] font-bold leading-none text-white" aria-label={`${unseenCount} nuevas órdenes`}>
                                             {unseenCount > 99 ? '99+' : unseenCount}
                                             <span className="sr-only"> nuevas órdenes</span>
+                                        </span>
+                                    )}
+                                    {isInventory && stockAlertCount > 0 && (
+                                        <span
+                                            data-testid="inventory-alert-badge"
+                                            className="rounded-full bg-[#C94040] px-1.5 py-0.5 text-[10px] font-bold leading-none text-white"
+                                        >
+                                            {stockAlertCount > 99 ? '99+' : stockAlertCount}
+                                            <span className="sr-only"> alertas de inventario</span>
                                         </span>
                                     )}
                                 </IntentLink>
@@ -353,7 +373,7 @@ export function DashboardNav() {
                 className="fixed !bottom-0 left-0 right-0 z-[100] border-t border-[#DCE5F3] bg-white/95 px-1 pb-[env(safe-area-inset-bottom)] shadow-[0_-6px_18px_rgb(18_35_74_/_0.08)] backdrop-blur md:hidden"
                 aria-label="Navegación móvil"
             >
-                <div className="mx-auto grid h-[64px] max-w-md grid-cols-5 items-stretch">
+                <div className="mx-auto grid h-[64px] max-w-lg grid-cols-7 items-stretch">
                     {links.map((link) => {
                         const Icon = link.icon
                         const active =
@@ -361,12 +381,19 @@ export function DashboardNav() {
                                 ? pathname === link.href
                                 : pathname.startsWith(link.href)
                         const isOrders = link.href === '/dashboard/orders'
+                        const isInventory = link.href === '/dashboard/inventory'
 
                         return (
                             <IntentLink
                                 key={link.href}
                                 href={link.href}
-                                aria-label={isOrders && unseenCount > 0 ? `Pedidos, ${unseenCount} nuevas órdenes` : undefined}
+                                aria-label={
+                                        isOrders && unseenCount > 0
+                                            ? `Pedidos, ${unseenCount} nuevas órdenes`
+                                            : isInventory && stockAlertCount > 0
+                                              ? `Inventario, ${stockAlertCount} alertas`
+                                              : undefined
+                                    }
                                 aria-current={active ? 'page' : undefined}
                                 className={`flex min-w-0 flex-col items-center justify-center rounded-lg text-[9px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1E40AF] focus-visible:ring-offset-2 ${isOrders ? '-translate-y-1 gap-0.5' : 'gap-0.5'} ${active ? 'text-[#1E40AF]' : 'text-[#8996A9] hover:text-[#1E40AF]'}`}
                             >
@@ -380,6 +407,14 @@ export function DashboardNav() {
                                     {isOrders && unseenCount > 0 && (
                                         <span className="absolute -right-1.5 -top-1.5 grid min-h-4 min-w-4 place-items-center rounded-full bg-[#C94040] px-1 text-[9px] font-bold leading-none text-white ring-2 ring-white" aria-label={`${unseenCount} nuevas órdenes`}>
                                             {unseenCount > 99 ? '99+' : unseenCount}
+                                        </span>
+                                    )}
+                                    {isInventory && stockAlertCount > 0 && (
+                                        <span
+                                            className="absolute -right-1.5 -top-1.5 grid min-h-4 min-w-4 place-items-center rounded-full bg-[#C94040] px-1 text-[9px] font-bold leading-none text-white ring-2 ring-white"
+                                            aria-label={`${stockAlertCount} alertas de inventario`}
+                                        >
+                                            {stockAlertCount > 99 ? '99+' : stockAlertCount}
                                         </span>
                                     )}
                                 </span>

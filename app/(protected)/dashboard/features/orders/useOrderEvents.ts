@@ -5,6 +5,9 @@ import { usePathname } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import { useAuthStore } from '@/store/authStore'
 import { useOrderEventsStore } from '@/store/orderEventsStore'
+import { useStockAlertsStore } from '@/store/stockAlertsStore'
+import { parseStockAlertEvent } from '../../inventory/stockAlerts'
+import { inventoryKey } from '../../inventory/useInventory'
 import { getOrder } from '@/src/lib/api/orderApi'
 import { ORDER_STATUSES, type Order } from '@/src/lib/api/order-types'
 import { reconcileOrderStatusInCache } from './orderStatusSync'
@@ -45,6 +48,7 @@ export function useOrderEvents() {
         const scopeKey = userId && businessId ? `${userId}:${businessId}` : null
         const store = useOrderEventsStore.getState()
         store.resetForScope(scopeKey)
+        useStockAlertsStore.getState().resetForScope(scopeKey)
         if (!scopeKey || !businessId) return
         const activeBusinessId = businessId
 
@@ -153,6 +157,13 @@ export function useOrderEvents() {
             void queryClient.invalidateQueries({ queryKey: ['orders', activeBusinessId] })
         }
 
+        function processStockAlert(raw: string) {
+            const alert = parseStockAlertEvent(raw, activeBusinessId)
+            if (!alert) return
+            useStockAlertsStore.getState().pushAlert(alert)
+            void queryClient.invalidateQueries({ queryKey: inventoryKey(activeBusinessId) })
+        }
+
         async function connect() {
             while (!disposed) {
                 controller = new AbortController()
@@ -168,14 +179,20 @@ export function useOrderEvents() {
                             attempt = 0
                             useOrderEventsStore.getState().setReconnectAttempts(0)
                             useOrderEventsStore.getState().setConnection('connected')
-                            if (wasReconnect)
+                            if (wasReconnect) {
                                 void queryClient.invalidateQueries({
                                     queryKey: ['orders', activeBusinessId],
                                 })
+                                // Alerts raised while disconnected are not replayed.
+                                void queryClient.invalidateQueries({
+                                    queryKey: inventoryKey(activeBusinessId),
+                                })
+                            }
                         },
                         onOrder: (data) => void processOrder(data),
                         onStatus: processStatus,
                         onDelivery: processDelivery,
+                        onStockAlert: processStockAlert,
                     })
                 } catch (error) {
                     if (disposed || controller.signal.aborted) break

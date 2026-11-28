@@ -14,11 +14,16 @@ import { useProduct } from './useProductManagement'
 import { ApiError } from '@/app/auth/lib/client/api-error'
 import { notify } from '@/src/lib/notifications/notify'
 import { ImagePlus, ListPlus } from 'lucide-react'
-import Link from 'next/link'
+import { RecipeEditor } from '@/app/(protected)/dashboard/inventory/components/RecipeEditor'
 import {
-    PRODUCT_DESCRIPTION_MAX_LENGTH,
-    PRODUCT_NAME_MAX_LENGTH,
-} from '../../description-limits'
+    parseRecipeLines,
+    RecipeLinesEditor,
+    type RecipeLine,
+    type RecipeLineErrors,
+} from '@/app/(protected)/dashboard/inventory/components/RecipeLinesEditor'
+import { useIngredients } from '@/app/(protected)/dashboard/inventory/useInventory'
+import Link from 'next/link'
+import { PRODUCT_DESCRIPTION_MAX_LENGTH, PRODUCT_NAME_MAX_LENGTH } from '../../description-limits'
 
 type AddProductModalProps = {
     open: boolean
@@ -26,7 +31,11 @@ type AddProductModalProps = {
     product?: Product | null
     isSaving?: boolean
     onClose: () => void
-    onSave: (values: ProductFormValues, setError: UseFormSetError<ProductFormValues>) => void
+    onSave: (
+        values: ProductFormValues,
+        setError: UseFormSetError<ProductFormValues>,
+        recipe: { ingredientId: string; quantity: number }[],
+    ) => void
 }
 
 const inputClass =
@@ -50,6 +59,10 @@ export function AddProductModal({
 }: AddProductModalProps) {
     const productDetail = useProduct(product?.id ?? null)
     const currentProduct = productDetail.data ?? product
+    // Recipe typed while the product does not exist yet; saved right after it is created.
+    const [recipeDraft, setRecipeDraft] = useState<RecipeLine[]>([])
+    const [recipeErrors, setRecipeErrors] = useState<RecipeLineErrors>({})
+    const ingredients = useIngredients({ search: '', status: 'ALL' })
     const [selectedImage, setSelectedImage] = useState<{ source: string; url: string } | null>(null)
     const {
         register,
@@ -72,6 +85,8 @@ export function AddProductModal({
         // product that was just saved or edited.
         // eslint-disable-next-line react-hooks/set-state-in-effect
         setSelectedImage(null)
+        setRecipeDraft([])
+        setRecipeErrors({})
         reset({
             name: currentProduct?.name ?? '',
             description: currentProduct?.description ?? '',
@@ -111,7 +126,18 @@ export function AddProductModal({
         setSelectedImage({ source: imageSource, url: URL.createObjectURL(file) })
     }
 
-    const submit = (values: ProductFormValues) => onSave(values, setError)
+    const submit = (values: ProductFormValues) => {
+        if (currentProduct) return onSave(values, setError, [])
+        const recipe = parseRecipeLines(recipeDraft, ingredients.data?.ingredients ?? [])
+        if (!recipe.ok) {
+            setRecipeErrors(recipe.errors)
+            document
+                .getElementById('product-recipe-title')
+                ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            return
+        }
+        onSave(values, setError, recipe.lines)
+    }
     const showDetailError = () => {
         if (productDetail.isError)
             notify.error({
@@ -390,6 +416,31 @@ export function AddProductModal({
                         .
                     </p>
                 </div>
+                {!currentProduct && (
+                    <section aria-labelledby="product-recipe-title" className="space-y-3">
+                        <div>
+                            <h3
+                                id="product-recipe-title"
+                                className="font-display text-lg tracking-[-.03em] text-[#12234A]"
+                            >
+                                Ingredientes
+                            </h3>
+                            <p className="mt-1 text-sm leading-6 text-[#65738A]">
+                                Busca tus ingredientes y anota cuánto gasta cada unidad vendida. Se
+                                descuentan del inventario cuando el pedido se marca como listo.
+                                Opcional.
+                            </p>
+                        </div>
+                        <RecipeLinesEditor
+                            lines={recipeDraft}
+                            errors={recipeErrors}
+                            onChange={(next) => {
+                                setRecipeErrors({})
+                                setRecipeDraft(next)
+                            }}
+                        />
+                    </section>
+                )}
                 {errors.root?.server?.message && (
                     <p role="alert" className="text-center text-xs text-[#B42318]">
                         {errors.root.server.message}
@@ -401,6 +452,25 @@ export function AddProductModal({
                     productId={currentProduct.id}
                     initialGroups={currentProduct.optionGroups}
                 />
+            )}
+            {currentProduct && (
+                <section
+                    className="mt-6 border-t border-[#E8EEF6] pt-5"
+                    aria-labelledby="product-recipe-title"
+                >
+                    <h3
+                        id="product-recipe-title"
+                        className="font-display text-lg tracking-[-.03em] text-[#12234A]"
+                    >
+                        Ingredientes
+                    </h3>
+                    <div className="mt-3">
+                        <RecipeEditor
+                            target={{ kind: 'products', id: currentProduct.id }}
+                            label={currentProduct.name}
+                        />
+                    </div>
+                </section>
             )}
         </Modal>
     )

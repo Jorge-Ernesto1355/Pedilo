@@ -12,6 +12,7 @@ import type {
 } from '@/app/(protected)/create-menu/features/product-management/product.types'
 import { OptionGroupsEditor } from '@/app/(protected)/create-menu/features/option-management/OptionGroupsEditor'
 import Link from 'next/link'
+import { RecipeEditor } from '../../inventory/components/RecipeEditor'
 import { PRODUCT_DESCRIPTION_MAX_LENGTH } from '@/app/(protected)/create-menu/description-limits'
 
 export type ProductCategoryOption = { id: string; name: string; label: string }
@@ -220,6 +221,16 @@ export function ProductAdminModal({
             </form>
             {product && (
                 <OptionGroupsEditor productId={product.id} initialGroups={product.optionGroups} />
+            )}
+            {product && (
+                <section className="mt-6 border-t border-[#E8EEF6] pt-5" aria-labelledby="product-recipe-title">
+                    <h3 id="product-recipe-title" className="font-display text-lg tracking-[-.03em] text-[#12234A]">
+                        Ingredientes
+                    </h3>
+                    <div className="mt-3">
+                        <RecipeEditor target={{ kind: 'products', id: product.id }} label={product.name} />
+                    </div>
+                </section>
             )}
         </Modal>
     )
