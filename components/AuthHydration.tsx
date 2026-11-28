@@ -31,7 +31,14 @@ export function AuthHydration({ user, initialBusiness, children }: AuthHydration
     // Usuario que había en el store antes de hidratar. Durante SSR/hidratación zustand
     // devuelve su estado inicial (null), así que en una carga completa vale null.
     const lastHydratedUserId = useRef<string | null>(currentUserId)
-    const initialIdentity = { ...user, businessId: initialBusiness?.id ?? user.businessId ?? null }
+    // El servidor puede responder sin negocio justo después de crearlo (sesión o lectura
+    // con datos previos). Para el mismo usuario nunca se pierde un negocio ya conocido en
+    // el cliente: no existe borrado de negocios, así que un `null` posterior es obsoleto y
+    // dejaría sin `businessId` a las acciones que dependen de él (p. ej. crear un menú).
+    const knownBusinessId = currentUserId === user.id ? (currentUser?.businessId ?? null) : null
+    const serverBusinessId = initialBusiness?.id ?? user.businessId ?? null
+    const keepKnownBusiness = serverBusinessId === null && knownBusinessId !== null
+    const initialIdentity = { ...user, businessId: serverBusinessId ?? knownBusinessId }
 
     // Seed both stores before descendants render. This prevents every enabled
     // query from waiting for the post-mount hydration effect.
@@ -43,7 +50,7 @@ export function AuthHydration({ user, initialBusiness, children }: AuthHydration
         // `undefined` means the server did not resolve the business. Do not cache it as
         // `null`: the client query has infinite stale time and would consequently never
         // fetch the actual business (hiding business-scoped panels such as global groups).
-        if (initialBusiness !== undefined) {
+        if (initialBusiness !== undefined && !keepKnownBusiness) {
             queryClient.setQueryData(['business', 'mine', initialIdentity.id], initialBusiness)
         }
     }

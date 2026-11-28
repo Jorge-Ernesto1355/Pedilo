@@ -2,9 +2,12 @@
 //
 // Las pruebas usan una cuenta y un negocio propios para no alterar los datos de otras
 // suites. `seedDelivery` los crea si no existen y deja la configuración de envío en su
-// estado base; es idempotente. Solo se ejecuta contra un backend local.
+// estado base; es idempotente. Solo se ejecuta contra un backend local, o contra el de
+// desarrollo con CYPRESS_ALLOW_REMOTE_SEED=true (ver cypress/support/seedGuard.ts).
 //
 // Las tarifas de aquí son SOLO datos de prueba; Pedilo no trae tarifas precargadas.
+
+import { assertSeedAllowed } from '../../support/seedGuard'
 
 export type Coordinates = { latitude: number; longitude: number }
 
@@ -108,11 +111,7 @@ function ensureBusiness(api: string): Cypress.Chainable<string> {
 /** Crea/restablece la cuenta, el negocio y la configuración de envío de las pruebas. */
 export function seedDelivery(): Cypress.Chainable<DeliverySeed> {
     return backendApi('').then((api) => {
-        const host = new URL(api).hostname
-        expect(
-            ['localhost', '127.0.0.1'],
-            'las pruebas de envío solo corren contra un backend local',
-        ).to.include(host)
+        assertSeedAllowed(api, 'envío')
         ensureAccount(api)
         return ensureBusiness(api).then((businessId) => {
             ensureWhatsapp(api)

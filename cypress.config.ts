@@ -31,7 +31,8 @@ export default defineConfig({
         specPattern: 'cypress/e2e/**/*.cy.ts',
         supportFile: 'cypress/support/e2e.ts',
         retries: {
-            runMode: 2,
+            // Sin reintentos: si un test falla a la primera, ya falló.
+            runMode: 0,
             openMode: 0,
         },
         setupNodeEvents(on, config) {
@@ -67,6 +68,7 @@ export default defineConfig({
         qrTestSlugA: process.env.CYPRESS_QR_TEST_SLUG_A,
         qrTestTokenB: process.env.CYPRESS_QR_TEST_TOKEN_B,
         qrTestSlugB: process.env.CYPRESS_QR_TEST_SLUG_B,
+        allowRemoteSeed: process.env.CYPRESS_ALLOW_REMOTE_SEED === 'true',
         uiDelay: Number(process.env.CYPRESS_UI_DELAY ?? 0),
         pauseForInspection: process.env.CYPRESS_PAUSE_FOR_INSPECTION === 'true',
     },

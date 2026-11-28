@@ -6,7 +6,10 @@
 //  - C "e2e-loyalty-c": otro restaurante CON programa, para pruebas de acceso cruzado.
 // Cada prueba crea sus propios clientes (teléfono único), así los datos quedan aislados.
 // `customerWithStamps(n)` deja a un cliente con 0, 7 u 8 sellos (8 = tarjeta completa con
-// premio disponible). Solo corre contra un backend local.
+// premio disponible). Solo corre contra un backend local, o contra el de desarrollo con
+// CYPRESS_ALLOW_REMOTE_SEED=true (ver cypress/support/seedGuard.ts).
+
+import { assertSeedAllowed } from '../../support/seedGuard'
 
 export type LoyaltyBusiness = {
     key: 'a' | 'b' | 'c'
@@ -300,10 +303,7 @@ export function seedLoyalty(
     programOverrides: Record<string, unknown> = {},
 ): Cypress.Chainable<LoyaltySeed> {
     return backendApi('').then((api) => {
-        expect(
-            ['localhost', '127.0.0.1'],
-            'las pruebas de lealtad solo corren contra un backend local',
-        ).to.include(new URL(api).hostname)
+        assertSeedAllowed(api, 'lealtad')
         return seedBusiness(api, 'b').then((b) =>
             seedBusiness(api, 'c').then((c) => {
                 cy.request(
