@@ -73,11 +73,11 @@
         "@types/react-dom": "^19",
         "@vitejs/plugin-react": "^4.3.4",
         "@vitest/coverage-v8": "^2.1.9",
-<<<<<<< HEAD
+
         "cypress": "^16.4.0",
-=======
-        "cypress": "^16.3.0",
->>>>>>> fab1f83d10f6673ba2e11e74ae0cea240d11ac49
+
+     
+
         "eslint": "^9",
         "eslint-config-next": "16.3.4",
         "jsdom": "^25.0.1",
